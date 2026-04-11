@@ -8,6 +8,7 @@ import { redis } from './cache/redis.js';
 import { logger } from './utils/logger.js';
 import { sql } from 'drizzle-orm';
 
+// eslint-disable-next-line i18next/no-literal-string -- deployment artifact path, not user-facing
 const manager = new ShardingManager('./dist/shard.js', {
   token: config.DISCORD_TOKEN,
   totalShards: 'auto',   // Discord recommends ~1,000 guilds/shard

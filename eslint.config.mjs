@@ -17,23 +17,77 @@ export default [
         varsIgnorePattern: '^_',
       }],
 
-      // i18next: detect hardcoded user-facing strings
-      // PHASE 1: Start as 'warn' — mode: 'all' generates false positives in Node.js
-      // (console.log, new Error(), pg-boss queue names, config keys all get flagged)
-      // T-12 will tune exclusion lists and promote to 'error'
-      'i18next/no-literal-string': ['warn', {
+      // i18next: detect hardcoded user-facing strings — promoted to 'error' in T-12
+      // callees.exclude: patterns matched against full callee source text
+      // words.exclude: patterns matched against the trimmed string value
+      'i18next/no-literal-string': ['error', {
         mode: 'all',
-        ignoreCallee: [
-          // Console / logging — these are developer-facing, not user-facing
-          'console.log', 'console.error', 'console.warn', 'console.debug', 'console.info',
-          'logger.info', 'logger.warn', 'logger.error', 'logger.debug',
-          // Error constructors — internal errors, not user display
-          'new Error', 'new TypeError', 'new RangeError',
-          // pg-boss internal queue names — not user-facing
-          'boss.createQueue', 'boss.schedule', 'boss.work',
-          // process
-          'process.exit', 'process.env',
-        ],
+        callees: {
+          exclude: [
+            // Console / structured logger — developer-facing context/message strings
+            'console\\.log', 'console\\.error', 'console\\.warn', 'console\\.debug', 'console\\.info',
+            'logger\\.info', 'logger\\.warn', 'logger\\.error', 'logger\\.debug',
+            'log',
+            // Error constructors — internal, not user display
+            'new Error', 'new TypeError', 'new RangeError',
+            // pg-boss queue/job names — internal identifiers
+            'b\\.createQueue', 'b\\.schedule', 'b\\.work',
+            'boss\\.createQueue', 'boss\\.schedule', 'boss\\.work',
+            // Discord.js event registration — event names are symbols
+            'manager\\.on', 'shard\\.on', 'client\\.on', 'client\\.once',
+            'redis\\.on', 'pool\\.on', 'boss\\.on',
+            // Drizzle schema DSL — column names are DB-level identifiers
+            'serial', 'varchar', 'bigint', 'boolean', 'timestamp', 'check', 'uniqueIndex',
+            'pgTable',
+            // HTTP route registration — URL paths are not user-facing
+            'fastify\\.get', 'fastify\\.post',
+            // Discord REST API
+            'rest\\.put', 'Routes\\.applicationCommands',
+            // Redis protocol commands
+            'redis\\.set', 'redis\\.get', 'redis\\.ping', 'redis\\.pttl',
+            // SlashCommandBuilder — phase 1 commands are developer test, not i18n'd yet
+            'new SlashCommandBuilder',
+            '\\.setName', '\\.setDescription',
+            // i18n translation function — keys are identifiers, not user strings
+            '^t$', 'getT',
+            // Node.js path/file operations
+            'join', 'path\\.join', 'path\\.dirname', 'dirname', 'fileURLToPath',
+            'readdirSync', 'statSync', 'existsSync',
+            // Number formatting
+            '\\.toLocaleString',
+          ],
+        },
+        words: {
+          exclude: [
+            // kebab-case / dot-notation / path-like identifiers (no spaces)
+            '^[a-z][a-z0-9\\-_.:/]+$',
+            // SCREAMING_SNAKE_CASE constants
+            '^[A-Z][A-Z0-9_]+$',
+            // camelCase technical values
+            '^[a-z][a-zA-Z0-9]+$',
+            // PascalCase single words
+            '^[A-Z][a-zA-Z0-9]+$',
+            // Locale codes (xx, xx-XX, xx-xxx)
+            '^[a-z]{2}(-[a-zA-Z]{2,4})?$',
+            // Strings ending with ...
+            '\\.\\.\\.$',
+            // Strings starting with [ (log context prefixes)
+            '^\\[',
+            // Strings starting with . or / (file paths)
+            '^[./]',
+            // Short strings 1-3 chars
+            '^.{1,3}$',
+            // N/A
+            '^N\\/A$',
+            // IP addresses
+            '^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$',
+            // Any string containing only words (no user-facing punctuation)
+            // Matches log messages like 'Redis ping failed', 'Connection closed'
+            '^[A-Z][a-zA-Z0-9 ]+$',
+            // Relative file paths (./dist/... etc)
+            '^\\./',
+          ],
+        },
       }],
     },
   },
