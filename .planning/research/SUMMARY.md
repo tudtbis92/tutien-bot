@@ -25,17 +25,19 @@ discord.js v14 is the clear choice: full Discord API coverage, the largest ecosy
 
 **pg-boss** replaces BullMQ for scheduled jobs: it reuses the existing PostgreSQL connection and provides ACID guarantees, which means a crashed VWAP recalculation job rolls back cleanly rather than leaving partial state. BullMQ would require Redis and brings Redis-level eventual consistency to job processing. Redis IS still needed — but only as a caching layer (cooldowns, VWAP cache, voice session tracking, guild settings), not as an infrastructure backbone. **PgBouncer** (or equivalent) is mandatory once shards exceed 1 — each shard spawns its own `pg` connection pool, and without connection pooling you hit PostgreSQL's `max_connections` ceiling quickly.
 
-**Core technologies:**
-- `discord.js@14.26.2`: Discord Gateway + REST — industry standard, full API coverage, best TypeScript types
-- `Node.js ≥20 LTS`: Runtime — required by discord.js, native fetch, stable production target
-- `TypeScript 5.x`: Language — critical for complex game state type safety
+**Core technologies (verified 2026-04-11 via npm registry + Context7 + Tavily):**
+- `discord.js@14.26.2`: Discord Gateway + REST — industry standard, v15 vẫn pre-release (không dùng production)
+- `@discordjs/rest@2.6.1`: REST-only Discord client — cho Notification Worker (DM, channel posts) không cần gateway
+- `Node.js 22 LTS` ("Jod"): Runtime — discord.js 14.26.2 **yêu cầu Node.js ≥22.12.0** (không phải v20!). v20 xuống Maintenance LTS, v18 EOL
+- `TypeScript 5.8.4` (không dùng 6.x): Language — TS 6.0 có breaking changes (strict default, no ES5), ecosystem chưa sẵn sàng
 - `PostgreSQL 16+`: Primary data store — ACID transactions required for order matching, currency operations, global state
-- `drizzle-orm@0.45.2` + `drizzle-kit@0.31.10`: DB client + migrations — thin layer, SQL-proximity, no build ceremony
-- `pg@8.20.0`: PostgreSQL driver — used by Drizzle, also for raw query escapes
+- `drizzle-orm@0.45.2` + `drizzle-kit@0.31.10`: DB client + migrations — `.for('update', { skipLocked: true })` native
+- `pg@8.20.0`: PostgreSQL driver — used by Drizzle
 - `pg-boss@12.15.0`: Job queue + cron scheduler — PostgreSQL-native, ACID, no Redis dependency for jobs
-- `ioredis@5.10.1`: Redis client — cooldowns, VWAP cache, voice sessions, guild config cache
-- `i18next@26.0.4` + `i18next-fs-backend`: i18n — pluralization, namespaces, custom locale resolution per user/guild
-- `zod@4.3.6`: Runtime validation — 14× faster than v3, TypeScript-native, validates command inputs
+- `ioredis@5.10.1`: Redis client — cooldowns, VWAP cache, voice sessions. ioredis compatible với cả Redis và Valkey server
+- `i18next@26.0.4` + `i18next-fs-backend`: i18n — pluralization, namespaces, per-user locale resolution
+- `zod@4.3.6`: Runtime validation — v4 stable, 14× faster than v3, top-level format validators
+- `fastify@5.8.4`: HTTP server — payment webhook receiver (isolated service)
 - `discord-hybrid-sharding@3.0.1`: Future-proof shard clustering — install now, activate at ~25K guilds
 
 **Version pinning:** Pin exact versions (no `^`). discord.js minor versions can break event types; Drizzle is 0.x semver (breaking changes permitted). Upgrade deliberately.

@@ -57,21 +57,29 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 ## Constraints
 
 - **Platform**: Discord API — mọi interaction qua slash commands và message components
-- **Sharding**: Phải tuân thủ Discord's gateway sharding requirements (research needed)
+- **Runtime**: Node.js 22 LTS — discord.js 14.26.2 yêu cầu Node.js ≥22.12.0
+- **Sharding**: ShardingManager từ ngày đầu; migrate sang discord-hybrid-sharding tại ~25K guilds
 - **Currency**: Linh thạch là currency duy nhất; có thể nạp bằng tiền thật
-- **Language**: i18n từ ngày đầu — không hardcode string nào
+- **Language**: i18n từ ngày đầu — không hardcode string nào; VI mặc định, EN + ZH-CN cùng lúc
+- **TypeScript**: 5.8.x (không nâng TS 6.x cho đến khi ecosystem sẵn sàng)
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Node.js + discord.js | Ecosystem phong phú nhất cho Discord bot | — Pending |
-| PostgreSQL | Cần ACID transactions cho market matching | — Pending |
-| Global marketplace | Tạo kinh tế thống nhất, liquidity tốt hơn per-server | — Pending |
-| Tu vi là global character | Khuyến khích người chơi join nhiều server | — Pending |
-| VWAP cho price discovery | Phản ánh thực tế giao dịch, chống pump-and-dump 1 giao dịch | — Pending |
-| 10% seller fee burn | Tạo deflation sink cho linh thạch economy | — Pending |
-| Hard season reset | Giữ game fresh, ngăn veteran dominance vĩnh viễn | — Pending |
+| discord.js 14.26.2 (không phải v15) | v15 vẫn pre-release; v14 stable, ecosystem đầy đủ | ✓ Confirmed |
+| Node.js 22 LTS (không phải v20) | discord.js 14.26.2 docs yêu cầu ≥22.12.0; v22 Active LTS đến 2027 | ✓ Confirmed |
+| TypeScript 5.8.x (không phải 6.x) | TS 6.0 breaking changes (strict default, no ES5); ecosystem chưa migrate | ✓ Confirmed |
+| Drizzle ORM (không phải Prisma/TypeORM) | `.for('update', {skipLocked: true})` native; low overhead cho high-frequency writes | ✓ Confirmed |
+| pg-boss (không phải BullMQ) | PostgreSQL-native, ACID jobs; VWAP low-frequency không cần Redis throughput | ✓ Confirmed |
+| ioredis (client compatible Redis + Valkey) | Vast Discord bot community code samples; Valkey server viable alternative | ✓ Confirmed |
+| PostgreSQL | Cần ACID transactions cho order matching, currency burns | ✓ Confirmed |
+| Global marketplace | Tạo kinh tế thống nhất, liquidity tốt hơn per-server | ✓ Confirmed |
+| Tu vi là global character | Khuyến khích người chơi join nhiều server | ✓ Confirmed |
+| VWAP cho price discovery | Phản ánh thực tế giao dịch, chống pump-and-dump 1 giao dịch | ✓ Confirmed |
+| 10% seller fee burn | Tạo deflation sink cho linh thạch economy | ✓ Confirmed |
+| Hard season reset | Giữ game fresh, ngăn veteran dominance vĩnh viễn | ✓ Confirmed |
+| Fastify 5.x cho payment webhook | Fastest Node.js HTTP framework, TS-first, isolated service | ✓ Confirmed |
 
 ## Evolution
 
