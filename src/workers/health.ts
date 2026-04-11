@@ -1,10 +1,43 @@
 import Fastify from 'fastify';
-import type { ShardingManager } from 'discord.js';
+import { Status, type ShardingManager } from 'discord.js';
 import { db } from '../db/client.js';
 import { redisHealthCheck } from '../cache/redis.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { sql } from 'drizzle-orm';
+
+interface ShardStatus {
+  id: number;
+  status: number;
+}
+
+interface HealthResponse {
+  status: 'ok' | 'degraded';
+  uptime: number;
+  responseTimeMs: number;
+  db: 'ok' | 'error';
+  redis: 'ok' | 'error';
+  shards: ShardStatus[];
+  shardsQueryFailed: boolean;
+  timestamp: string;
+}
+
+async function fetchShardStatuses(
+  manager: ShardingManager,
+): Promise<{ shards: ShardStatus[]; failed: boolean }> {
+  try {
+    const rawStatuses = (await manager.fetchClientValues('ws.status')) as number[];
+    const shards = rawStatuses.map((status, id) => ({ id, status }));
+    return { shards, failed: false };
+  } catch (err) {
+    logger.warn('Health', 'Failed to fetch shard statuses', err);
+    return { shards: [], failed: true };
+  }
+}
+
+function allShardsReady(shards: ShardStatus[], failed: boolean): boolean {
+  return !failed && (shards.length === 0 || shards.every((s) => s.status === Status.Ready));
+}
 
 /**
  * Start the health check HTTP server.
@@ -19,34 +52,18 @@ export async function startHealthServer(manager?: ShardingManager): Promise<void
   fastify.get('/health', async (_request, reply) => {
     const startTime = Date.now();
 
-    // Run DB and Redis checks in parallel
     const [dbOk, redisOk] = await Promise.all([
       db.execute(sql`SELECT 1`).then(() => true).catch(() => false),
       redisHealthCheck(),
     ]);
 
-    // Collect shard status using discord.js Status enum
-    // discord.js Status enum: Ready=0, Connecting=1, Reconnecting=2, Idle=3, Nearly=4, Disconnected=5
-    // This is NOT the WebSocket readyState (CONNECTING=0, OPEN=1, CLOSING=2, CLOSED=3)
-    let shards: { id: number; status: number }[] = [];
-    let shardsQueryFailed = false;
-    if (manager) {
-      try {
-        const rawStatuses = await manager.fetchClientValues('ws.status') as number[];
-        shards = rawStatuses.map((status, id) => ({ id, status }));
-      } catch {
-        shards = [];
-        shardsQueryFailed = true; // Distinguish "no shards yet" from "fetch failed"
-      }
-    }
+    const { shards, failed: shardsQueryFailed } = manager
+      ? await fetchShardStatuses(manager)
+      : { shards: [], failed: false };
 
-    // Status.Ready = 0 in discord.js — shards are healthy when status === 0
-    // allShardsReady is false when the query itself failed — prevents false-positive "ok"
-    const allShardsReady = !shardsQueryFailed && (shards.length === 0 || shards.every((s) => s.status === 0));
-    const healthy = dbOk && redisOk && allShardsReady;
-    const statusCode = healthy ? 200 : 503;
+    const healthy = dbOk && redisOk && allShardsReady(shards, shardsQueryFailed);
 
-    return reply.status(statusCode).send({
+    const body: HealthResponse = {
       status: healthy ? 'ok' : 'degraded',
       uptime: process.uptime(),
       responseTimeMs: Date.now() - startTime,
@@ -55,7 +72,9 @@ export async function startHealthServer(manager?: ShardingManager): Promise<void
       shards,
       shardsQueryFailed,
       timestamp: new Date().toISOString(),
-    });
+    };
+
+    return reply.status(healthy ? 200 : 503).send(body);
   });
 
   // Graceful shutdown route (for deploy script validation)

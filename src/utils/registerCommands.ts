@@ -1,9 +1,9 @@
 import { REST, Routes } from 'discord.js';
-import { readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
 import { logger } from './logger.js';
+import { collectCommandFilePaths } from './commandLoader.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -23,20 +23,10 @@ export async function registerCommands(): Promise<void> {
   const commandsPath = join(__dirname, '../commands');
   const commandData: unknown[] = [];
 
-  const folders = readdirSync(commandsPath).filter((item) =>
-    statSync(join(commandsPath, item)).isDirectory(),
-  );
-
-  for (const folder of folders) {
-    const folderPath = join(commandsPath, folder);
-    const files = readdirSync(folderPath).filter((f) => f.endsWith('.js'));
-
-    for (const file of files) {
-      const filePath = join(folderPath, file);
-      const command = await import(filePath) as { data?: { toJSON(): unknown } };
-      if (command.data) {
-        commandData.push(command.data.toJSON());
-      }
+  for (const filePath of collectCommandFilePaths(commandsPath)) {
+    const command = (await import(filePath)) as { data?: { toJSON(): unknown } };
+    if (command.data) {
+      commandData.push(command.data.toJSON());
     }
   }
 

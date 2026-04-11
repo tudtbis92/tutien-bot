@@ -1,6 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { config } from '../config.js';
+import { logger } from '../utils/logger.js';
 import * as schema from './schema/index.js';
 
 // Runtime connections go through PgBouncer (port 6432 by convention)
@@ -14,7 +15,7 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('[DB] Unexpected error on idle client:', err.message);
+  logger.error('DB', 'Unexpected error on idle client', err);
 });
 
 export const db = drizzle({ client: pool, schema });

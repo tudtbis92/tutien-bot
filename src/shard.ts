@@ -1,16 +1,9 @@
-import { Client, GatewayIntentBits, Collection } from 'discord.js';
+import { Client, GatewayIntentBits } from 'discord.js';
 import { config } from './config.js';
 import { initI18n } from './i18n/index.js';
 import { loadCommands } from './utils/commandLoader.js';
 import { loadEvents } from './utils/eventLoader.js';
 import { logger } from './utils/logger.js';
-
-// Extend Client type to include commands Collection
-declare module 'discord.js' {
-  interface Client {
-    commands: Collection<string, { data: { name: string; toJSON(): unknown }; execute: (...args: unknown[]) => Promise<void> }>;
-  }
-}
 
 const client = new Client({
   intents: [

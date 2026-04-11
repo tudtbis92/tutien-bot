@@ -12,6 +12,22 @@ interface Command {
 }
 
 /**
+ * Returns absolute paths to all compiled command files under commandsPath.
+ * Traverses one level of category subdirectories and collects *.js files.
+ */
+export function collectCommandFilePaths(commandsPath: string): string[] {
+  const folders = readdirSync(commandsPath).filter((item) =>
+    statSync(join(commandsPath, item)).isDirectory(),
+  );
+  return folders.flatMap((folder) => {
+    const folderPath = join(commandsPath, folder);
+    return readdirSync(folderPath)
+      .filter((f) => f.endsWith('.js'))
+      .map((f) => join(folderPath, f));
+  });
+}
+
+/**
  * Load all command modules into client.commands Collection for runtime dispatch.
  * This does NOT register commands with Discord — see registerCommands.ts for that.
  * Called in each shard process on startup.
@@ -20,25 +36,15 @@ export async function loadCommands(client: Client): Promise<void> {
   client.commands = new Collection();
   const commandsPath = join(__dirname, '../commands');
 
-  // Recurse into category subdirectories (D-03)
-  const folders = readdirSync(commandsPath).filter((item) =>
-    statSync(join(commandsPath, item)).isDirectory(),
-  );
+  for (const filePath of collectCommandFilePaths(commandsPath)) {
+    const command = (await import(filePath)) as Command;
+    const relPath = filePath.replace(commandsPath + '/', '');
 
-  for (const folder of folders) {
-    const folderPath = join(commandsPath, folder);
-    const files = readdirSync(folderPath).filter((f) => f.endsWith('.js'));
-
-    for (const file of files) {
-      const filePath = join(folderPath, file);
-      const command = (await import(filePath)) as Command;
-
-      if ('data' in command && 'execute' in command) {
-        client.commands.set(command.data.name, command);
-        logger.debug('CommandLoader', `Loaded: ${folder}/${file}`);
-      } else {
-        logger.warn('CommandLoader', `Skipping ${folder}/${file} — missing data or execute export`);
-      }
+    if ('data' in command && 'execute' in command) {
+      client.commands.set(command.data.name, command);
+      logger.debug('CommandLoader', `Loaded: ${relPath}`);
+    } else {
+      logger.warn('CommandLoader', `Skipping ${relPath} — missing data or execute export`);
     }
   }
 

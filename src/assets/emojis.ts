@@ -8,9 +8,9 @@
  * Format: '<:name:id>' for custom server emojis, or Unicode for standard emojis.
  */
 export const EMOJI = {
-  // Currency
-  SPIRIT_STONE: '💎',        // TODO: Replace with custom <:linh_thach:ID>
-  CULTIVATION: '✨',          // TODO: Replace with custom <:tu_vi:ID>
+  // Currency — TODO (Phase 1): replace with custom server emojis <:linh_thach:ID>, <:tu_vi:ID>
+  SPIRIT_STONE: '💎',
+  CULTIVATION: '✨',
 
   // Status
   SUCCESS: '✅',
