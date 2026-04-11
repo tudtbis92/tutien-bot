@@ -27,12 +27,12 @@
            └───────────┬───────────┘
                        │
               ┌────────▼────────┐
-              │  BullMQ Queues  │◄──── Redis (connection pool)
-              │                 │
-              │ activity-events │
-              │ marketplace     │
-              │ scheduler       │
-              │ notifications   │
+              │  pg-boss Queues │◄──── PostgreSQL (job tables)
+               │                 │
+               │ activity-events │
+               │ marketplace     │
+               │ scheduler       │
+               │ notifications   │
               └────────┬────────┘
                        │
        ┌───────────────┼───────────────────┐
@@ -73,10 +73,10 @@
 | Component | Responsibility | Does NOT touch | Communicates With |
 |-----------|---------------|----------------|-------------------|
 | **Cluster Manager** | Spawns/supervises shard clusters; forwards IPC | Business logic | Cluster processes (IPC) |
-| **Shard Cluster** (N clusters) | Receives Discord Gateway events; dispatches slash command responses; sends interaction replies | DB directly for events | BullMQ (enqueue), PostgreSQL (read for slash commands), Redis (cooldown check) |
+| **Shard Cluster** (N clusters) | Receives Discord Gateway events; dispatches slash command responses; sends interaction replies | DB directly for events | pg-boss (enqueue), PostgreSQL (read for slash commands), Redis (cooldown check) |
 | **Activity Worker** | Dequeues activity events; awards tu vi; updates character; enforces per-user cooldowns | Discord Gateway | PostgreSQL (write), Redis (cooldown keys) |
 | **Marketplace Worker** | Order submission, matching (buy ≥ sell price), VWAP recalculation, balance ledger, fee burn | Discord Gateway | PostgreSQL (ACID transactions), Redis (VWAP cache) |
-| **Scheduler Worker** | Season reset, hourly VWAP cron, announcement triggers | Discord Gateway | PostgreSQL (season table), BullMQ (notification queue), Redis (cache bust) |
+| **Scheduler Worker** | Season reset, hourly VWAP cron, announcement triggers | Discord Gateway | PostgreSQL (season table), pg-boss (notification queue), Redis (cache bust) |
 | **Notification Worker** | Sends DM/channel messages for async outcomes (order filled, season reset) | Business logic | Discord REST API (via @discordjs/rest, no gateway needed) |
 | **Payment Webhook Receiver** | Receives external payment callbacks; credits linhhthach | All Discord | PostgreSQL (linhhthach_transactions), Redis (idempotency key) |
 
@@ -95,7 +95,7 @@ Discord Gateway
        │     - channel allowed? → check Redis guild config cache
        │     - user cooldown key in Redis? → drop (spam guard)
        │
-       └─ Enqueue job to BullMQ `activity-events` queue:
+        └─ Enqueue job to pg-boss `activity-events` queue:
              { userId, guildId, eventType, timestamp }
                   │
                   ▼
@@ -127,7 +127,7 @@ Discord Interaction (slash command)
              4. Edit deferred reply with result
 ```
 
-**Rationale:** Activity events (fire-and-forget) go through BullMQ. Interactive slash commands respond directly from the shard, reading from DB. This keeps slash commands responsive while protecting DB from event storms.
+**Rationale:** Activity events (fire-and-forget) go through pg-boss. Interactive slash commands respond directly from the shard, reading from DB. This keeps slash commands responsive while protecting DB from event storms.
 
 ### 3. Marketplace Order Flow
 
@@ -137,11 +137,11 @@ User: /market sell <item> <qty> <price>
         - price <= 2.5 × VWAP (read from Redis VWAP cache, fallback DB)
         - user owns item in sufficient quantity
         - price >= 1 linhhthach (min)
-       Enqueue to BullMQ `marketplace` queue:
-         { type: 'LIMIT_SELL', userId, itemId, qty, price, timestamp }
+       Enqueue to pg-boss `marketplace` queue:
+          { type: 'LIMIT_SELL', userId, itemId, qty, price, timestamp }
 
 User: /market buy <item> <qty>            (instant buy at 1.2 × VWAP)
-  └─ [Shard] Enqueue: { type: 'INSTANT_BUY', ... }
+   └─ [Shard] Enqueue: { type: 'INSTANT_BUY', ... }
 
 [Marketplace Worker — concurrency: 1 per queue]
   1. BEGIN TRANSACTION
@@ -160,7 +160,7 @@ User: /market buy <item> <qty>            (instant buy at 1.2 × VWAP)
 ### 4. VWAP Recalculation
 
 ```
-BullMQ Scheduler (repeatable job, every 1 hour)
+pg-boss Scheduler (cron job, every 1 hour via `boss.schedule()`)
   └─ [Scheduler Worker]
        1. Query PostgreSQL:
           SELECT SUM(price * qty) / SUM(qty) AS vwap
@@ -177,7 +177,7 @@ BullMQ Scheduler (repeatable job, every 1 hour)
 ### 5. Season Reset Flow
 
 ```
-BullMQ Scheduler (repeatable job, at season boundary)
+pg-boss Scheduler (cron job at season boundary via `boss.schedule()`)
   └─ [Scheduler Worker]
        1. INSERT new season row: { season_id, name, realm_names[], start_at }
        2. BEGIN TRANSACTION
@@ -395,10 +395,10 @@ All linhhthach amounts stored as `BIGINT` integers. No floating point. Fee calcu
 ### Marketplace Worker Design
 
 ```
-BullMQ Queue: 'marketplace'
+pg-boss Queue: 'marketplace'
   - concurrency: 1  ← SINGLE WORKER, no parallel matching
-  - FIFO ordering guaranteed by BullMQ
-  - Durable: Redis persistence (AOF enabled)
+  - FIFO ordering guaranteed by pg-boss (ordered by created_at ASC)
+  - Durable: PostgreSQL persistence (ACID, survives restarts without extra config)
 
 Job types processed:
   PLACE_LIMIT_SELL   → validate, persist order, attempt match
@@ -434,7 +434,7 @@ Shard-side filtering (before enqueue — keeps queue clean):
      REACTION: 30s cooldown
      VOICE: tracked via voiceState intervals (enter/leave timestamps)
 
-On passing all guards → enqueue to BullMQ 'activity-events'
+On passing all guards → enqueue to pg-boss 'activity-events'
 ```
 
 ### Tu Vi Calculation
@@ -542,7 +542,7 @@ Ordered by dependency. Each phase builds on the previous.
 Phase 1: Foundation
   ├── PostgreSQL schema (users, characters, guild_settings, seasons)
   ├── Redis setup (connection pool, key conventions documented)
-  ├── BullMQ queue setup (activity-events, marketplace, scheduler, notifications)
+   ├── pg-boss queue setup (activity-events, marketplace, scheduler, notifications)
   ├── Cluster Manager (discord-hybrid-sharding, 1 cluster dev / auto prod)
   └── i18n scaffold (i18next, vi + en locale files, locale resolver)
 
@@ -612,7 +612,7 @@ Phase 8: Monetization
 ### Anti-Pattern 2: Marketplace on Multiple Workers
 **What:** Running multiple concurrent marketplace worker instances against the same queue.
 **Why bad:** Order matching requires serialization. Two workers can both "see" the same open order and double-fill it, corrupting balances.
-**Instead:** BullMQ marketplace queue with `concurrency: 1`. Single worker, sequential processing.
+**Instead:** pg-boss marketplace queue with `concurrency: 1` (via `boss.work('marketplace', { batchSize: 1 }, handler)`). Single worker, sequential processing.
 
 ### Anti-Pattern 3: Floating-Point Currency
 **What:** Storing linhhthach as `FLOAT` or `DECIMAL` and doing arithmetic in JavaScript.
@@ -622,7 +622,7 @@ Phase 8: Monetization
 ### Anti-Pattern 4: Synchronous Event Processing on Shard
 **What:** `await db.query(updateTuVi(...))` inside the `messageCreate` handler.
 **Why bad:** At scale (thousands of messages/second across all guilds), this blocks the shard's event loop and delays Discord heartbeats, causing gateway disconnects.
-**Instead:** Fire-and-forget enqueue to BullMQ. Shard only validates and enqueues; workers do DB writes.
+**Instead:** Fire-and-forget enqueue to pg-boss. Shard only validates and enqueues; workers do DB writes.
 
 ### Anti-Pattern 5: VWAP Computed at Query Time on Every Request
 **What:** Running the VWAP window query every time a user checks market price or places an order.
@@ -646,11 +646,43 @@ Phase 8: Monetization
 | Concern | At 1K guilds | At 10K guilds | At 100K guilds |
 |---------|-------------|--------------|----------------|
 | Sharding | 1 cluster, 1 shard | 10 shards / 5 clusters | 100 shards / 25+ clusters |
-| Activity events/sec | Direct DB writes OK (< 100/s) | BullMQ queue required (< 1K/s) | BullMQ + horizontal workers |
+| Activity events/sec | Direct DB writes OK (< 100/s) | pg-boss queue required (< 1K/s) | pg-boss + horizontal workers |
 | Marketplace | Single worker sufficient | Single worker sufficient (serialized by design) | DB read replicas for order book views |
 | VWAP | Hourly cron sufficient | Hourly cron, add Redis cache TTL buffer | Consider per-5-min sampling |
 | PostgreSQL | Single instance, connection pool (pg-pool, max 20) | Read replica for queries, primary for writes | PgBouncer, read replicas |
 | i18n | In-process, all locales in RAM | Same | Same (translation files are small) |
+
+---
+
+## Deployment Environment
+
+**Confirmed 2026-04-11 via SSH connection test.**
+
+| Property | Value |
+|----------|-------|
+| Provider | Oracle Cloud Infrastructure (OCI) |
+| VM type | ARM64 / aarch64 (Ampere A1) |
+| OS | Ubuntu 24.04.4 LTS ("Noble") |
+| Kernel | 6.17.0-1007-oracle |
+| Public IP | 168.138.8.160 |
+| SSH user | `ubuntu` (không phải `opc`) |
+| SSH key | `.ssh/oracle-vm.key` (gitignored) |
+| Git remote | https://github.com/genZVN2021/tutien-bot.git |
+
+### ARM64 Implications
+
+- **Docker images:** Phải dùng `linux/arm64` hoặc `linux/arm64/v8` variant. Không dùng `linux/amd64`.
+  - PostgreSQL: `postgres:16` — multi-arch, tự động chọn ARM64 ✓
+  - Redis: `redis:7-alpine` — multi-arch ✓  
+  - Node.js: `node:22-alpine` — multi-arch ✓
+- **Native addons:** Nếu có npm package dùng native C++ bindings (e.g., `bcrypt`, `sharp`), cần build trên ARM64 hoặc chọn pure-JS alternative.
+- **Cross-compile:** Không cần — Oracle Cloud ARM64 có đủ resource để build trực tiếp.
+
+### SSH Connection
+
+```bash
+ssh -i .ssh/oracle-vm.key ubuntu@168.138.8.160
+```
 
 ---
 
@@ -660,6 +692,6 @@ Phase 8: Monetization
 - discord.js sharding guide (HIGH confidence): https://discordjs.guide/legacy/sharding
 - Space-Node multi-server architecture (MEDIUM confidence): https://space-node.net/blog/discord-multi-server-bot-architecture-2026
 - @commandkit/i18n docs (HIGH confidence): https://commandkit.dev/docs/guide/official-plugins/commandkit-i18n
-- BullMQ rate limiting (HIGH confidence): https://docs.bullmq.io/guide/rate-limiting
+- pg-boss docs (HIGH confidence): https://github.com/timgit/pg-boss
 - SkynetBot Redis IPC pattern (MEDIUM confidence): https://skynetbot.net/blog/5667a59a7431713aca0a204a/scale-your-discord-bot-understanding-sharding-performance
 - discord-cross-hosting npm (MEDIUM confidence): https://www.npmjs.com/discord-cross-hosting

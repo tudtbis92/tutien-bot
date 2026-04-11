@@ -102,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-11 after initialization*
+*Last updated: 2026-04-11 after infra confirmed (Oracle Cloud ARM64, ubuntu user, Node 22 LTS requirement clarified)*
