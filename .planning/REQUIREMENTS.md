@@ -112,14 +112,54 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 to INFRA-07 | Phase 1 | Pending |
-| CORE-01 to CORE-08 | Phase 2-3 | Pending |
-| PROG-01 to PROG-08 | Phase 4 | Pending |
-| COMBAT-01 to COMBAT-04 | Phase 5 | Pending |
-| MKT-01 to MKT-12 | Phase 6 | Pending |
-| SEASON-01 to SEASON-05 | Phase 7 | Pending |
-| I18N-01 to I18N-03 | Phase 1 | Pending |
-| ADMIN-01 | Phase 3 | Pending |
+| INFRA-01 | Phase 1: Foundation | Pending |
+| INFRA-02 | Phase 1: Foundation | Pending |
+| INFRA-03 | Phase 1: Foundation | Pending |
+| INFRA-04 | Phase 1: Foundation | Pending |
+| INFRA-05 | Phase 1: Foundation | Pending |
+| INFRA-06 | Phase 1: Foundation | Pending |
+| INFRA-07 | Phase 1: Foundation | Pending |
+| I18N-01 | Phase 1: Foundation | Pending |
+| I18N-02 | Phase 1: Foundation | Pending |
+| I18N-03 | Phase 1: Foundation | Pending |
+| CORE-01 | Phase 2: Core Game Loop + Progression | Pending |
+| CORE-02 | Phase 2: Core Game Loop + Progression | Pending |
+| CORE-03 | Phase 2: Core Game Loop + Progression | Pending |
+| CORE-04 | Phase 2: Core Game Loop + Progression | Pending |
+| CORE-05 | Phase 2: Core Game Loop + Progression | Pending |
+| CORE-06 | Phase 2: Core Game Loop + Progression | Pending |
+| CORE-07 | Phase 2: Core Game Loop + Progression | Pending |
+| CORE-08 | Phase 2: Core Game Loop + Progression | Pending |
+| PROG-01 | Phase 2: Core Game Loop + Progression | Pending |
+| PROG-02 | Phase 2: Core Game Loop + Progression | Pending |
+| PROG-03 | Phase 2: Core Game Loop + Progression | Pending |
+| PROG-04 | Phase 2: Core Game Loop + Progression | Pending |
+| PROG-05 | Phase 2: Core Game Loop + Progression | Pending |
+| PROG-06 | Phase 2: Core Game Loop + Progression | Pending |
+| PROG-07 | Phase 2: Core Game Loop + Progression | Pending |
+| PROG-08 | Phase 2: Core Game Loop + Progression | Pending |
+| COMBAT-01 | Phase 3: Combat + Marketplace | Pending |
+| COMBAT-02 | Phase 3: Combat + Marketplace | Pending |
+| COMBAT-03 | Phase 3: Combat + Marketplace | Pending |
+| COMBAT-04 | Phase 3: Combat + Marketplace | Pending |
+| MKT-01 | Phase 3: Combat + Marketplace | Pending |
+| MKT-02 | Phase 3: Combat + Marketplace | Pending |
+| MKT-03 | Phase 3: Combat + Marketplace | Pending |
+| MKT-04 | Phase 3: Combat + Marketplace | Pending |
+| MKT-05 | Phase 3: Combat + Marketplace | Pending |
+| MKT-06 | Phase 3: Combat + Marketplace | Pending |
+| MKT-07 | Phase 3: Combat + Marketplace | Pending |
+| MKT-08 | Phase 3: Combat + Marketplace | Pending |
+| MKT-09 | Phase 3: Combat + Marketplace | Pending |
+| MKT-10 | Phase 3: Combat + Marketplace | Pending |
+| MKT-11 | Phase 3: Combat + Marketplace | Pending |
+| MKT-12 | Phase 3: Combat + Marketplace | Pending |
+| SEASON-01 | Phase 4: Season System + Admin | Pending |
+| SEASON-02 | Phase 4: Season System + Admin | Pending |
+| SEASON-03 | Phase 4: Season System + Admin | Pending |
+| SEASON-04 | Phase 4: Season System + Admin | Pending |
+| SEASON-05 | Phase 4: Season System + Admin | Pending |
+| ADMIN-01 | Phase 4: Season System + Admin | Pending |
 
 **Coverage:**
 - v1 requirements: 48 total
