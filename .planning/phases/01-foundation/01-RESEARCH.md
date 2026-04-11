@@ -943,6 +943,34 @@ script: |
 **How to avoid:** Set `mode: 'all'` in the no-literal-string rule options. This catches ALL string literals in the configured files.
 **Warning signs:** CI passes but you can clearly see hardcoded strings in command files.
 
+**Critical caveat — false positives with `mode: 'all'` in Node.js:**
+`mode: 'all'` will flag many legitimate non-user-facing strings: `console.log` messages, `throw new Error('internal')`, pg-boss queue names (`'vwap-recalc'`), pm2 app names, config keys, and other non-display strings. This plugin was designed for React/Vue and its heuristics assume JSX context.
+
+**Recommended strategy:**
+1. Start with `'warn'` (not `'error'`) to discover the false-positive surface area
+2. Tune the exclusion list using `ignoreCallee` and custom `words` patterns
+3. Promote to `'error'` only after the noise is eliminated
+
+```javascript
+// Phase 1: start as 'warn', tune first
+'i18next/no-literal-string': ['warn', {
+  mode: 'all',
+  ignoreCallee: [
+    'console.log', 'console.error', 'console.warn', 'console.debug',
+    'logger.info', 'logger.error', 'logger.warn', 'logger.debug',
+    'process.exit', 'process.env',
+    'boss.createQueue', 'boss.schedule', 'boss.work',  // pg-boss internal names
+    'new Error', 'new TypeError',                       // Error constructors
+  ],
+  words: {
+    // Ignore string patterns that look like internal IDs/codes (not user text)
+    exclude: ['^[a-z][a-z0-9-_:.]+$'],  // kebab-case/dot-case identifiers
+  },
+}],
+```
+
+**Phase 1 plan implication:** Include a dedicated task "Configure and tune ESLint i18n rule" — do NOT assume a single config pass is sufficient.
+
 ---
 
 ### Pitfall 5: drizzle-kit migrate in CI Without PgBouncer Support
