@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: 01
+current_plan: 1
+status: verifying
+last_updated: "2026-04-11T13:33:12.676Z"
+progress:
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 100
+---
+
 # State: TuTien Bot
 
 **Project:** TuTien Bot — Discord RPG xianxia game bot  
@@ -7,15 +23,17 @@
 
 ## Current Position
 
-**Current Phase:** None (not started)  
-**Current Plan:** None  
-**Status:** Roadmap created — ready to begin Phase 1  
+Phase: 01 (foundation) — COMPLETE
+Plan: 1 of 1 ✅
+**Current Phase:** 01 complete → Phase 02 next
+**Current Plan:** 1 (all plans complete)
+**Status:** Phase 01 complete — T-03 Oracle VM Setup pending human action; ready for Phase 02 planning
 **Last Updated:** 2026-04-11
 
 ```
-Progress: ░░░░░░░░░░░░░░░░░░░░ 0%
+Progress: [██████████] 100% (Phase 1 complete — 3 phases remain)
 
-Phase 1 [Foundation]               ░░░░░ NOT STARTED
+Phase 1 [Foundation]               █████ COMPLETE (14/14 auto tasks + T-03 pending human action)
 Phase 2 [Core Game Loop]           ░░░░░ NOT STARTED
 Phase 3 [Combat + Marketplace]     ░░░░░ NOT STARTED
 Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
@@ -27,7 +45,7 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 
 | # | Phase | Requirements | Status | Completed |
 |---|-------|-------------|--------|-----------|
-| 1 | Foundation | INFRA-01..07, I18N-01..03 (10) | Pending | - |
+| 1 | Foundation | INFRA-01..07, I18N-01..03 (10) | ✅ Complete | 2026-04-11 |
 | 2 | Core Game Loop + Progression | CORE-01..08, PROG-01..08 (16) | Pending | - |
 | 3 | Combat + Marketplace | COMBAT-01..04, MKT-01..12 (16) | Pending | - |
 | 4 | Season System + Admin | SEASON-01..05, ADMIN-01 (6) | Pending | - |
@@ -48,6 +66,7 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | Plans complete | 0 |
 
 ---
+| Phase 01 P01 | multi-session | 14 tasks | 55 files |
 
 ## Accumulated Context
 
@@ -61,6 +80,10 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | Marketplace Worker concurrency: 1 | Prevent order double-fill race conditions — architectural constraint | Phase 3 |
 | Season after marketplace stability | SEASON-05 reset flushes marketplace orders — must be stable first | Phase 4 |
 | Single linh thạch currency for v1 | Two-tier deferred to v2 if inflation materializes | Phase 2 |
+| ioredis named import {Redis} | No default export in ESM — import { Redis } from 'ioredis' | Phase 1 |
+| BigInt default uses sql template | drizzle-kit cannot serialize BigInt literal 0n — use sql`0` | Phase 1 |
+| Command registration in bot.ts only | N shards × REST PUT = rate-limit exhaustion; manager registers once | Phase 1 |
+| pg-boss uses DATABASE_URL_DIRECT | Advisory locks incompatible with PgBouncer transaction mode | Phase 1 |
 
 ### Active Todos
 
@@ -87,9 +110,12 @@ None currently.
 
 ## Session Continuity
 
-**To resume work:** Start with `/gsd-plan-phase 1`
+**To resume work:** Start with `/gsd-plan-phase 2` (Phase 01 complete)
+
+**Phase 01 completion note:** T-03 Oracle VM Setup is a human-action task — PostgreSQL 16, Redis, PgBouncer, Node.js 22 (nvm), pm2 must be configured on Oracle VM `168.138.8.160` before `npm start` works. See `.planning/phases/01-foundation/01-PLAN.md` T-03 for exact steps.
 
 **Architecture reminders:**
+
 - Stateless shards: NEVER store game state in shard process memory
 - Activity pipeline: fire-and-forget async — event → Redis cooldown guard → pg-boss enqueue → return
 - Marketplace Worker: `concurrency: 1` always — serialized order matching

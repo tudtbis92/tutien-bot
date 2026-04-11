@@ -9,7 +9,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Foundation** — Infrastructure, database, Redis, CI/CD, i18n scaffold
+- [x] **Phase 1: Foundation** — Infrastructure, database, Redis, CI/CD, i18n scaffold (completed 2026-04-11)
 - [ ] **Phase 2: Core Game Loop + Progression** — Active game: tu vi accumulation, anti-farming, character system, cảnh giới, professions
 - [ ] **Phase 3: Combat + Marketplace** — Economy loop: hunting/dueling for loot, global VWAP marketplace trading
 - [ ] **Phase 4: Season System + Admin** — Durable game: season resets, hall of fame, abuse reporting
@@ -38,7 +38,7 @@
 - `discord-hybrid-sharding` installed now but 1-cluster mode until ~25K guilds. Don't over-engineer shard topology at launch.
 - Pin exact versions: `discord.js@14.26.2`, `drizzle-orm@0.45.2`, etc. No `^` prefixes — breaking changes are common on 0.x packages.
 - PgBouncer or equivalent connection pooler is mandatory once shard count > 1. Add to docker-compose now, configure later.
-- **Plans:** TBD
+- **Plans:** 1/1 plans complete
 
 ---
 
@@ -119,7 +119,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/? | Not started | - |
+| 1. Foundation | 1/1 | Complete   | 2026-04-11 |
 | 2. Core Game Loop + Progression | 0/? | Not started | - |
 | 3. Combat + Marketplace | 0/? | Not started | - |
 | 4. Season System + Admin | 0/? | Not started | - |
