@@ -27,16 +27,19 @@ export async function startHealthServer(manager?: ShardingManager): Promise<void
 
     // Collect shard WebSocket status codes (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)
     let shards: { id: number; status: number }[] = [];
+    let shardsQueryFailed = false;
     if (manager) {
       try {
         const rawStatuses = await manager.fetchClientValues('ws.status') as number[];
         shards = rawStatuses.map((status, id) => ({ id, status }));
       } catch {
         shards = [];
+        shardsQueryFailed = true; // Distinguish "no shards yet" from "fetch failed"
       }
     }
 
-    const allShardsReady = shards.length === 0 || shards.every((s) => s.status === 1);
+    // allShardsReady is false when the query itself failed — prevents false-positive "ok"
+    const allShardsReady = !shardsQueryFailed && (shards.length === 0 || shards.every((s) => s.status === 1));
     const healthy = dbOk && redisOk && allShardsReady;
     const statusCode = healthy ? 200 : 503;
 
@@ -47,6 +50,7 @@ export async function startHealthServer(manager?: ShardingManager): Promise<void
       db: dbOk ? 'ok' : 'error',
       redis: redisOk ? 'ok' : 'error',
       shards,
+      shardsQueryFailed,
       timestamp: new Date().toISOString(),
     });
   });
