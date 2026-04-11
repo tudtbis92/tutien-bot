@@ -34,9 +34,12 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 
 ## Context
 
-- **Runtime**: Node.js + discord.js (latest stable)
-- **Database**: PostgreSQL + ORM (Prisma hoặc TypeORM — quyết định khi research)
-- **Deployment**: Multi-shard; cần research Discord bot verification requirements trước khi xác định shard strategy
+- **Runtime**: Node.js 22 LTS + discord.js 14.26.2 + TypeScript 5.8.x
+- **Database**: PostgreSQL 16+ với Drizzle ORM 0.45.2
+- **Stack**: ioredis 5.10.1 (cache/cooldowns), pg-boss 12.15.0 (jobs/cron), i18next 26.0.4 (i18n), Zod 4.3.6 (validation), Fastify 5.8.4 (payment webhook)
+- **Deployment**: Oracle Cloud VM — Public IP `168.138.8.160`; SSH key tại `.ssh/oracle-vm.key` (gitignored)
+- **Git repo**: https://github.com/genZVN2021/tutien-bot.git
+- **Sharding**: discord.js built-in ShardingManager từ ngày đầu; migrate sang discord-hybrid-sharding 3.0.1 tại ~25K guilds
 - **Season system**: Cảnh giới reset mỗi season, đổi tên gọi; season đầu dùng xianxia classic (Luyện Khí → Truyện Cơ → Kim Đan → Nguyên Anh → Hóa Thần...); một số thuộc tính/item được giữ lại qua reset (thiết kế chi tiết sau)
 - **Monetization**: Người chơi có thể nạp tiền mua linh thạch (currency chính của game)
 
