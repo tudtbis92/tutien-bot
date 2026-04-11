@@ -21,9 +21,17 @@ export async function loadEvents(client: Client): Promise<void> {
     const event = (await import(filePath)) as EventHandler;
 
     if (event.once) {
-      client.once(event.name, (...args) => event.execute(...args));
+      client.once(event.name, (...args) => {
+        event.execute(...args).catch((err: unknown) =>
+          logger.error('EventLoader', `Unhandled error in event "${event.name}"`, err)
+        );
+      });
     } else {
-      client.on(event.name, (...args) => event.execute(...args));
+      client.on(event.name, (...args) => {
+        event.execute(...args).catch((err: unknown) =>
+          logger.error('EventLoader', `Unhandled error in event "${event.name}"`, err)
+        );
+      });
     }
 
     logger.debug('EventLoader', `Loaded: ${file} (${event.once ? 'once' : 'on'})`);
