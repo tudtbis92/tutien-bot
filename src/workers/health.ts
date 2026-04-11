@@ -25,7 +25,9 @@ export async function startHealthServer(manager?: ShardingManager): Promise<void
       redisHealthCheck(),
     ]);
 
-    // Collect shard WebSocket status codes (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)
+    // Collect shard status using discord.js Status enum
+    // discord.js Status enum: Ready=0, Connecting=1, Reconnecting=2, Idle=3, Nearly=4, Disconnected=5
+    // This is NOT the WebSocket readyState (CONNECTING=0, OPEN=1, CLOSING=2, CLOSED=3)
     let shards: { id: number; status: number }[] = [];
     let shardsQueryFailed = false;
     if (manager) {
@@ -38,8 +40,9 @@ export async function startHealthServer(manager?: ShardingManager): Promise<void
       }
     }
 
+    // Status.Ready = 0 in discord.js — shards are healthy when status === 0
     // allShardsReady is false when the query itself failed — prevents false-positive "ok"
-    const allShardsReady = !shardsQueryFailed && (shards.length === 0 || shards.every((s) => s.status === 1));
+    const allShardsReady = !shardsQueryFailed && (shards.length === 0 || shards.every((s) => s.status === 0));
     const healthy = dbOk && redisOk && allShardsReady;
     const statusCode = healthy ? 200 : 503;
 
