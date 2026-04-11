@@ -10,6 +10,7 @@
     "botName": "Tu Tien Bot",
     "online": "Bot is online across {{shards}} shards",
     "healthOk": "System operational",
-    "healthDegraded": "System experiencing issues"
+    "healthDegraded": "System experiencing issues",
+    "pingDescription": "WebSocket latency: **{{latency}}ms**\nShard: **{{shard}}**"
   }
 }

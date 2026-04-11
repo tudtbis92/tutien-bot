@@ -11,9 +11,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const t = getT(locale);
 
   const latency = interaction.client.ws.ping;
+  const shard = interaction.client.shard?.ids[0] ?? 'N/A';
   const embed = buildSuccessEmbed(
     t('system.botName'),
-    `WebSocket latency: **${latency}ms**\nShard: **${interaction.client.shard?.ids[0] ?? 'N/A'}**`,
+    t('system.pingDescription', { latency, shard }),
     interaction.client.shard?.ids[0],
   );
 

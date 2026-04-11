@@ -10,6 +10,7 @@
     "botName": "Tu Tiên Bot",
     "online": "Bot đã trực tuyến trên {{shards}} mảnh ghép",
     "healthOk": "Hệ thống hoạt động bình thường",
-    "healthDegraded": "Hệ thống đang gặp sự cố"
+    "healthDegraded": "Hệ thống đang gặp sự cố",
+    "pingDescription": "WebSocket latency: **{{latency}}ms**\nShard: **{{shard}}**"
   }
 }

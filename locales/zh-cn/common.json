@@ -10,6 +10,7 @@
     "botName": "修仙机器人",
     "online": "机器人在 {{shards}} 个分片上线",
     "healthOk": "系统运行正常",
-    "healthDegraded": "系统遇到问题"
+    "healthDegraded": "系统遇到问题",
+    "pingDescription": "WebSocket 延迟：**{{latency}}ms**\n分片：**{{shard}}**"
   }
 }
