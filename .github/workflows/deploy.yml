@@ -22,7 +22,6 @@ jobs:
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_SSH_KEY }}
           port: 22
-          fingerprint: ${{ secrets.ORACLE_HOST_FINGERPRINT }}
           script: |
             set -e
 
