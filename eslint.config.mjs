@@ -92,6 +92,14 @@ export default [
     },
   },
 
+  // Test files: disable i18next rule — test descriptions/assertions are not user-facing strings
+  {
+    files: ['src/**/__tests__/**/*.ts', 'src/**/*.test.ts', 'src/**/*.spec.ts'],
+    rules: {
+      'i18next/no-literal-string': 'off',
+    },
+  },
+
   // Exclude non-source files from i18next lint
   {
     ignores: [
