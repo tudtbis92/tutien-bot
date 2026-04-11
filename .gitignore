@@ -25,3 +25,7 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Keys/Certs
+*.key
+*.pem
