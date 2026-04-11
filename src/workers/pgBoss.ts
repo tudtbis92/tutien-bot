@@ -44,9 +44,18 @@ async function registerJobs(b: PgBoss): Promise<void> {
   await b.schedule('vwap-recalc', '0 * * * *', {});
 
   // Register the worker handler — pg-boss WorkHandler receives an array of jobs
+  // Each job is processed independently: one failure does not block remaining jobs.
+  // Note: localConcurrency: 1 means pg-boss dispatches one job at a time in practice,
+  // but the try/catch per-job pattern is correct for future batched queue types.
   await b.work('vwap-recalc', { localConcurrency: 1 }, async (jobs: Job[]) => {
     for (const job of jobs) {
-      await runVwapRecalc(job);
+      try {
+        await runVwapRecalc(job);
+      } catch (err) {
+        logger.error('pgBoss', `Job ${job.id} (vwap-recalc) failed — skipping, next run in 1h`, err);
+        // Do not re-throw: isolates this job's failure from the rest of the batch.
+        // VWAP is recalculated every hour — a failed run is self-healing.
+      }
     }
   });
 
