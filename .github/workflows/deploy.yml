@@ -1,0 +1,65 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Lint, Build & Test
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Deploy to Oracle VM
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          port: 22
+          # Pin host fingerprint to prevent MITM — add this secret after first manual SSH
+          # Generate: ssh-keyscan -t ed25519 168.138.8.160 | awk '{print $2, $3}'
+          fingerprint: ${{ secrets.ORACLE_HOST_FINGERPRINT }}
+          script_stop: true
+          script: |
+            # CRITICAL: Source nvm so npm/node/pm2 are in PATH
+            # Non-interactive SSH sessions do NOT load ~/.bashrc
+            # If Node was installed via nvm, it's not in PATH without this
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm use 22   # Pin to .nvmrc version; fail fast if 22 not installed
+
+            set -e  # Exit on any error — any failure aborts the deploy
+
+            cd /home/ubuntu/tutien-bot
+
+            git pull origin main
+
+            npm ci
+
+            npm run build
+
+            # Load production secrets for migration
+            source /etc/tutien/.env
+
+            # CRITICAL: drizzle-kit migrate MUST use DATABASE_URL_DIRECT (port 5432)
+            # PgBouncer transaction mode breaks advisory locks used during migrations
+            # Runtime code uses DATABASE_URL (port 6432 via PgBouncer)
+            # If migrate fails, set -e aborts before pm2 restart — app stays on old schema
+            DATABASE_URL="$DATABASE_URL_DIRECT" npx drizzle-kit migrate
+
+            pm2 restart tutien-bot
+
+            # Wait for bot startup and verify full health (DB + Redis + shards)
+            # Uses /health (not /ready) — /health verifies all dependencies are live,
+            # not just that Fastify is listening
+            sleep 8
+            curl -f http://localhost:3000/health | grep '"status":"ok"' \
+              || (echo "Health check failed — deploy may be broken!" && exit 1)
+
+            echo "Deploy complete."
