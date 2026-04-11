@@ -1,0 +1,15 @@
+{
+  "profile": {
+    "title": "Hồ Sơ Tu Sĩ",
+    "tuVi": "Tu Vi",
+    "canh_gioi": "Cảnh Giới",
+    "linhThach": "Linh Thạch",
+    "balance": "{{amount}} linh thạch"
+  },
+  "realms": {
+    "luyen_khi_1": "Luyện Khí Tầng 1",
+    "luyen_khi_9": "Luyện Khí Tầng 9",
+    "truc_co": "Trúc Cơ",
+    "kim_dan": "Kim Đan"
+  }
+}

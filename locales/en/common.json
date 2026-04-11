@@ -1,0 +1,15 @@
+{
+  "errors": {
+    "notRegistered": "You haven't registered yet. Use /start to begin your journey.",
+    "noPermission": "You don't have permission to use this command.",
+    "cooldown": "Please wait {{seconds}} seconds before using this command again.",
+    "internalError": "An internal error occurred. Please try again later.",
+    "botOffline": "Bot is under maintenance. Please try again later."
+  },
+  "system": {
+    "botName": "Tu Tien Bot",
+    "online": "Bot is online across {{shards}} shards",
+    "healthOk": "System operational",
+    "healthDegraded": "System experiencing issues"
+  }
+}

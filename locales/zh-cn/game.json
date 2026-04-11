@@ -1,0 +1,15 @@
+{
+  "profile": {
+    "title": "修仙档案",
+    "tuVi": "修为",
+    "canh_gioi": "境界",
+    "linhThach": "灵石",
+    "balance": "{{amount}} 灵石"
+  },
+  "realms": {
+    "luyen_khi_1": "练气一层",
+    "luyen_khi_9": "练气九层",
+    "truc_co": "筑基",
+    "kim_dan": "金丹"
+  }
+}

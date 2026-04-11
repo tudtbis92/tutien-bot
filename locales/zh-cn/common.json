@@ -1,0 +1,15 @@
+{
+  "errors": {
+    "notRegistered": "您尚未注册修炼。使用 /开始 来开启您的修炼之旅。",
+    "noPermission": "您无权使用此命令。",
+    "cooldown": "请等待 {{seconds}} 秒后再使用此命令。",
+    "internalError": "发生内部错误，请稍后重试。",
+    "botOffline": "机器人正在维护中，请稍后重试。"
+  },
+  "system": {
+    "botName": "修仙机器人",
+    "online": "机器人在 {{shards}} 个分片上线",
+    "healthOk": "系统运行正常",
+    "healthDegraded": "系统遇到问题"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "profile": {
+    "title": "Cultivator Profile",
+    "tuVi": "Cultivation Points",
+    "canh_gioi": "Realm",
+    "linhThach": "Spirit Stones",
+    "balance": "{{amount}} spirit stones"
+  },
+  "realms": {
+    "luyen_khi_1": "Qi Refinement Stage 1",
+    "luyen_khi_9": "Qi Refinement Stage 9",
+    "truc_co": "Foundation Establishment",
+    "kim_dan": "Core Formation"
+  }
+}

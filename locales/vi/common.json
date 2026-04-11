@@ -1,0 +1,15 @@
+{
+  "errors": {
+    "notRegistered": "Bạn chưa đăng ký tu tiên. Dùng /bắt_đầu để bắt đầu hành trình.",
+    "noPermission": "Bạn không có quyền thực hiện lệnh này.",
+    "cooldown": "Hãy chờ {{seconds}} giây trước khi dùng lại lệnh này.",
+    "internalError": "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau.",
+    "botOffline": "Bot đang bảo trì. Vui lòng thử lại sau."
+  },
+  "system": {
+    "botName": "Tu Tiên Bot",
+    "online": "Bot đã trực tuyến trên {{shards}} mảnh ghép",
+    "healthOk": "Hệ thống hoạt động bình thường",
+    "healthDegraded": "Hệ thống đang gặp sự cố"
+  }
+}
