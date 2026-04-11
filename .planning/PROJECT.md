@@ -12,7 +12,9 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Multi-shard architecture — Validated in Phase 01: Foundation (ShardingManager entry, shard entries, auto-shard count)
+- [x] Hỗ trợ đa ngôn ngữ (i18n) từ đầu — Validated in Phase 01: Foundation (i18next VI/EN/ZH-CN scaffold, ESLint i18n enforcement, zero hardcoded strings)
+- [x] Infrastructure backbone (DB, Redis, CI/CD) — Validated in Phase 01: Foundation (Drizzle + pg, ioredis, pg-boss, GitHub Actions CI/CD, Fastify health check)
 
 ### Active
 
@@ -43,7 +45,11 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 - **Season system**: Cảnh giới reset mỗi season, đổi tên gọi; season đầu dùng xianxia classic (Luyện Khí → Truyện Cơ → Kim Đan → Nguyên Anh → Hóa Thần...); một số thuộc tính/item được giữ lại qua reset (thiết kế chi tiết sau)
 - **Monetization**: Người chơi có thể nạp tiền mua linh thạch (currency chính của game)
 
-## Market Mechanics (chi tiết)
+## Current State
+
+Phase 01 (Foundation) complete — full infrastructure backbone deployed: ShardingManager, PostgreSQL/Drizzle, Redis, pg-boss, i18n, CI/CD, health check. Bot can launch and pass CI. Ready for Phase 02 (Core Game Loop + Progression).
+
+
 
 Đây là cơ chế phức tạp — ghi lại để downstream phases không đoán mò:
 
@@ -102,4 +108,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-11 after infra confirmed (Oracle Cloud ARM64, ubuntu user, Node 22 LTS requirement clarified)*
+*Last updated: 2026-04-11 after Phase 01 (Foundation) complete*
