@@ -83,7 +83,8 @@
   "start": {
     "already_registered": "Bạn đã có nhân vật tu tiên rồi! Dùng /profile để xem.",
     "welcome": "Chào mừng đến với Thiên Đạo! Linh căn của bạn là: {{root}}",
-    "welcome_flavor": "Hành trình tu tiên bắt đầu từ đây..."
+    "welcome_flavor": "Hành trình tu tiên bắt đầu từ đây...",
+    "not_registered": "Bạn chưa có nhân vật. Dùng /start để bắt đầu hành trình tu tiên!"
   },
   "profile": {
     "title": "Hồ Sơ Tu Tiên",

@@ -83,7 +83,8 @@
   "start": {
     "already_registered": "你已经有修仙角色了！使用/profile查看角色信息。",
     "welcome": "欢迎踏上仙途！你的灵根是：{{root}}",
-    "welcome_flavor": "修仙之旅从此开始……"
+    "welcome_flavor": "修仙之旅从此开始……",
+    "not_registered": "您还没有角色。使用 /start 开始修仙之旅！"
   },
   "profile": {
     "title": "修仙档案",

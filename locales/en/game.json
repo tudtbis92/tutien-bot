@@ -83,7 +83,8 @@
   "start": {
     "already_registered": "You already have a cultivator! Use /profile to view your character.",
     "welcome": "Welcome to the Celestial Path! Your spiritual root is: {{root}}",
-    "welcome_flavor": "Your journey to immortality begins here..."
+    "welcome_flavor": "Your journey to immortality begins here...",
+    "not_registered": "You don't have a character yet. Use /start to begin your cultivation journey!"
   },
   "profile": {
     "title": "Cultivation Profile",
