@@ -2,9 +2,20 @@
  * Tests for breakthrough service business logic.
  * All tests use pure functions — no Discord.js or DB dependencies.
  *
- * TDD RED phase: these tests are written before the implementation.
+ * db/client.ts is mocked to prevent config.ts env-var validation from running
+ * in the test environment (config.ts calls process.exit on missing vars).
  */
 import { describe, it, expect, vi } from 'vitest';
+
+// Mock DB client BEFORE importing breakthrough service to prevent config.ts env validation
+vi.mock('../../db/client.js', () => ({
+  db: {
+    update: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 import {
   canAttemptBreakthrough,
   rollBreakthrough,
