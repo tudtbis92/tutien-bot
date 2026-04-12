@@ -3,7 +3,6 @@ import type { Job } from 'pg-boss';
 import { db } from '../db/client.js';
 import { characters } from '../db/schema/characters.js';
 import { guildActivity } from '../db/schema/guild_activity.js';
-import { getCooldownTTL } from '../cache/cooldown.js';
 import { redis } from '../cache/redis.js';
 import { GAME_CONFIG } from '../constants/game.js';
 import { eq, sql, and } from 'drizzle-orm';
@@ -75,14 +74,12 @@ export async function registerActivityWorker(boss: PgBoss): Promise<void> {
 // ── Job Processor ─────────────────────────────────────────────────────────────
 
 async function processActivityJob(data: ActivityJobData): Promise<void> {
-  // ── Layer 1: Redis re-verify ──────────────────────────────────────────────
-  // Confirms Redis was not wiped mid-restart. If TTL > 0, the cooldown key is still
-  // live — this job arrived out-of-order or is a duplicate. Drop silently.
-  // Note: voice_join/voice_leave skip cooldown re-verify (no cooldown key for voice)
-  if (data.type === 'message' || data.type === 'reaction') {
-    const ttl = await getCooldownTTL(data.userId, data.channelId);
-    if (ttl > 0) return; // Redis key still live — already processed recently
-  }
+  // ── Layer 1: Intentionally removed ───────────────────────────────────────
+  // Original intent: re-verify Redis cooldown key in worker to detect Redis-wipe
+  // duplicates. However, tryAcquireCooldown() sets the key BEFORE enqueueing, so
+  // the key is always live (TTL > 0) for every valid job — causing all jobs to be
+  // silently dropped. Layer 2b (DB lastMessageAt timestamp) is the correct and
+  // sufficient source of truth for cooldown enforcement; it survives Redis restarts.
 
   // ── voice_join: just set session start timestamp, no tu vi award ──────────
   if (data.type === 'voice_join') {
