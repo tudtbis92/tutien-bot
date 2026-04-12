@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import type { TFunction } from 'i18next';
-import { COLORS, embedFooter } from '../theme.js';
+import { COLORS, EMOJI, embedFooter } from '../theme.js';
 import { REALM_CONFIG } from '../../constants/realms.js';
 import { GAME_CONFIG } from '../../constants/game.js';
 import { formatBalance } from '../../utils/format.js';
@@ -21,21 +21,43 @@ export interface ProfileEmbedData {
   professionPoints: Record<string, number>;
 }
 
+/** Build a 10-block Unicode progress bar (▰▰▰▱▱▱▱▱▱▱ style) */
+function buildProgressBar(current: number, max: number, blocks = 10): string {
+  if (max <= 0) return EMOJI.PROGRESS.repeat(blocks);
+  const filled = Math.min(blocks, Math.floor((current / max) * blocks));
+  return EMOJI.PROGRESS.repeat(filled) + EMOJI.PROGRESS_EMPTY.repeat(blocks - filled);
+}
+
 /**
  * Build the character profile embed.
  * Shows realm name (from REALM_CONFIG i18nKey), spiritual root name only (no multiplier),
- * tu vi total, daily cap progress, and streak days.
+ * tu vi progress bar (relative to current tier's entry threshold), daily cap, and streak.
  *
  * @param data - Character display data
  * @param t - Bound i18next TFunction for the correct locale
  */
 export function buildProfileEmbed(data: ProfileEmbedData, t: TFunction): EmbedBuilder {
   const realm = REALM_CONFIG[data.realmId];
-  // Realm name from i18n key, e.g. 'game:realms.luyen_khi.tang_1' → 'Luyện Khí Tầng Một'
   const realmName = t(realm!.i18nKey);
-  // Spiritual root name only — multiplier numbers intentionally hidden per D-04
   const rootName = t(`game:spiritual_root.${data.spiritualRoot}`);
-  const tuViStr = formatBalance(data.tuVi);
+
+  // Progress within current tier: tuVi - entryThreshold / tuViRequired
+  const entryThreshold = BigInt(realm!.entryThreshold);
+  const tuViRequired = realm!.tuViRequired; // Infinity at max tier
+  const progressAbsolute = data.tuVi > entryThreshold ? data.tuVi - entryThreshold : 0n;
+
+  let tuViStr: string;
+  let progressBar: string;
+  if (!isFinite(tuViRequired)) {
+    // Max tier — no advancement possible
+    tuViStr = `${formatBalance(data.tuVi)}`;
+    progressBar = EMOJI.PROGRESS.repeat(10);
+  } else {
+    const progressNum = Number(progressAbsolute);
+    progressBar = buildProgressBar(progressNum, tuViRequired);
+    tuViStr = `${progressBar}\n${formatBalance(progressAbsolute)} / ${formatBalance(BigInt(tuViRequired))}`;
+  }
+
   const dailyProgress = `${data.dailyTuvi.toLocaleString()} / ${GAME_CONFIG.DAILY_CAP.toLocaleString()}`;
 
   return new EmbedBuilder()
@@ -43,12 +65,12 @@ export function buildProfileEmbed(data: ProfileEmbedData, t: TFunction): EmbedBu
     .setAuthor({ name: data.discordTag, iconURL: data.avatarURL ?? undefined })
     .setTitle(t('game:profile.title'))
     .addFields(
-      { name: t('game:profile.realm'), value: realmName, inline: true },
-      { name: t('game:profile.spiritual_root'), value: rootName, inline: true },
-      { name: '\u200b', value: '\u200b', inline: true }, // empty spacer for 3-column layout
-      { name: t('game:profile.tu_vi'), value: tuViStr, inline: true },
-      { name: t('game:profile.daily_cap'), value: dailyProgress, inline: true },
-      { name: t('game:profile.streak'), value: `${data.streakDays} 🔥`, inline: true },
+      { name: `${EMOJI.REALM} ${t('game:profile.realm')}`, value: realmName, inline: true },
+      { name: `${EMOJI.ROOT} ${t('game:profile.spiritual_root')}`, value: rootName, inline: true },
+      { name: '\u200b', value: '\u200b', inline: true },
+      { name: `${EMOJI.TU_VI} ${t('game:profile.tu_vi')}`, value: tuViStr, inline: false },
+      { name: `${EMOJI.QUOTA} ${t('game:profile.daily_cap')}`, value: dailyProgress, inline: true },
+      { name: `${EMOJI.STREAK} ${t('game:profile.streak')}`, value: `${data.streakDays}`, inline: true },
     )
     .setFooter(embedFooter())
     .setTimestamp();

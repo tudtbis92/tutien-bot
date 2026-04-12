@@ -127,6 +127,16 @@
     "insufficient_level": "采集{{item}}需要{{prof}}职业最低{{level}}级。",
     "insufficient_realm": "采集{{item}}需要达到{{realm}}境界。"
   },
+  "language": {
+    "title": "语言",
+    "changed": "语言已更改为{{lang}}。",
+    "already_set": "你的语言已经是{{lang}}了。",
+    "names": {
+      "vi": "Tiếng Việt",
+      "en": "English",
+      "zh-cn": "中文（简体）"
+    }
+  },
   "craft": {
     "success": "成功制造{{item}}！",
     "unique_success": "🌟 奇迹！你创造了独特物品：{{name}}！",

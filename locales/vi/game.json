@@ -110,7 +110,7 @@
     "insufficient_points": "Không đủ điểm kỹ năng.",
     "names": {
       "luyen_dan": "Luyện Đan",
-      "luyen_khi_nc": "Luyện Khí Nghề",
+      "luyen_khi_nc": "Luyện Khí",
       "tran_phap": "Trận Pháp",
       "linh_tru": "Linh Trù",
       "luyen_co": "Luyện Cổ",
@@ -126,6 +126,16 @@
     "cooldown": "Bạn cần nghỉ ngơi trước khi thu thập tiếp.",
     "insufficient_level": "Cần cấp độ nghề {{prof}} tối thiểu {{level}} để thu thập {{item}}.",
     "insufficient_realm": "Cần đạt cảnh giới {{realm}} để thu thập {{item}}."
+  },
+  "language": {
+    "title": "Ngôn ngữ",
+    "changed": "Đã đổi ngôn ngữ sang {{lang}}.",
+    "already_set": "Ngôn ngữ của bạn đã là {{lang}}.",
+    "names": {
+      "vi": "Tiếng Việt",
+      "en": "English",
+      "zh-cn": "中文（简体）"
+    }
   },
   "craft": {
     "success": "Chế tạo thành công {{item}}!",

@@ -8,11 +8,10 @@
  */
 import { EmbedBuilder } from 'discord.js';
 import type { TFunction } from 'i18next';
-import { COLORS, embedFooter } from '../theme.js';
+import { COLORS, EMOJI, embedFooter } from '../theme.js';
 import { PROFESSION_KEYS, getTotalProfessionPoints } from '../../types/professions.js';
 import type { ProfessionPoints } from '../../types/professions.js';
 import { getProfessionLevel } from '../../types/professions.js';
-import { PROFESSION_UNIQUE_ARCHETYPES } from '../../constants/itemAttributes.js';
 
 /**
  * Data required to render the profession embed.
@@ -60,15 +59,9 @@ export function buildProfessionEmbed(
     const pts = getProfessionLevel(data.points, key);
     const profName = t(`game:profession.names.${key}`);
 
-    // Find unique item archetype for this profession
-    const archetype = PROFESSION_UNIQUE_ARCHETYPES.find((a) => a.professionType === key);
-    const uniqueItemKey = archetype?.uniqueItemNameI18nKey ?? key;
-    // Display the i18n key's last segment as fallback if translation not yet defined
-    const uniqueItemName = t(uniqueItemKey, { defaultValue: uniqueItemKey.split('.').pop() ?? key });
-
     embed.addFields({
       name: profName,
-      value: `${pts} pts | ${uniqueItemName}`,
+      value: `${EMOJI.SKILL_POINT} ${pts}`,
       inline: true,
     });
   }

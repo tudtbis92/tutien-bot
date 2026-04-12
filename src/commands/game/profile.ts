@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
+import { users } from '../../db/schema/users.js';
 import { characters } from '../../db/schema/characters.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { buildProfileEmbed } from '../../ui/embeds/buildProfileEmbed.js';
@@ -20,16 +21,24 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  const locale = resolveLocale(null, interaction.locale);
-  const t = getT(locale);
+  // Fetch user locale and character in parallel
+  const [userRow, char] = await Promise.all([
+    db
+      .select({ locale: users.locale })
+      .from(users)
+      .where(eq(users.discordId, interaction.user.id))
+      .limit(1)
+      .then((rows) => rows[0]),
+    db
+      .select()
+      .from(characters)
+      .where(eq(characters.discordId, interaction.user.id))
+      .limit(1)
+      .then((rows) => rows[0]),
+  ]);
 
-  // Fetch character for this Discord user
-  const char = await db
-    .select()
-    .from(characters)
-    .where(eq(characters.discordId, interaction.user.id))
-    .limit(1)
-    .then((rows) => rows[0]);
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
 
   // User has no character — guide them to /start
   if (!char) {

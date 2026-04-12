@@ -5,6 +5,7 @@ import { characters } from '../db/schema/characters.js';
 import { guildActivity } from '../db/schema/guild_activity.js';
 import { redis } from '../cache/redis.js';
 import { GAME_CONFIG } from '../constants/game.js';
+import { TU_VI_TO_ADVANCE } from '../constants/realms.js';
 import { eq, sql, and } from 'drizzle-orm';
 import { logger } from '../utils/logger.js';
 import type { SpiritualRoot } from '../db/schema/characters.js';
@@ -144,6 +145,16 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
     // UPDATE ... WHERE daily_tuvi + amount <= DAILY_CAP RETURNING
     // If RETURNING is empty: cap hit — track anomaly, do not award.
     // This is the ONLY correct atomic pattern — never read-then-write for cap checks.
+
+    // Pre-check: if tuVi has already reached the breakthrough threshold, stop accumulating.
+    // Player must /breakthrough before earning more. This is a soft cap (read-then-check),
+    // race window is acceptable because: (a) row is locked by FOR UPDATE above, and
+    // (b) slight overage at the exact threshold moment is a game design non-issue.
+    const tuViRequired = TU_VI_TO_ADVANCE[char.realmId] ?? Infinity;
+    if (Number(char.tuVi) >= tuViRequired) {
+      // Already at or past breakthrough threshold — no award, no anomaly
+      return;
+    }
     const updateSet: Record<string, unknown> = {
       tuVi: sql`${characters.tuVi} + ${amount}`,
       dailyTuvi: sql`${characters.dailyTuvi} + ${amount}`,

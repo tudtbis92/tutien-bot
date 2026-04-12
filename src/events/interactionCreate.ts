@@ -76,8 +76,11 @@ export async function execute(interaction: Interaction): Promise<void> {
   } catch (err) {
     logger.error('InteractionCreate', `Error in command ${interaction.commandName}`, err);
 
-    // TODO (Phase 2): Fetch user locale from DB for stored preference
-    const locale = resolveLocale(null, interaction.locale);
+    const [errorUserRow] = await db
+      .select({ locale: users.locale })
+      .from(users)
+      .where(eq(users.discordId, interaction.user.id));
+    const locale = resolveLocale(errorUserRow?.locale, interaction.locale);
     const t = getT(locale);
 
     const errorEmbed = buildErrorEmbed(t('errors.internalError'));

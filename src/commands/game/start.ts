@@ -40,9 +40,6 @@ function rollSpiritualRoot(): SpiritualRoot {
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  const locale = resolveLocale(null, interaction.locale);
-  const t = getT(locale);
-
   // Check if user already has a character — prevent duplicate registration
   const existingChar = await db
     .select({ id: characters.id })
@@ -51,6 +48,16 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     .limit(1);
 
   if (existingChar.length > 0) {
+    // Fetch user locale for error message
+    const existingUser = await db
+      .select({ locale: users.locale })
+      .from(users)
+      .where(eq(users.discordId, interaction.user.id))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    const locale = resolveLocale(existingUser?.locale, interaction.locale);
+    const t = getT(locale);
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('game:start.already_registered'))],
     });
@@ -72,6 +79,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       .returning();
     user = inserted[0]!;
   }
+
+  const locale = resolveLocale(user.locale, interaction.locale);
+  const t = getT(locale);
 
   // Roll spiritual root with weighted random
   const spiritualRoot = rollSpiritualRoot();

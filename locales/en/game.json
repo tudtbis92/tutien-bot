@@ -127,6 +127,16 @@
     "insufficient_level": "Requires {{prof}} profession level {{level}} minimum to gather {{item}}.",
     "insufficient_realm": "Requires {{realm}} realm to gather {{item}}."
   },
+  "language": {
+    "title": "Language",
+    "changed": "Language changed to {{lang}}.",
+    "already_set": "Your language is already {{lang}}.",
+    "names": {
+      "vi": "Tiếng Việt",
+      "en": "English",
+      "zh-cn": "中文（简体）"
+    }
+  },
   "craft": {
     "success": "Successfully crafted {{item}}!",
     "unique_success": "🌟 Miracle! You have created a unique item: {{name}}!",

@@ -9,6 +9,7 @@ import {
 import { eq, sql } from 'drizzle-orm';
 import type { TFunction } from 'i18next';
 import { db } from '../../db/client.js';
+import { users } from '../../db/schema/users.js';
 import { characters } from '../../db/schema/characters.js';
 import { guildActivity } from '../../db/schema/guild_activity.js';
 import { resolveLocale, getT } from '../../i18n/index.js';
@@ -169,7 +170,14 @@ export async function buildLeaderboardPage(
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  const locale = resolveLocale(null, interaction.locale);
+  const userRow = await db
+    .select({ locale: users.locale })
+    .from(users)
+    .where(eq(users.discordId, interaction.user.id))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);
 
   const isGlobal = interaction.options.getBoolean('global') ?? false;

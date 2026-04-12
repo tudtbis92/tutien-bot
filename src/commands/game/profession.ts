@@ -25,6 +25,7 @@ import {
 } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
+import { users } from '../../db/schema/users.js';
 import { characters } from '../../db/schema/characters.js';
 import {
   PROFESSION_KEYS,
@@ -41,7 +42,7 @@ import { resolveLocale, getT } from '../../i18n/index.js';
 // Choices must be static strings — cannot use t() at build time.
 const PROFESSION_CHOICE_NAMES: Record<ProfessionKey, string> = {
   luyen_dan: 'Luyện Đan',
-  luyen_khi_nc: 'Luyện Khí Nghề',
+  luyen_khi_nc: 'Luyện Khí',
   tran_phap: 'Trận Pháp',
   linh_tru: 'Linh Trù',
   luyen_co: 'Luyện Cổ',
@@ -114,17 +115,26 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  const locale = resolveLocale(null, interaction.locale);
-  const t = getT(locale);
   const shardId = interaction.client.shard?.ids[0];
 
-  // Fetch character by Discord ID
-  const char = await db
-    .select()
-    .from(characters)
-    .where(eq(characters.discordId, interaction.user.id))
-    .limit(1)
-    .then((rows) => rows[0]);
+  // Fetch user locale and character in parallel
+  const [userRow, char] = await Promise.all([
+    db
+      .select({ locale: users.locale })
+      .from(users)
+      .where(eq(users.discordId, interaction.user.id))
+      .limit(1)
+      .then((rows) => rows[0]),
+    db
+      .select()
+      .from(characters)
+      .where(eq(characters.discordId, interaction.user.id))
+      .limit(1)
+      .then((rows) => rows[0]),
+  ]);
+
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
 
   if (!char) {
     await interaction.editReply({

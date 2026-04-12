@@ -6,6 +6,30 @@
  * Color naming: describe the semantic purpose, not the hue.
  * (e.g., DANGER not RED — if we ever rebrand to blue error embeds, only this file changes)
  */
+
+/**
+ * Game emoji constants.
+ * Use these instead of raw text labels in all embeds.
+ * Standard Unicode emoji — no custom server emoji required.
+ */
+export const EMOJI = {
+  TU_VI: '🔮',           // Tu vi / cultivation
+  SKILL_POINT: '✨',     // Skill points
+  LINH_THACH: '💎',      // Linh thạch / currency
+  REALM: '🏛️',           // Realm / cảnh giới
+  ROOT: '🌿',            // Spiritual root / linh căn
+  STREAK: '🔥',          // Daily streak
+  QUOTA: '📊',           // Daily quota / hạn ngạch
+  SUCCESS: '✅',
+  FAIL: '❌',
+  WARNING: '⚠️',
+  ERROR: '🚫',
+  BREAKTHROUGH: '⚡',
+  LEVEL_UP: '🌟',
+  PROGRESS: '▰',        // Filled progress bar block
+  PROGRESS_EMPTY: '▱',  // Empty progress bar block
+} as const;
+
 export const COLORS = {
   PRIMARY: 0x6B46C1,      // Purple — main brand color, used for profile/info embeds
   SUCCESS: 0x10B981,      // Emerald — positive actions, rewards, level up
