@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 03
+current_phase: 02.1
 current_plan: 0
 status: planning
-last_updated: "2026-04-12T11:50:00.000Z"
+last_updated: "2026-04-12T14:45:00.000Z"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 2
   total_plans: 15
   completed_plans: 8
-  percent: 50
+  percent: 40
 ---
 
 # State: TuTien Bot
@@ -24,15 +24,16 @@ progress:
 ## Current Position
 
 Phase: 02 (core-game-loop-progression) — COMPLETE  
-Phase: 03 (combat-marketplace) — NEXT
+Phase: 02.1 (gather-craft-seed-data) — NEXT (INSERTED, urgent)
 
 ```
-Progress: [█████░░░░░] 50% (Phases 1–2 complete)
+Progress: [████░░░░░░] 40% (Phases 1–2 complete, 02.1 inserted)
 
-Phase 1 [Foundation]               █████ COMPLETE (2026-04-11)
-Phase 2 [Core Game Loop]           █████ COMPLETE (2026-04-12, 7/7 plans)
-Phase 3 [Combat + Marketplace]     ░░░░░ NOT STARTED
-Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
+Phase 1  [Foundation]               █████ COMPLETE (2026-04-11)
+Phase 2  [Core Game Loop]           █████ COMPLETE (2026-04-12, 7/7 plans)
+Phase 02.1 [Gather/Craft Seed Data] ░░░░░ NOT STARTED (INSERTED)
+Phase 3  [Combat + Marketplace]     ░░░░░ NOT STARTED
+Phase 4  [Season System + Admin]    ░░░░░ NOT STARTED
 ```
 
 ---
@@ -43,6 +44,7 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 |---|-------|-------------|--------|-----------|
 | 1 | Foundation | INFRA-01..07, I18N-01..03 (10) | ✅ Complete | 2026-04-11 |
 | 2 | Core Game Loop + Progression | CORE-01..08, PROG-01..08 (16) | ✅ Complete (7/7 plans, UAT 5/5 passed) | 2026-04-12 |
+| 02.1 | Gather & Craft — Seed Data + Cơ Chế Chi Tiết | PROG-06, PROG-07 (unblocked) | Pending (INSERTED) | - |
 | 3 | Combat + Marketplace | COMBAT-01..04, MKT-01..12 (16) | Pending | - |
 | 4 | Season System + Admin | SEASON-01..05, ADMIN-01 (6) | Pending | - |
 
@@ -66,6 +68,10 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | Phase 02 P01-07 | multi-session | 23+ tasks | 36+ files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 02.1 inserted after Phase 2: Gather & Craft — Seed Data + Cơ Chế Chi Tiết (URGENT) — 2026-04-12
 
 ### Key Decisions Made
 
@@ -112,7 +118,7 @@ None currently.
 
 ## Session Continuity
 
-**To resume work:** Run `/gsd-plan-phase 3` to plan Phase 3 (Combat + Marketplace). Research needed first.
+**To resume work:** Run `/gsd-plan-phase 02.1` to plan Phase 02.1 (Gather & Craft — Seed Data + Cơ Chế Chi Tiết). This is urgent work blocking UAT of /gather and /craft.
 
 **Phase 02 completion note:**  
 - 7/7 plans executed, 23/23 tests pass, tsc clean, lint clean.
@@ -131,4 +137,4 @@ None currently.
 ---
 
 *State initialized: 2026-04-11*  
-*Last updated: 2026-04-12 — Phase 2 UAT complete (5/5 passed); Phase 2 formally closed*
+*Last updated: 2026-04-12 — Phase 02.1 inserted (URGENT): Gather/Craft seed data + cơ chế chi tiết*
