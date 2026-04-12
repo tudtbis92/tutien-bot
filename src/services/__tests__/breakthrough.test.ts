@@ -19,8 +19,6 @@ vi.mock('../../db/client.js', () => ({
 import {
   canAttemptBreakthrough,
   rollBreakthrough,
-  type BreakthroughCheck,
-  type BreakthroughResult,
 } from '../breakthrough.js';
 
 // ── canAttemptBreakthrough ──────────────────────────────────────────────────
@@ -127,12 +125,8 @@ describe('rollBreakthrough', () => {
 
   it('fail returns penaltyAmount = floor(50% of excess above entry threshold)', () => {
     // realm_id 11: TC Hậu Kỳ, entryThreshold = 1,000 + 1,500 + 2,200 + ... + 78,000 cumulative
-    // entryThreshold for realm 11 = sum of TU_VI_TO_ADVANCE[0..10]
-    // TU_VI_TO_ADVANCE: [1000,1500,2200,3200,4700,7000,10000,15000,22000,35000,52000,78000,...]
-    // Threshold[0]=0, [1]=1000, [2]=2500, [3]=4700, [4]=7900, [5]=12600, [6]=19600, [7]=29600,
-    // [8]=44600, [9]=66600, [10]=101600, [11]=153600
-    // So entryThreshold for realm 11 = 153,600
-    const REALM_11_ENTRY_THRESHOLD = 153_600;
+    // TU_VI_TO_ADVANCE[0..10]: [1000,1500,2200,3200,4700,7000,10000,15000,22000,35000,52000]
+    // entryThreshold for realm 11 = 153,600
     const tuVi = 200_000n; // excess = 200,000 - 153,600 = 46,400; penalty = floor(46400/2) = 23,200
     const expectedPenalty = 23_200n;
 
