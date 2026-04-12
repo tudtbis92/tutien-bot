@@ -1332,6 +1332,132 @@ This is atomic-safe: the reset happens inside the concurrency:1 worker before th
 
 ---
 
+## Similar Projects Analysis
+
+> Researched 2026-04-12 via Tavily. Purpose: validate our design decisions against what production Discord bots have shipped; find patterns to adopt and anti-patterns to avoid.
+
+### 1. MEE6 / Lurkr — Industry-Standard XP Cooldown Pattern
+
+**Source:** Lurkr docs (lurkr.gg/docs), MEE6 wiki (wiki.mee6.xyz), Mee6-documentation GitHub
+
+**What they do:**
+- XP per message: random 15–25 (MEE6/Lurkr default). Our design uses fixed 10 tu vi — simpler and more predictable.
+- **Cooldown: 1 minute between XP-earning messages** — exact same as our D-07 Layer 2 (60s `last_message_at` DB check). Industry validation confirmed.
+- Anti-spam: purely time-based cooldown (no content quality gate). We add content quality gate (Layer 3) on top — this is a deliberate upgrade for an RPG context where spam resistance matters more.
+- Voice XP: Lurkr supports per-minute voice XP (confirmed approach). Not publicly documented how they implement the per-minute polling — but the mechanic is standard.
+- Multipliers: Lurkr supports role/channel/global multipliers stacked multiplicatively. Our spiritual root multiplier follows the same multiplicative stacking pattern — compatible design.
+- XP curve: Lurkr uses polynomial formula `50n² − 100n + 150`. Our TU_VI_TO_ADVANCE curve is exponential (hand-crafted per realm) — more thematic but achieves same effect.
+
+**Key lesson:** The 1-minute message cooldown is the universal industry standard. Our design is correct.
+
+**Key difference:** Lurkr/MEE6 are per-server leveling systems (XP resets when user leaves). TuTien Bot is **global** (one character follows user across servers) — this is a differentiator. Confirmed our `guild_activity` table approach (Pattern 8) is the right bridge.
+
+---
+
+### 2. DaoVerse — Closest Direct Competitor (Xianxia Cultivation Bot)
+
+**Source:** top.gg listing, cultivationbot.com
+
+**What they do:**
+- "Infinite real-time cultivation" — Qi Gathering Array activated, power grows passively "even while you sleep." This implies a **time-based passive tick** (not Discord-activity-based). Fundamentally different design philosophy from TuTien Bot.
+- Breakthrough mechanic: "Heavenly Tribulations" to ascend — thematic dressing over the same failure-probability concept we have.
+- Spiritual Roots: "Rare Ice, Thunder, Void roots grant massive cultivation speed bonuses" — same pattern as our spiritual root multipliers.
+- 9-realm path (Qi Condensation → Mahayana) — significantly fewer realms than our 12. Our 42-tier system offers more granular progression.
+- Alchemy/crafting: real-time crafting queues with timers. We chose instant crafting (no timers) — simpler but less engaging at late game. **Note for Phase 3:** crafting timers may be worth adding as a premium/v2 feature.
+- Sects, PvP, territory — Phase 3+ for us.
+
+**Key lessons:**
+1. **"Passive while you sleep" vs "active Discord engagement"** — DaoVerse uses a timer-tick model; TuTien Bot rewards actual Discord activity. Our model is MORE motivating for community engagement (Core Value confirmed correct).
+2. **Spiritual root reveal as gacha** — DaoVerse uses "Root Gacha" (pays for rare roots). We assign randomly for free. Our anti-pay-to-win stance is the right call for an engagement-first bot.
+3. **9 realms is standard** for the genre. Our 12 major realms / 42 tiers is more granular — a meaningful differentiator for long-term retention.
+
+---
+
+### 3. Infinite Ascension — Feature Parity Reference
+
+**Source:** top.gg bot listing
+
+**Command set confirmed as standard for xianxia Discord RPG:**
+```
+/start  /cultivate  /breakthrough  /gather  /craft
+/use    /profile    /inventory     /leaderboard  /help
+```
+
+Our Phase 2 command set maps directly:
+- `/start` ✓ (CORE-08)
+- `/đột_phá` = `/breakthrough` ✓ (PROG-02)
+- `/thu_thập` = `/gather` ✓ (PROG-06)
+- `/chế_tạo` = `/craft` ✓ (PROG-07)
+- `/profile` ✓ (CORE-06)
+- `/bxh` = `/leaderboard` ✓ (PROG-04)
+
+**Missing from our Phase 2 vs Infinite Ascension:** `/use` (consume items/pills) and `/inventory` (`/kho`). These are needed for crafting to be meaningful — players need to USE what they craft. **Recommend adding `/dùng` and `/kho` to Phase 2 scope or Phase 3.**
+
+**Cultivation Manuals** (passive cultivation boost items) — maps to our unique item system (e.g., Luyện Đan's `cultivation_multiplier` attribute). Our design covers this via the unique item attribute pool.
+
+**Key lesson:** Herb gathering by age (1yr–2000yr tiers) is a well-received mechanic. Our `GATHER_TIER_REQUIREMENTS` (tier 0–3) matches this pattern conceptually — consider naming tiers thematically (e.g., "Phàm Thảo", "Linh Thảo", "Tiên Thảo", "Thần Thảo") rather than numeric tiers 0–3.
+
+---
+
+### 4. XPTracker-Bot — Voice Tracking Architecture Reference
+
+**Source:** GitHub NourEldeenMahmoud/XPTracker-Bot
+
+**Project structure (Python/discord.py):**
+```
+src/cogs/
+  message_tracker.py   # Message XP tracking cog
+  voice_tracker.py     # Voice XP tracking cog
+  xp_commands.py       # XP command handlers
+src/xp_manager.py      # XP calculation logic
+src/database.py        # DB operations
+```
+
+This maps directly to our separation of concerns:
+- `message_tracker.py` → `src/events/messageCreate.ts`
+- `voice_tracker.py` → `src/events/voiceStateUpdate.ts` + `src/workers/voiceWorker.ts`
+- `xp_manager.py` → logic inside `src/workers/activityWorker.ts`
+
+**Key lesson:** Separating event listeners from business logic (XP calculation) is validated industry pattern. Our architecture (event fires → pg-boss queue → ActivityWorker) is the correct Node.js async equivalent.
+
+---
+
+### 5. DiscordLevelsBot — Minimal Anti-Farming Reference
+
+**Source:** GitHub mcmonkeyprojects/DiscordLevelsBot
+
+**Their approach:**
+- XP per message: random 15–25 points
+- Cooldown: "at least one minute after their last message"
+- No voice tracking, no daily cap
+- No content quality gate — purely time-based
+
+**What this tells us:** The minimal viable anti-farming is just a 60s per-message cooldown. Our 5-layer stack is much more robust — appropriate for a game where tu vi has real economic value (crafting, marketplace Phase 3).
+
+---
+
+### Summary: What We're Doing Better / Differently
+
+| Feature | Industry Standard | TuTien Bot | Our Advantage |
+|---------|-------------------|------------|---------------|
+| XP source | Messages only (most bots) | Message + Voice + Reaction | All Discord activity matters |
+| Anti-farming | 60s cooldown only | 5-layer: Redis + DB cooldown + content quality + daily cap + voice AFK | Much stronger; economy-safe |
+| Daily cap | None (Lurkr/MEE6 unlimited) | Hard 10,000 tu vi/day | Prevents power-user dominance; balanced progression |
+| Progression | Per-server level reset | Global character, multi-server | Persistent identity across servers |
+| Realm depth | 9–15 realms | 12 major / 42 tiers | Granular progression for long-term retention |
+| Cultivation speed | Time-tick passive (DaoVerse) | Activity-based (our Core Value) | Rewards actual community engagement |
+| Crafting | Standard recipe system | + Unique item chance with player-named items | Social identity feature |
+| Multipliers | Role/channel (Lurkr) | Spiritual root (hidden mechanic) | Discovery mechanic, not spreadsheet optimization |
+
+### Gaps Identified (Consider for Phase 2 or Phase 3)
+
+1. **`/kho` (inventory command)** — Infinite Ascension has `/inventory`; players need to view what they've gathered/crafted. Currently missing from Phase 2 command list. **Recommend adding to Phase 2** (PROG-06/07 are hollow without it).
+2. **`/dùng` (use item)** — Consumed items (pills, scrolls) need a `/dùng` command to activate their effects. Without it, crafted consumables have no effect. **Recommend Phase 2 scope addition or stub.**
+3. **Crafting timer (real-time queues)** — DaoVerse uses timers. Instant crafting (our current design) is fine for Phase 2 but consider timers as a Phase 3 depth mechanic.
+4. **Material naming** — Thematic herb/material names (Phàm/Linh/Tiên/Thần tier names) instead of numeric tiers would improve flavor. Low-effort, high-impact i18n keys.
+
+---
+
 ## Sources
 
 ### Primary (HIGH confidence)
@@ -1344,6 +1470,7 @@ This is atomic-safe: the reset happens inside the concurrency:1 worker before th
 
 ### Secondary (MEDIUM confidence)
 - Phase 1 SUMMARY.md — BigInt default `sql\`0\`` bug, pg-boss `Job[]` array handler, ESLint i18next v6 API — all confirmed from Phase 1 execution
+- Tavily search 2026-04-12 — Similar projects analysis (MEE6, Lurkr, DaoVerse, Infinite Ascension, XPTracker-Bot, DiscordLevelsBot)
 
 ### Tertiary (LOW confidence)
 - VoiceMinuteWorker "advance session_started_at by 1 minute" pattern — derived from architecture decisions, not from an official Discord bot reference. Needs testing for edge cases.
