@@ -1,15 +1,136 @@
 {
+  "realms": {
+    "luyen_khi": {
+      "tang_1": "练气第一层",
+      "tang_2": "练气第二层",
+      "tang_3": "练气第三层",
+      "tang_4": "练气第四层",
+      "tang_5": "练气第五层",
+      "tang_6": "练气第六层",
+      "tang_7": "练气第七层",
+      "tang_8": "练气第八层",
+      "tang_9": "练气第九层"
+    },
+    "truc_co": {
+      "so_ky": "筑基初期",
+      "trung_ky": "筑基中期",
+      "hau_ky": "筑基后期"
+    },
+    "kim_dan": {
+      "so_ky": "金丹初期",
+      "trung_ky": "金丹中期",
+      "hau_ky": "金丹后期"
+    },
+    "nguyen_anh": {
+      "so_ky": "元婴初期",
+      "trung_ky": "元婴中期",
+      "hau_ky": "元婴后期"
+    },
+    "hoa_than": {
+      "so_ky": "化神初期",
+      "trung_ky": "化神中期",
+      "hau_ky": "化神后期"
+    },
+    "luyen_hu": {
+      "so_ky": "炼虚初期",
+      "trung_ky": "炼虚中期",
+      "hau_ky": "炼虚后期"
+    },
+    "van_dinh": {
+      "so_ky": "问鼎初期",
+      "trung_ky": "问鼎中期",
+      "hau_ky": "问鼎后期"
+    },
+    "dai_thua": {
+      "so_ky": "大乘初期",
+      "trung_ky": "大乘中期",
+      "hau_ky": "大乘后期"
+    },
+    "ban_tien": {
+      "so_ky": "半仙初期",
+      "trung_ky": "半仙中期",
+      "hau_ky": "半仙后期"
+    },
+    "dia_tien": {
+      "so_ky": "地仙初期",
+      "trung_ky": "地仙中期",
+      "hau_ky": "地仙后期"
+    },
+    "chan_tien": {
+      "so_ky": "真仙初期",
+      "trung_ky": "真仙中期",
+      "hau_ky": "真仙后期"
+    },
+    "dai_la_tien": {
+      "so_ky": "大罗仙初期",
+      "trung_ky": "大罗仙中期",
+      "hau_ky": "大罗仙后期"
+    }
+  },
+  "breakthrough": {
+    "success": "突破成功！你已晋升到{{realm}}！",
+    "fail": "突破失败！天劫太强，你损失了{{penalty}}修为。",
+    "insufficient": "修为不足以突破。需要{{required}}修为。",
+    "maxRealm": "你已到达修炼巅峰——大罗仙后期。"
+  },
+  "spiritual_root": {
+    "kim": "金灵根",
+    "hoa": "火灵根",
+    "moc": "木灵根",
+    "thuy": "水灵根",
+    "tho": "土灵根"
+  },
+  "start": {
+    "already_registered": "你已经有修仙角色了！使用/profile查看角色信息。",
+    "welcome": "欢迎踏上仙途！你的灵根是：{{root}}",
+    "welcome_flavor": "修仙之旅从此开始……"
+  },
   "profile": {
     "title": "修仙档案",
-    "tuVi": "修为",
-    "canh_gioi": "境界",
-    "linhThach": "灵石",
-    "balance": "{{amount}} 灵石"
+    "tu_vi": "修为",
+    "realm": "境界",
+    "spiritual_root": "灵根",
+    "streak": "连续天数",
+    "daily_cap": "今日限额",
+    "professions": "职业"
   },
-  "realms": {
-    "luyen_khi_1": "练气一层",
-    "luyen_khi_9": "练气九层",
-    "truc_co": "筑基",
-    "kim_dan": "金丹"
+  "leaderboard": {
+    "title": "修仙排行榜",
+    "guild_title": "门派排行榜",
+    "empty": "排行榜暂无修仙者。",
+    "rank": "排名",
+    "page": "第{{current}}/{{total}}页"
+  },
+  "profession": {
+    "title": "修仙职业",
+    "points_remaining": "剩余技能点：{{points}}",
+    "no_points": "你还没有技能点。",
+    "allocated": "已将{{amount}}点分配给{{profession}}。",
+    "insufficient_points": "技能点不足。",
+    "names": {
+      "luyen_dan": "炼丹",
+      "luyen_khi_nc": "炼气术",
+      "tran_phap": "阵法",
+      "linh_tru": "灵厨",
+      "luyen_co": "炼器",
+      "duoc_su": "药师",
+      "thuan_thu": "驯兽",
+      "luyen_kim": "炼金",
+      "khai_linh": "开灵",
+      "thuat_su": "术士"
+    }
+  },
+  "gather": {
+    "success": "成功采集{{amount}}个{{item}}。",
+    "cooldown": "你需要休息后才能继续采集。",
+    "insufficient_level": "采集{{item}}需要{{prof}}职业最低{{level}}级。",
+    "insufficient_realm": "采集{{item}}需要达到{{realm}}境界。"
+  },
+  "craft": {
+    "success": "成功制造{{item}}！",
+    "unique_success": "🌟 奇迹！你创造了独特物品：{{name}}！",
+    "insufficient_materials": "材料不足。",
+    "insufficient_level": "制造此配方需要职业{{level}}级。",
+    "recipe_not_found": "未找到配方。"
   }
 }

@@ -1,15 +1,136 @@
 {
-  "profile": {
-    "title": "Hồ Sơ Tu Sĩ",
-    "tuVi": "Tu Vi",
-    "canh_gioi": "Cảnh Giới",
-    "linhThach": "Linh Thạch",
-    "balance": "{{amount}} linh thạch"
-  },
   "realms": {
-    "luyen_khi_1": "Luyện Khí Tầng 1",
-    "luyen_khi_9": "Luyện Khí Tầng 9",
-    "truc_co": "Trúc Cơ",
-    "kim_dan": "Kim Đan"
+    "luyen_khi": {
+      "tang_1": "Luyện Khí Tầng Một",
+      "tang_2": "Luyện Khí Tầng Hai",
+      "tang_3": "Luyện Khí Tầng Ba",
+      "tang_4": "Luyện Khí Tầng Bốn",
+      "tang_5": "Luyện Khí Tầng Năm",
+      "tang_6": "Luyện Khí Tầng Sáu",
+      "tang_7": "Luyện Khí Tầng Bảy",
+      "tang_8": "Luyện Khí Tầng Tám",
+      "tang_9": "Luyện Khí Tầng Chín"
+    },
+    "truc_co": {
+      "so_ky": "Trúc Cơ Sơ Kỳ",
+      "trung_ky": "Trúc Cơ Trung Kỳ",
+      "hau_ky": "Trúc Cơ Hậu Kỳ"
+    },
+    "kim_dan": {
+      "so_ky": "Kim Đan Sơ Kỳ",
+      "trung_ky": "Kim Đan Trung Kỳ",
+      "hau_ky": "Kim Đan Hậu Kỳ"
+    },
+    "nguyen_anh": {
+      "so_ky": "Nguyên Anh Sơ Kỳ",
+      "trung_ky": "Nguyên Anh Trung Kỳ",
+      "hau_ky": "Nguyên Anh Hậu Kỳ"
+    },
+    "hoa_than": {
+      "so_ky": "Hóa Thần Sơ Kỳ",
+      "trung_ky": "Hóa Thần Trung Kỳ",
+      "hau_ky": "Hóa Thần Hậu Kỳ"
+    },
+    "luyen_hu": {
+      "so_ky": "Luyện Hư Sơ Kỳ",
+      "trung_ky": "Luyện Hư Trung Kỳ",
+      "hau_ky": "Luyện Hư Hậu Kỳ"
+    },
+    "van_dinh": {
+      "so_ky": "Vấn Đỉnh Sơ Kỳ",
+      "trung_ky": "Vấn Đỉnh Trung Kỳ",
+      "hau_ky": "Vấn Đỉnh Hậu Kỳ"
+    },
+    "dai_thua": {
+      "so_ky": "Đại Thừa Sơ Kỳ",
+      "trung_ky": "Đại Thừa Trung Kỳ",
+      "hau_ky": "Đại Thừa Hậu Kỳ"
+    },
+    "ban_tien": {
+      "so_ky": "Bán Tiên Sơ Kỳ",
+      "trung_ky": "Bán Tiên Trung Kỳ",
+      "hau_ky": "Bán Tiên Hậu Kỳ"
+    },
+    "dia_tien": {
+      "so_ky": "Địa Tiên Sơ Kỳ",
+      "trung_ky": "Địa Tiên Trung Kỳ",
+      "hau_ky": "Địa Tiên Hậu Kỳ"
+    },
+    "chan_tien": {
+      "so_ky": "Chân Tiên Sơ Kỳ",
+      "trung_ky": "Chân Tiên Trung Kỳ",
+      "hau_ky": "Chân Tiên Hậu Kỳ"
+    },
+    "dai_la_tien": {
+      "so_ky": "Đại La Tiên Sơ Kỳ",
+      "trung_ky": "Đại La Tiên Trung Kỳ",
+      "hau_ky": "Đại La Tiên Hậu Kỳ"
+    }
+  },
+  "breakthrough": {
+    "success": "Đột phá thành công! Bạn đã tiến vào {{realm}}!",
+    "fail": "Đột phá thất bại! Thiên kiếp quá mạnh, bạn mất {{penalty}} tu vi.",
+    "insufficient": "Tu vi chưa đủ để đột phá. Cần {{required}} tu vi.",
+    "maxRealm": "Bạn đã đạt đỉnh cao nhất của tu luyện — Đại La Tiên Hậu Kỳ."
+  },
+  "spiritual_root": {
+    "kim": "Kim Cương Linh Căn",
+    "hoa": "Hỏa Linh Căn",
+    "moc": "Mộc Linh Căn",
+    "thuy": "Thủy Linh Căn",
+    "tho": "Thổ Linh Căn"
+  },
+  "start": {
+    "already_registered": "Bạn đã có nhân vật tu tiên rồi! Dùng /profile để xem.",
+    "welcome": "Chào mừng đến với Thiên Đạo! Linh căn của bạn là: {{root}}",
+    "welcome_flavor": "Hành trình tu tiên bắt đầu từ đây..."
+  },
+  "profile": {
+    "title": "Hồ Sơ Tu Tiên",
+    "tu_vi": "Tu Vi",
+    "realm": "Cảnh Giới",
+    "spiritual_root": "Linh Căn",
+    "streak": "Chuỗi Ngày",
+    "daily_cap": "Hạn Ngạch Hôm Nay",
+    "professions": "Nghề Nghiệp"
+  },
+  "leaderboard": {
+    "title": "Bảng Xếp Hạng Tu Tiên",
+    "guild_title": "Bảng Xếp Hạng Môn Phái",
+    "empty": "Chưa có tu sĩ nào trên bảng xếp hạng.",
+    "rank": "Hạng",
+    "page": "Trang {{current}}/{{total}}"
+  },
+  "profession": {
+    "title": "Nghề Nghiệp Tu Sĩ",
+    "points_remaining": "Điểm kỹ năng còn lại: {{points}}",
+    "no_points": "Bạn chưa có điểm kỹ năng nào.",
+    "allocated": "Đã phân bổ {{amount}} điểm vào {{profession}}.",
+    "insufficient_points": "Không đủ điểm kỹ năng.",
+    "names": {
+      "luyen_dan": "Luyện Đan",
+      "luyen_khi_nc": "Luyện Khí Nghề",
+      "tran_phap": "Trận Pháp",
+      "linh_tru": "Linh Trù",
+      "luyen_co": "Luyện Cổ",
+      "duoc_su": "Dược Sư",
+      "thuan_thu": "Thuần Thú",
+      "luyen_kim": "Luyện Kim",
+      "khai_linh": "Khai Linh",
+      "thuat_su": "Thuật Sư"
+    }
+  },
+  "gather": {
+    "success": "Thu thập thành công {{amount}}x {{item}}.",
+    "cooldown": "Bạn cần nghỉ ngơi trước khi thu thập tiếp.",
+    "insufficient_level": "Cần cấp độ nghề {{prof}} tối thiểu {{level}} để thu thập {{item}}.",
+    "insufficient_realm": "Cần đạt cảnh giới {{realm}} để thu thập {{item}}."
+  },
+  "craft": {
+    "success": "Chế tạo thành công {{item}}!",
+    "unique_success": "🌟 Kỳ tích! Bạn đã tạo ra vật phẩm đặc biệt: {{name}}!",
+    "insufficient_materials": "Không đủ nguyên liệu.",
+    "insufficient_level": "Cần cấp độ nghề {{level}} để chế tạo recipe này.",
+    "recipe_not_found": "Không tìm thấy recipe."
   }
 }

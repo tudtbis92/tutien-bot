@@ -1,15 +1,136 @@
 {
-  "profile": {
-    "title": "Cultivator Profile",
-    "tuVi": "Cultivation Points",
-    "canh_gioi": "Realm",
-    "linhThach": "Spirit Stones",
-    "balance": "{{amount}} spirit stones"
-  },
   "realms": {
-    "luyen_khi_1": "Qi Refinement Stage 1",
-    "luyen_khi_9": "Qi Refinement Stage 9",
-    "truc_co": "Foundation Establishment",
-    "kim_dan": "Core Formation"
+    "luyen_khi": {
+      "tang_1": "Qi Refining Stage 1",
+      "tang_2": "Qi Refining Stage 2",
+      "tang_3": "Qi Refining Stage 3",
+      "tang_4": "Qi Refining Stage 4",
+      "tang_5": "Qi Refining Stage 5",
+      "tang_6": "Qi Refining Stage 6",
+      "tang_7": "Qi Refining Stage 7",
+      "tang_8": "Qi Refining Stage 8",
+      "tang_9": "Qi Refining Stage 9"
+    },
+    "truc_co": {
+      "so_ky": "Foundation Establishment Early Stage",
+      "trung_ky": "Foundation Establishment Mid Stage",
+      "hau_ky": "Foundation Establishment Late Stage"
+    },
+    "kim_dan": {
+      "so_ky": "Golden Core Early Stage",
+      "trung_ky": "Golden Core Mid Stage",
+      "hau_ky": "Golden Core Late Stage"
+    },
+    "nguyen_anh": {
+      "so_ky": "Nascent Soul Early Stage",
+      "trung_ky": "Nascent Soul Mid Stage",
+      "hau_ky": "Nascent Soul Late Stage"
+    },
+    "hoa_than": {
+      "so_ky": "Spirit Severing Early Stage",
+      "trung_ky": "Spirit Severing Mid Stage",
+      "hau_ky": "Spirit Severing Late Stage"
+    },
+    "luyen_hu": {
+      "so_ky": "Void Refinement Early Stage",
+      "trung_ky": "Void Refinement Mid Stage",
+      "hau_ky": "Void Refinement Late Stage"
+    },
+    "van_dinh": {
+      "so_ky": "Seeking Peak Early Stage",
+      "trung_ky": "Seeking Peak Mid Stage",
+      "hau_ky": "Seeking Peak Late Stage"
+    },
+    "dai_thua": {
+      "so_ky": "Mahayana Early Stage",
+      "trung_ky": "Mahayana Mid Stage",
+      "hau_ky": "Mahayana Late Stage"
+    },
+    "ban_tien": {
+      "so_ky": "Half-Immortal Early Stage",
+      "trung_ky": "Half-Immortal Mid Stage",
+      "hau_ky": "Half-Immortal Late Stage"
+    },
+    "dia_tien": {
+      "so_ky": "Earth Immortal Early Stage",
+      "trung_ky": "Earth Immortal Mid Stage",
+      "hau_ky": "Earth Immortal Late Stage"
+    },
+    "chan_tien": {
+      "so_ky": "True Immortal Early Stage",
+      "trung_ky": "True Immortal Mid Stage",
+      "hau_ky": "True Immortal Late Stage"
+    },
+    "dai_la_tien": {
+      "so_ky": "Daluo Immortal Early Stage",
+      "trung_ky": "Daluo Immortal Mid Stage",
+      "hau_ky": "Daluo Immortal Late Stage"
+    }
+  },
+  "breakthrough": {
+    "success": "Breakthrough successful! You have ascended to {{realm}}!",
+    "fail": "Breakthrough failed! The heavenly tribulation was too powerful, you lost {{penalty}} cultivation.",
+    "insufficient": "Not enough cultivation for breakthrough. {{required}} cultivation required.",
+    "maxRealm": "You have reached the pinnacle of cultivation — Daluo Immortal Late Stage."
+  },
+  "spiritual_root": {
+    "kim": "Metal Spiritual Root",
+    "hoa": "Fire Spiritual Root",
+    "moc": "Wood Spiritual Root",
+    "thuy": "Water Spiritual Root",
+    "tho": "Earth Spiritual Root"
+  },
+  "start": {
+    "already_registered": "You already have a cultivator! Use /profile to view your character.",
+    "welcome": "Welcome to the Celestial Path! Your spiritual root is: {{root}}",
+    "welcome_flavor": "Your journey to immortality begins here..."
+  },
+  "profile": {
+    "title": "Cultivation Profile",
+    "tu_vi": "Cultivation",
+    "realm": "Realm",
+    "spiritual_root": "Spiritual Root",
+    "streak": "Streak Days",
+    "daily_cap": "Today's Quota",
+    "professions": "Professions"
+  },
+  "leaderboard": {
+    "title": "Cultivation Leaderboard",
+    "guild_title": "Guild Leaderboard",
+    "empty": "No cultivators on the leaderboard yet.",
+    "rank": "Rank",
+    "page": "Page {{current}}/{{total}}"
+  },
+  "profession": {
+    "title": "Cultivator Professions",
+    "points_remaining": "Skill points remaining: {{points}}",
+    "no_points": "You have no skill points yet.",
+    "allocated": "Allocated {{amount}} points to {{profession}}.",
+    "insufficient_points": "Insufficient skill points.",
+    "names": {
+      "luyen_dan": "Pill Crafting",
+      "luyen_khi_nc": "Qi Refinement",
+      "tran_phap": "Formation Arrays",
+      "linh_tru": "Spirit Cooking",
+      "luyen_co": "Artifact Refinement",
+      "duoc_su": "Herbalism",
+      "thuan_thu": "Beast Taming",
+      "luyen_kim": "Metal Refinement",
+      "khai_linh": "Spirit Stone Mining",
+      "thuat_su": "Divination"
+    }
+  },
+  "gather": {
+    "success": "Successfully gathered {{amount}}x {{item}}.",
+    "cooldown": "You need to rest before gathering again.",
+    "insufficient_level": "Requires {{prof}} profession level {{level}} minimum to gather {{item}}.",
+    "insufficient_realm": "Requires {{realm}} realm to gather {{item}}."
+  },
+  "craft": {
+    "success": "Successfully crafted {{item}}!",
+    "unique_success": "🌟 Miracle! You have created a unique item: {{name}}!",
+    "insufficient_materials": "Insufficient materials.",
+    "insufficient_level": "Requires profession level {{level}} to craft this recipe.",
+    "recipe_not_found": "Recipe not found."
   }
 }
