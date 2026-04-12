@@ -52,7 +52,7 @@ Phase 2 delivers a **playable game** — players register a character, accumulat
 
 ### Cảnh Giới (Realm) Structure
 
-- **D-10:** **11 major realms, 42 total tiers:**
+- **D-10:** **12 major realms, 42 total tiers** *(corrected post-research: 9 + 11×3 = 42)*:
 
   | Realm | Tiers | Tier Names |
   |-------|-------|------------|
@@ -67,9 +67,10 @@ Phase 2 delivers a **playable game** — players register a character, accumulat
   | Bán Tiên | 3 | Sơ Kỳ, Trung Kỳ, Hậu Kỳ |
   | Địa Tiên | 3 | Sơ Kỳ, Trung Kỳ, Hậu Kỳ |
   | Chân Tiên | 3 | Sơ Kỳ, Trung Kỳ, Hậu Kỳ |
+  | Đại La Tiên | 3 | Sơ Kỳ, Trung Kỳ, Hậu Kỳ |
 
 - **D-11:** Realm stored as **integer ID 0–41** in the `characters` table (`realm_id SMALLINT`). Realm metadata (i18n key, tier number within major realm, major realm index) in a **code-level config constant** (`src/constants/realms.ts`) — not a DB table.
-- **D-12:** Display names come from i18n lookup keys. Example: `game:realms.luyen_khi.tang_1` = "Luyện Khí Tầng Một". All 42 keys must exist in VI, EN, ZH-CN locale files.
+- **D-12:** Display names come from i18n lookup keys. Example: `game:realms.luyen_khi.tang_1` = "Luyện Khí Tầng Một". All 42 keys must exist in VI, EN, ZH-CN locale files. (12th realm: `game:realms.dai_la_tien.so_ky` etc.)
 - **D-13:** Tu vi threshold curve: **agent designs an exponential curve** anchored to the daily cap of 10,000 tu vi. Luyện Khí should take days of active play; reaching Trúc Cơ should take weeks; upper realms (Đại Thừa+) are legendary-scale goals within a season. Exact thresholds stored in `src/constants/realms.ts`.
 - **D-14:** Full 42-tier tree exists from **Season 1**. No tier gating. Upper realms serve as legendary aspirational goals — most players won't reach them in a season.
 
@@ -90,8 +91,9 @@ Phase 2 delivers a **playable game** — players register a character, accumulat
   | Đại Thừa → Bán Tiên | 85% |
   | Bán Tiên → Địa Tiên | 88% |
   | Địa Tiên → Chân Tiên | 90% |
+  | Chân Tiên → Đại La Tiên | 93% |
 
-  *(Agent defines exact Luyện Hư+ values; suggested curve shown above for the 5 upper realms)*
+  *(Agent defines exact Luyện Hư+ values; suggested curve shown above for the upper realms)*
 
 - **D-17:** **Failure penalty:** lose 50% of the tu vi accumulated **above the current realm's entry threshold**. Player stays at Hậu Kỳ of the current major realm. No tu vi drop below the realm entry threshold.
 - **D-18:** **No retry cooldown** — player must naturally grind back the lost tu vi before attempting again. Organic pacing; no time-gating.
