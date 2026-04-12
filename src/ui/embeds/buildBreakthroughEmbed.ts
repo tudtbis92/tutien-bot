@@ -28,6 +28,8 @@ export interface BreakthroughEmbedData {
   newRealmId?: number;
   /** Tu vi lost on failure (fail outcome only) */
   penaltyAmount?: bigint;
+  /** Tu vi remaining after penalty (fail outcome only) */
+  postTuVi?: bigint;
   /** Tu vi required to attempt (insufficient outcome only) */
   required?: number;
   /** Current tu vi of the character (insufficient outcome only) */
@@ -65,10 +67,11 @@ export function buildBreakthroughEmbed(
 
     case 'fail': {
       const penaltyStr = formatBalance(data.penaltyAmount ?? 0n);
+      const postTuViStr = formatBalance(data.postTuVi ?? 0n);
       return embed
         .setColor(COLORS.DANGER)
         .setTitle(`${EMOJI.ERROR} ${t('game:breakthrough.fail', { penalty: penaltyStr })}`)
-        .setDescription(t('game:breakthrough.fail', { penalty: penaltyStr }));
+        .setDescription(`${t('game:profile.tu_vi')}: ${postTuViStr}`);
     }
 
     case 'insufficient': {
@@ -77,10 +80,7 @@ export function buildBreakthroughEmbed(
       return embed
         .setColor(COLORS.PRIMARY)
         .setTitle(`${EMOJI.WARNING} ${t('game:breakthrough.insufficient', { required: requiredStr })}`)
-        .setDescription(
-          t('game:breakthrough.insufficient', { required: requiredStr }) +
-          `\n${t('game:profile.tu_vi')}: ${currentStr}`,
-        );
+        .setDescription(`${t('game:profile.tu_vi')}: ${currentStr} / ${requiredStr}`);
     }
 
     case 'max_realm': {

@@ -83,10 +83,13 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | pg-boss uses DATABASE_URL_DIRECT | Advisory locks incompatible with PgBouncer transaction mode | Phase 1 |
 | ASCII-only command/option names | Discord API rejects Unicode identifiers (diacritics); English names required | Phase 2 |
 | message.content NOT stored in pg-boss | PII privacy — pre-compute hasRepeatPattern + contentFingerprint in gateway handler | Phase 2 |
+| `characters.tu_vi` is cumulative-forever | Never reset on breakthrough; all threshold comparisons MUST use `entryThreshold + tuViRequired` (absolute), never `tuViRequired` alone (incremental) | Phase 2 UAT |
+| ActivityWorker Layer 1 removed | Redis re-verify in worker removed — event-handler Redis guard is sufficient; Layer 2 DB check covers restart recovery | Phase 2 UAT |
+| ActivityWorker uses `localConcurrency: 5` | Per-user `SELECT FOR UPDATE` makes parallel processing safe; `concurrency: 1` would be a bottleneck | Phase 2 UAT |
 
 ### Active Todos
 
-- [ ] Human UAT for Phase 2: test live bot for 5 items in `.planning/phases/02-core-game-loop-progression/02-HUMAN-UAT.md`
+- [ ] Human UAT for Phase 2: remaining 4 items in `.planning/phases/02-core-game-loop-progression/02-HUMAN-UAT.md` (Test 1 passed; Tests 2–5 pending)
 - [ ] Resolve two-tier currency decision before writing Phase 3 economy schema (probably not needed for v1)
 - [ ] Specify "what persists" across season reset before Phase 4 planning
 - [ ] VWAP outlier rejection algorithm needs research before Phase 3 planning
@@ -129,4 +132,4 @@ None currently.
 ---
 
 *State initialized: 2026-04-11*  
-*Last updated: 2026-04-12 — Phase 2 complete*
+*Last updated: 2026-04-12 — Phase 2 UAT bugs fixed (breakthrough embed, absolute tu_vi threshold, Layer 1 removal, /language command)*

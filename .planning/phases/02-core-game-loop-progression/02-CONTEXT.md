@@ -40,9 +40,9 @@ Phase 2 delivers a **playable game** — players register a character, accumulat
   2. Redis fast-path check via `tryAcquireCooldown()` (existing `src/cache/cooldown.ts`)
   3. If Redis passes → enqueue `ActivityJob` to pg-boss → return immediately (no await on DB)
   4. If Redis rejects → silently drop (user is on cooldown)
-- **D-06:** **ActivityWorker** (`src/workers/activityWorker.ts`) processes the pg-boss queue with **`concurrency: 1`** — serial processing prevents race conditions on daily cap check+increment.
-- **D-07:** ActivityWorker executes **all 5 anti-farming layers in sequence** for each job:
-  1. **Redis cooldown re-verify** — confirm Redis wasn't wiped mid-restart (re-check `getCooldownTTL`)
+- **D-06:** **ActivityWorker** (`src/workers/activityWorker.ts`) processes the pg-boss queue with **`localConcurrency: 5`** — per-user `SELECT FOR UPDATE` in each job prevents races while allowing 5 jobs to run in parallel across different users. (Original decision specified `concurrency: 1`; implementation uses `localConcurrency: 5` with row-level locking, which is safe and faster.)
+- **D-07:** ActivityWorker executes **4 anti-farming layers in sequence** for each job (Layer 1 was removed):
+  1. ~~**Redis cooldown re-verify**~~ — **REMOVED**: Layer 1 (re-verify `getCooldownTTL` in the worker) was removed. The Redis fast-path in the event handler is sufficient; re-verifying in the worker added latency with no meaningful gain (Redis wipes during restart still handled by Layer 2 DB check).
   2. **DB cooldown check** — `characters.last_message_at` per-channel (60s minimum, DB-backed, survives restart)
   3. **Message quality gate** — ≥10 chars, no repeating-character-runs (e.g., "aaaaaaa"), no duplicate content within 5 minutes for this user
   4. **Daily cap atomic check+increment** — `UPDATE characters SET daily_tuvi = daily_tuvi + $amount WHERE id = $1 AND daily_tuvi + $amount <= 10000 RETURNING daily_tuvi` — atomic, no double-counting

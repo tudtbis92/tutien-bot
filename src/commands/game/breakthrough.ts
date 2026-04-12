@@ -136,6 +136,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
           outcome: 'fail',
           currentRealmId: char.realmId,
           penaltyAmount: result.penaltyAmount,
+          postTuVi: char.tuVi - result.penaltyAmount,
         },
         t,
         shardId,
