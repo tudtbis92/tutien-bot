@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 2
-current_plan: Not started
-status: planning
-last_updated: "2026-04-11T13:41:29.831Z"
+current_plan: 01
+status: ready-to-execute
+last_updated: "2026-04-12T00:00:00.000Z"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 1
+  total_plans: 8
   completed_plans: 1
-  percent: 100
+  percent: 12
 ---
 
 # State: TuTien Bot
@@ -23,18 +23,18 @@ progress:
 
 ## Current Position
 
-Phase: 01 (foundation) — COMPLETE
-Plan: 1 of 1 ✅
+Phase: 02 (core-game-loop-progression) — PLANNED (7 plans, ready to execute)
+Plan: 01 of 7 (next to execute)
 **Current Phase:** 2
-**Current Plan:** Not started
-**Status:** Ready to plan
-**Last Updated:** 2026-04-11
+**Current Plan:** 01
+**Status:** Ready to execute
+**Last Updated:** 2026-04-12
 
 ```
-Progress: [██████████] 100% (Phase 1 complete — 3 phases remain)
+Progress: [██░░░░░░░░] 12% (Phase 1 complete — Phase 2 planned)
 
-Phase 1 [Foundation]               █████ COMPLETE (14/14 auto tasks + T-03 pending human action)
-Phase 2 [Core Game Loop]           ░░░░░ NOT STARTED
+Phase 1 [Foundation]               █████ COMPLETE (14/14 auto tasks)
+Phase 2 [Core Game Loop]           ░░░░░ PLANNED — 7 plans ready
 Phase 3 [Combat + Marketplace]     ░░░░░ NOT STARTED
 Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 ```
@@ -46,7 +46,7 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | # | Phase | Requirements | Status | Completed |
 |---|-------|-------------|--------|-----------|
 | 1 | Foundation | INFRA-01..07, I18N-01..03 (10) | ✅ Complete | 2026-04-11 |
-| 2 | Core Game Loop + Progression | CORE-01..08, PROG-01..08 (16) | Pending | - |
+| 2 | Core Game Loop + Progression | CORE-01..08, PROG-01..08 (16) | Planned (7 plans) | - |
 | 3 | Combat + Marketplace | COMBAT-01..04, MKT-01..12 (16) | Pending | - |
 | 4 | Season System + Admin | SEASON-01..05, ADMIN-01 (6) | Pending | - |
 
@@ -62,8 +62,8 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | Phases complete | 0 |
 | Requirements total | 48 |
 | Requirements delivered | 0 |
-| Plans created | 0 |
-| Plans complete | 0 |
+| Plans created | 7 (Phase 2) |
+| Plans complete | 1 (Phase 1) |
 
 ---
 | Phase 01 P01 | multi-session | 14 tasks | 55 files |
@@ -110,7 +110,7 @@ None currently.
 
 ## Session Continuity
 
-**To resume work:** Start with `/gsd-plan-phase 2` (Phase 01 complete)
+**To resume work:** Start with `/gsd-execute-phase 2` (Phase 2 fully planned, 7 plans ready)
 
 **Phase 01 completion note:** T-03 Oracle VM Setup is a human-action task — PostgreSQL 16, Redis, PgBouncer, Node.js 22 (nvm), pm2 must be configured on Oracle VM `168.138.8.160` before `npm start` works. See `.planning/phases/01-foundation/01-PLAN.md` T-03 for exact steps.
 

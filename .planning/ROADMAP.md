@@ -63,7 +63,16 @@
 - Spiritual root (ngũ linh căn: Kim/Mộc/Thủy/Hỏa/Thổ) assigned at `/start` affects tu vi accumulation rate multiplier and profession affinity — store as enum, display from locale.
 - Breakthrough failure chance values (probability per realm tier, tu vi loss on fail, retry cooldown) must be designed before implementing PROG-02. Suggest: Luyện Khí→Trúc Cơ 0% fail, Trúc Cơ→Kim Đan 20%, Kim Đan→Nguyên Anh 40%, higher realms 60%+.
 - Two-tier currency question (earned `linh thạch trong` vs purchased `linh thạch ngoài`) must be resolved before writing the economy columns on the users table. Recommendation: single currency for v1, two-tier as v2 if inflation materializes.
-- **Plans:** TBD
+- **Plans:** 7 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — DB schema (characters, items, recipes, guild_activity) + game constants + i18n keys
+- [ ] 02-02-PLAN.md — Activity pipeline (messageCreate/voiceStateUpdate/reactionAdd) + anti-farming workers
+- [ ] 02-03-PLAN.md — /start character registration + /profile command
+- [ ] 02-04-PLAN.md — Breakthrough service layer + /đột_phá command
+- [ ] 02-05-PLAN.md — Leaderboard /bxh command + pagination
+- [ ] 02-06-PLAN.md — /nghề_nghiệp profession skill tree command
+- [ ] 02-07-PLAN.md — /thu_thập gathering + /chế_tạo crafting commands
 
 ---
 
@@ -120,7 +129,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 1/1 | Complete   | 2026-04-11 |
-| 2. Core Game Loop + Progression | 0/? | Not started | - |
+| 2. Core Game Loop + Progression | 0/7 | Planned | - |
 | 3. Combat + Marketplace | 0/? | Not started | - |
 | 4. Season System + Admin | 0/? | Not started | - |
 
