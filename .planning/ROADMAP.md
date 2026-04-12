@@ -10,7 +10,7 @@
 ## Phases
 
 - [x] **Phase 1: Foundation** — Infrastructure, database, Redis, CI/CD, i18n scaffold (completed 2026-04-11)
-- [ ] **Phase 2: Core Game Loop + Progression** — Active game: tu vi accumulation, anti-farming, character system, cảnh giới, professions
+- [x] **Phase 2: Core Game Loop + Progression** — Active game: tu vi accumulation, anti-farming, character system, cảnh giới, professions (completed 2026-04-12)
 - [ ] **Phase 3: Combat + Marketplace** — Economy loop: hunting/dueling for loot, global VWAP marketplace trading
 - [ ] **Phase 4: Season System + Admin** — Durable game: season resets, hall of fame, abuse reporting
 
@@ -70,9 +70,9 @@ Plans:
 - [x] 02-02-PLAN.md — Activity pipeline (messageCreate/voiceStateUpdate/reactionAdd) + anti-farming workers
 - [x] 02-03-PLAN.md — /start character registration + /profile command
 - [x] 02-04-PLAN.md — Breakthrough service layer + /đột_phá command
-- [x] 02-05-PLAN.md — Leaderboard /bxh command + pagination
-- [x] 02-06-PLAN.md — /nghề_nghiệp profession skill tree command
-- [x] 02-07-PLAN.md — /thu_thập gathering + /chế_tạo crafting commands
+- [x] 02-05-PLAN.md — Leaderboard /leaderboard command + pagination
+- [x] 02-06-PLAN.md — /profession skill tree command
+- [x] 02-07-PLAN.md — /gather gathering + /craft crafting commands
 
 ---
 
@@ -129,11 +129,11 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 1/1 | Complete   | 2026-04-11 |
-| 2. Core Game Loop + Progression | 0/7 | Planned | - |
+| 2. Core Game Loop + Progression | 7/7 | Complete   | 2026-04-12 |
 | 3. Combat + Marketplace | 0/? | Not started | - |
 | 4. Season System + Admin | 0/? | Not started | - |
 
 ---
 
 *Roadmap created: 2026-04-11*  
-*Last updated: 2026-04-11 after initial roadmap creation*
+*Last updated: 2026-04-12 — Phase 2 complete (7/7 plans, MA-01/MA-02 fixes, ASCII command renames)*

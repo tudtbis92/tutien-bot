@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02
-current_plan: 1
-status: executing
-last_updated: "2026-04-12T02:32:28.502Z"
+current_phase: 03
+current_plan: 0
+status: planning
+last_updated: "2026-04-12T11:50:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 8
-  completed_plans: 1
-  percent: 13
+  completed_phases: 2
+  total_plans: 15
+  completed_plans: 8
+  percent: 50
 ---
 
 # State: TuTien Bot
@@ -23,18 +23,14 @@ progress:
 
 ## Current Position
 
-Phase: 02 (core-game-loop-progression) — EXECUTING
-Plan: 1 of 7
-**Current Phase:** 02
-**Current Plan:** 1
-**Status:** Executing Phase 02
-**Last Updated:** 2026-04-12
+Phase: 02 (core-game-loop-progression) — COMPLETE  
+Phase: 03 (combat-marketplace) — NEXT
 
 ```
-Progress: [██░░░░░░░░] 12% (Phase 1 complete — Phase 2 planned)
+Progress: [█████░░░░░] 50% (Phases 1–2 complete)
 
-Phase 1 [Foundation]               █████ COMPLETE (14/14 auto tasks)
-Phase 2 [Core Game Loop]           ░░░░░ PLANNED — 7 plans ready
+Phase 1 [Foundation]               █████ COMPLETE (2026-04-11)
+Phase 2 [Core Game Loop]           █████ COMPLETE (2026-04-12, 7/7 plans)
 Phase 3 [Combat + Marketplace]     ░░░░░ NOT STARTED
 Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 ```
@@ -46,7 +42,7 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | # | Phase | Requirements | Status | Completed |
 |---|-------|-------------|--------|-----------|
 | 1 | Foundation | INFRA-01..07, I18N-01..03 (10) | ✅ Complete | 2026-04-11 |
-| 2 | Core Game Loop + Progression | CORE-01..08, PROG-01..08 (16) | Planned (7 plans) | - |
+| 2 | Core Game Loop + Progression | CORE-01..08, PROG-01..08 (16) | ✅ Complete (7/7 plans, human UAT pending) | 2026-04-12 |
 | 3 | Combat + Marketplace | COMBAT-01..04, MKT-01..12 (16) | Pending | - |
 | 4 | Season System + Admin | SEASON-01..05, ADMIN-01 (6) | Pending | - |
 
@@ -59,14 +55,15 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | Metric | Value |
 |--------|-------|
 | Phases total | 4 |
-| Phases complete | 0 |
+| Phases complete | 2 |
 | Requirements total | 48 |
-| Requirements delivered | 0 |
-| Plans created | 7 (Phase 2) |
-| Plans complete | 1 (Phase 1) |
+| Requirements delivered | 26 |
+| Plans created | 8 (Phase 1: 1, Phase 2: 7) |
+| Plans complete | 8 |
 
 ---
 | Phase 01 P01 | multi-session | 14 tasks | 55 files |
+| Phase 02 P01-07 | multi-session | 23+ tasks | 36+ files |
 
 ## Accumulated Context
 
@@ -84,14 +81,17 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | BigInt default uses sql template | drizzle-kit cannot serialize BigInt literal 0n — use sql`0` | Phase 1 |
 | Command registration in bot.ts only | N shards × REST PUT = rate-limit exhaustion; manager registers once | Phase 1 |
 | pg-boss uses DATABASE_URL_DIRECT | Advisory locks incompatible with PgBouncer transaction mode | Phase 1 |
+| ASCII-only command/option names | Discord API rejects Unicode identifiers (diacritics); English names required | Phase 2 |
+| message.content NOT stored in pg-boss | PII privacy — pre-compute hasRepeatPattern + contentFingerprint in gateway handler | Phase 2 |
 
 ### Active Todos
 
-- [ ] Resolve two-tier currency decision before writing Phase 2 user schema
-- [ ] Specify breakthrough failure chance values before planning PROG-02
+- [ ] Human UAT for Phase 2: test live bot for 5 items in `.planning/phases/02-core-game-loop-progression/02-HUMAN-UAT.md`
+- [ ] Resolve two-tier currency decision before writing Phase 3 economy schema (probably not needed for v1)
 - [ ] Specify "what persists" across season reset before Phase 4 planning
 - [ ] VWAP outlier rejection algorithm needs research before Phase 3 planning
 - [ ] Minimum marketplace txn count for VWAP needs simulation before Phase 3
+- [ ] Minor issues MI-01..08 from 02-REVIEW.md still open (deferred; non-blocking)
 
 ### Research Flags
 
@@ -110,9 +110,12 @@ None currently.
 
 ## Session Continuity
 
-**To resume work:** Start with `/gsd-execute-phase 2` (Phase 2 fully planned, 7 plans ready)
+**To resume work:** Run `/gsd-plan-phase 3` to plan Phase 3 (Combat + Marketplace). Research needed first.
 
-**Phase 01 completion note:** T-03 Oracle VM Setup is a human-action task — PostgreSQL 16, Redis, PgBouncer, Node.js 22 (nvm), pm2 must be configured on Oracle VM `168.138.8.160` before `npm start` works. See `.planning/phases/01-foundation/01-PLAN.md` T-03 for exact steps.
+**Phase 02 completion note:**  
+- 7/7 plans executed, 23/23 tests pass, tsc clean, lint clean.
+- Human UAT in `02-HUMAN-UAT.md` — 5 items require live bot testing before formally closing Phase 2.
+- Minor issues (MI-01..08) from 02-REVIEW.md deferred to a future cleanup pass.
 
 **Architecture reminders:**
 
@@ -121,8 +124,9 @@ None currently.
 - Marketplace Worker: `concurrency: 1` always — serialized order matching
 - Currency: `BIGINT` everywhere, never float; `CHECK (balance >= 0)` DB constraint
 - i18n: no hardcoded user-facing strings — pre-commit hook enforces this
+- Commands: ASCII-only names/options/subcommands — Discord API requires it
 
 ---
 
 *State initialized: 2026-04-11*  
-*Last updated: 2026-04-11 after roadmap creation*
+*Last updated: 2026-04-12 — Phase 2 complete*
