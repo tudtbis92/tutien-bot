@@ -50,18 +50,23 @@ export function canAttemptBreakthrough(
     return { allowed: false, reason: 'max_realm' };
   }
 
-  const required = currentTier.tuViRequired;
+  const { tuViRequired, entryThreshold } = currentTier;
 
   // Infinity tuViRequired also means max tier — already handled above, but double-check
-  if (!isFinite(required)) {
+  if (!isFinite(tuViRequired)) {
     return { allowed: false, reason: 'max_realm' };
   }
 
-  if (char.tuVi < BigInt(required)) {
+  // tuVi is CUMULATIVE (never resets on breakthrough).
+  // Advancement requires reaching the ABSOLUTE threshold: entryThreshold + tuViRequired.
+  // tuViRequired alone is the INCREMENTAL amount above entryThreshold — never compare directly.
+  const requiredAbsolute = entryThreshold + tuViRequired;
+
+  if (char.tuVi < BigInt(requiredAbsolute)) {
     return {
       allowed: false,
       reason: 'insufficient_tuvi',
-      required,
+      required: requiredAbsolute,
       current: char.tuVi,
     };
   }
