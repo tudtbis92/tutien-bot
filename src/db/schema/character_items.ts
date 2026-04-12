@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, check, index } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, check, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { characters } from './characters.js';
 import { items } from './items.js';
@@ -20,6 +20,8 @@ export const characterItems = pgTable(
     check('quantity_positive', sql`${table.quantity} > 0`),
     // For fast inventory queries by character
     index('char_items_character_idx').on(table.characterId),
+    // Unique constraint required for ON CONFLICT DO UPDATE (upsert in gathering/crafting)
+    uniqueIndex('char_items_unique_char_item').on(table.characterId, table.itemId),
   ],
 );
 
