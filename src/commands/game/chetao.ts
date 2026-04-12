@@ -1,5 +1,5 @@
 /**
- * /chế_tạo - Crafting command with atomic transaction.
+ * /chetao - Crafting command with atomic transaction.
  *
  * Consumes recipe ingredients atomically and produces an item.
  * Has a chance to create a unique item with custom name, emoji, and random attributes.
@@ -85,8 +85,8 @@ function rollRandomAttributes(
 // ── Command definition ────────────────────────────────────────────────────
 
 export const data = new SlashCommandBuilder()
-  .setName('chế_tạo')
-  .setNameLocalizations({ 'en-US': 'craft', 'zh-CN': 'craft' })
+  .setName('chetao')
+  .setNameLocalizations({ 'en-US': 'craft', 'zh-CN': 'craft', vi: 'chế_tạo' })
   .setDescription('Chế tạo vật phẩm từ nguyên liệu')
   .setDescriptionLocalizations({
     'en-US': 'Craft items from materials',
@@ -105,8 +105,8 @@ export const data = new SlashCommandBuilder()
   )
   .addStringOption((opt) =>
     opt
-      .setName('tên')
-      .setNameLocalizations({ 'en-US': 'name', 'zh-CN': 'name' })
+      .setName('name')
+      .setNameLocalizations({ vi: 'tên', 'zh-CN': 'name' })
       .setDescription('Tên tùy chỉnh cho vật phẩm đặc biệt (nếu may mắn tạo ra)')
       .setDescriptionLocalizations({
         'en-US': 'Custom name for unique item (if lucky enough to create one)',
@@ -154,7 +154,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
   // 2. Get recipe_id from options
   const recipeId = interaction.options.getInteger('recipe_id', true);
-  const customNameInput = interaction.options.getString('tên') ?? 'Unnamed Item';
+  const customNameInput = interaction.options.getString('name') ?? 'Unnamed Item';
   const customEmojiInput = interaction.options.getString('emoji') ?? '';
 
   // 3. Execute atomic transaction

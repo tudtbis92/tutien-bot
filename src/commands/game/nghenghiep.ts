@@ -1,9 +1,9 @@
 /**
- * /nghề_nghiệp — Profession allocation command.
+ * /profession — Profession allocation command.
  *
  * Subcommands:
- *  - xem: View all 10 professions with current skill point allocations
- *  - phân_bổ: Allocate skill points to a specific profession
+ *  - view: View all 10 professions with current skill point allocations
+ *  - allocate: Allocate skill points to a specific profession
  *
  * Business rules:
  *  - Total available points = char.realmId (lifetime total, 1 per tier advanced, per D-24)
@@ -53,8 +53,8 @@ const PROFESSION_CHOICE_NAMES: Record<ProfessionKey, string> = {
 };
 
 export const data = new SlashCommandBuilder()
-  .setName('nghề_nghiệp')
-  .setNameLocalizations({ 'en-US': 'profession', 'zh-CN': 'profession' })
+  .setName('profession')
+  .setNameLocalizations({ vi: 'nghề_nghiệp', 'zh-CN': 'profession' })
   .setDescription('Quản lý nghề nghiệp tu sĩ')
   .setDescriptionLocalizations({
     'en-US': 'Manage cultivator professions',
@@ -62,8 +62,8 @@ export const data = new SlashCommandBuilder()
   })
   .addSubcommand((sub) =>
     sub
-      .setName('xem')
-      .setNameLocalizations({ 'en-US': 'view', 'zh-CN': 'view' })
+      .setName('view')
+      .setNameLocalizations({ vi: 'xem', 'zh-CN': 'view' })
       .setDescription('Xem nghề nghiệp của bạn')
       .setDescriptionLocalizations({
         'en-US': 'View your profession allocations',
@@ -72,8 +72,8 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub
-      .setName('phân_bổ')
-      .setNameLocalizations({ 'en-US': 'allocate', 'zh-CN': 'allocate' })
+      .setName('allocate')
+      .setNameLocalizations({ vi: 'phân_bổ', 'zh-CN': 'allocate' })
       .setDescription('Phân bổ điểm kỹ năng')
       .setDescriptionLocalizations({
         'en-US': 'Allocate skill points',
@@ -81,8 +81,8 @@ export const data = new SlashCommandBuilder()
       })
       .addStringOption((opt) =>
         opt
-          .setName('nghề')
-          .setNameLocalizations({ 'en-US': 'profession', 'zh-CN': 'profession' })
+          .setName('profession')
+          .setNameLocalizations({ vi: 'nghề', 'zh-CN': 'profession' })
           .setDescription('Tên nghề nghiệp')
           .setDescriptionLocalizations({
             'en-US': 'Profession name',
@@ -98,8 +98,8 @@ export const data = new SlashCommandBuilder()
       )
       .addIntegerOption((opt) =>
         opt
-          .setName('điểm')
-          .setNameLocalizations({ 'en-US': 'points', 'zh-CN': 'points' })
+          .setName('points')
+          .setNameLocalizations({ vi: 'điểm', 'zh-CN': 'points' })
           .setDescription('Số điểm muốn phân bổ')
           .setDescriptionLocalizations({
             'en-US': 'Number of points to allocate',
@@ -139,7 +139,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
   const subcommand = interaction.options.getSubcommand();
 
-  if (subcommand === 'xem') {
+  if (subcommand === 'view') {
     await interaction.editReply({
       embeds: [
         buildProfessionEmbed(
@@ -152,11 +152,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  if (subcommand === 'phân_bổ') {
-    // eslint-disable-next-line i18next/no-literal-string -- option name is a Discord API identifier
-    const prof = interaction.options.getString('nghề', true) as ProfessionKey;
-    // eslint-disable-next-line i18next/no-literal-string -- option name is a Discord API identifier
-    const amount = interaction.options.getInteger('điểm', true);
+  if (subcommand === 'allocate') {
+    const prof = interaction.options.getString('profession', true) as ProfessionKey;
+    const amount = interaction.options.getInteger('points', true);
 
     // T-02-PROF-02: Belt-and-suspenders validation (choices already constrain, but runtime check added)
     if (!PROFESSION_KEYS.includes(prof)) {

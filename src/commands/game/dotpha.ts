@@ -1,5 +1,5 @@
 /**
- * /đột_phá — Breakthrough attempt command.
+ * /dotpha — Breakthrough attempt command.
  *
  * Handles all 4 outcomes: success, fail, insufficient, max_realm.
  * No retry cooldown per D-18 — player grinds back tu vi naturally.
@@ -30,8 +30,8 @@ import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { resolveLocale, getT } from '../../i18n/index.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('đột_phá')
-  .setNameLocalizations({ 'en-US': 'breakthrough', 'zh-CN': 'breakthrough' })
+  .setName('dotpha')
+  .setNameLocalizations({ 'en-US': 'breakthrough', 'zh-CN': 'breakthrough', vi: 'đột_phá' })
   .setDescription('Thực hiện đột phá cảnh giới')
   .setDescriptionLocalizations({
     'en-US': 'Attempt a realm breakthrough',

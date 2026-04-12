@@ -34,8 +34,8 @@ export const data = new SlashCommandBuilder()
   })
   .addBooleanOption((option) =>
     option
-      .setName('toàn_server')
-      .setNameLocalizations({ 'en-US': 'global', 'zh-CN': 'global' })
+      .setName('global')
+      .setNameLocalizations({ vi: 'toan_server' })
       .setDescription('Xem bảng xếp hạng toàn server (không lọc theo server hiện tại)')
       .setDescriptionLocalizations({
         'en-US': 'View global leaderboard (all servers)',
@@ -174,8 +174,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const locale = resolveLocale(null, interaction.locale);
   const t = getT(locale);
 
-  // eslint-disable-next-line i18next/no-literal-string -- option name is a Discord API identifier
-  const isGlobal = interaction.options.getBoolean('toàn_server') ?? false;
+  const isGlobal = interaction.options.getBoolean('global') ?? false;
 
   // Determine scope: guild snowflake or literal 'global'
   // Default to guild leaderboard; fallback to global if command used in DMs
