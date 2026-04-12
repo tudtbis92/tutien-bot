@@ -24,6 +24,7 @@ export async function initI18n(): Promise<void> {
       fallbackLng: DEFAULT_LOCALE,
       supportedLngs: SUPPORTED_LOCALES,
       preload: SUPPORTED_LOCALES,   // Load all 3 at startup — avoids lazy-load race conditions
+      lowerCaseLng: true,           // Keep locale codes lowercase (zh-cn NOT zh-CN) — must match locales/ dir names on Linux
       ns: ['common', 'game', 'combat', 'marketplace', 'admin'],
       defaultNS: 'common',
       fallbackNS: 'common',         // Key not found in ns → try common
