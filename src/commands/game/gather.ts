@@ -1,5 +1,5 @@
 /**
- * /thutap - Gathering command.
+ * /gather - Gathering command.
  *
  * Allows cultivators to gather raw materials based on their profession level and realm.
  * Tier-gated gathering: higher-tier materials require higher profession level AND realm.
@@ -80,8 +80,7 @@ function getProfessionForItemType(
 // ── Command definition ────────────────────────────────────────────────────
 
 export const data = new SlashCommandBuilder()
-  .setName('thutap')
-  .setNameLocalizations({ 'en-US': 'gather', 'zh-CN': 'gather', vi: 'thu_thập' })
+  .setName('gather')
   .setDescription('Thu thập nguyên liệu từ thiên nhiên')
   .setDescriptionLocalizations({
     'en-US': 'Gather raw materials from nature',
@@ -90,7 +89,6 @@ export const data = new SlashCommandBuilder()
   .addIntegerOption((opt) =>
     opt
       .setName('item_id')
-      .setNameLocalizations({ 'en-US': 'item_id', 'zh-CN': 'item_id' })
       .setDescription('ID của vật phẩm cần thu thập')
       .setDescriptionLocalizations({
         'en-US': 'ID of the item to gather',

@@ -66,13 +66,13 @@
 - **Plans:** 7 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — DB schema (characters, items, recipes, guild_activity) + game constants + i18n keys
-- [ ] 02-02-PLAN.md — Activity pipeline (messageCreate/voiceStateUpdate/reactionAdd) + anti-farming workers
-- [ ] 02-03-PLAN.md — /start character registration + /profile command
-- [ ] 02-04-PLAN.md — Breakthrough service layer + /đột_phá command
-- [ ] 02-05-PLAN.md — Leaderboard /bxh command + pagination
-- [ ] 02-06-PLAN.md — /nghề_nghiệp profession skill tree command
-- [ ] 02-07-PLAN.md — /thu_thập gathering + /chế_tạo crafting commands
+- [x] 02-01-PLAN.md — DB schema (characters, items, recipes, guild_activity) + game constants + i18n keys
+- [x] 02-02-PLAN.md — Activity pipeline (messageCreate/voiceStateUpdate/reactionAdd) + anti-farming workers
+- [x] 02-03-PLAN.md — /start character registration + /profile command
+- [x] 02-04-PLAN.md — Breakthrough service layer + /đột_phá command
+- [x] 02-05-PLAN.md — Leaderboard /bxh command + pagination
+- [x] 02-06-PLAN.md — /nghề_nghiệp profession skill tree command
+- [x] 02-07-PLAN.md — /thu_thập gathering + /chế_tạo crafting commands
 
 ---
 

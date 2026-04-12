@@ -25,8 +25,7 @@ const PAGE_SIZE = 10;
 
 /* eslint-disable i18next/no-literal-string -- slash command descriptions are static Discord API strings, not runtime i18n */
 export const data = new SlashCommandBuilder()
-  .setName('bxh')
-  .setNameLocalizations({ 'en-US': 'leaderboard', 'zh-CN': 'leaderboard' })
+  .setName('leaderboard')
   .setDescription('Xem bảng xếp hạng tu tiên')
   .setDescriptionLocalizations({
     'en-US': 'View the cultivation leaderboard',
@@ -35,7 +34,6 @@ export const data = new SlashCommandBuilder()
   .addBooleanOption((option) =>
     option
       .setName('global')
-      .setNameLocalizations({ vi: 'toan_server' })
       .setDescription('Xem bảng xếp hạng toàn server (không lọc theo server hiện tại)')
       .setDescriptionLocalizations({
         'en-US': 'View global leaderboard (all servers)',

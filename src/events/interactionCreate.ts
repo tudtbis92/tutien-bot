@@ -5,7 +5,7 @@ import { buildErrorEmbed } from '../ui/embeds/buildErrorEmbed.js';
 import { resolveLocale, getT } from '../i18n/index.js';
 import { db } from '../db/client.js';
 import { users } from '../db/schema/users.js';
-import { buildLeaderboardPage } from '../commands/game/bxh.js';
+import { buildLeaderboardPage } from '../commands/game/leaderboard.js';
 
 export const name = Events.InteractionCreate;
 
