@@ -2,6 +2,8 @@ import { PgBoss } from 'pg-boss';
 import type { Job } from 'pg-boss';
 import { config } from '../config.js';
 import { runVwapRecalc } from '../jobs/vwapRecalc.js';
+import { registerActivityWorker } from './activityWorker.js';
+import { registerVoiceMinuteWorker, clearOrphanedVoiceSessions } from './voiceWorker.js';
 import { logger } from '../utils/logger.js';
 
 // IMPORTANT: Workers and cron schedules must ONLY be registered in bot.ts (ShardingManager).
@@ -38,6 +40,10 @@ export async function initPgBoss(): Promise<void> {
   logger.info('pgBoss', 'Started');
 
   await registerJobs(boss);
+
+  // Startup orphan sweep: clear voice sessions orphaned by previous bot restart
+  // Must run AFTER boss.start() but BEFORE shards spawn and start generating events
+  await clearOrphanedVoiceSessions();
 }
 
 /**
@@ -70,6 +76,12 @@ export async function initPgBossForShard(): Promise<void> {
 }
 
 async function registerJobs(b: PgBoss): Promise<void> {
+  // Register ActivityWorker — 5-layer anti-farming guard (localConcurrency: 5)
+  await registerActivityWorker(b);
+
+  // Register VoiceMinuteWorker — periodic voice tu vi awards (every 1 minute)
+  await registerVoiceMinuteWorker(b);
+
   // Ensure queue exists before scheduling
   await b.createQueue('vwap-recalc');
 
@@ -93,7 +105,7 @@ async function registerJobs(b: PgBoss): Promise<void> {
     }
   });
 
-  logger.info('pgBoss', 'Jobs registered: vwap-recalc @ 0 * * * * (top of hour)');
+  logger.info('pgBoss', 'Jobs registered: activity-queue, voice-minute-tick, vwap-recalc @ 0 * * * * (top of hour)');
 }
 
 /**
