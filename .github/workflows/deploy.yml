@@ -43,8 +43,19 @@ jobs:
 
             pm2 restart tutien-bot
 
-            sleep 8
-            curl -f http://localhost:3000/health | grep '"status":"ok"' \
-              || (echo "Health check failed — deploy may be broken!" && exit 1)
+            echo "Waiting for bot to become healthy..."
+            for i in $(seq 1 15); do
+              sleep 3
+              RESULT=$(curl -sf http://localhost:3000/health 2>/dev/null || true)
+              if echo "$RESULT" | grep -q '"status":"ok"'; then
+                echo "Health check passed on attempt $i"
+                break
+              fi
+              echo "Attempt $i: not ready yet (${RESULT:-no response})"
+              if [ "$i" -eq 15 ]; then
+                echo "Health check failed after 45s — deploy may be broken!"
+                exit 1
+              fi
+            done
 
             echo "Deploy complete."
