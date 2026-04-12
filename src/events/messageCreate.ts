@@ -20,6 +20,13 @@ export async function execute(message: Message): Promise<void> {
   );
   if (!allowed) return;
 
+  // Pre-compute content metadata here — do NOT store raw message content in pg-boss.
+  // Raw content can hold PII, personal links, and sensitive data; pg-boss retains jobs
+  // for their full expiry window before purge. Workers only need these two flags:
+  //   hasRepeatPattern — Layer 3 quality gate (repeating chars)
+  //   contentFingerprint — duplicate detection (first 50 chars, normalized)
+  const normalizedContent = message.content.toLowerCase().replace(/\s+/g, ' ').trim();
+
   // Fire-and-forget: NO await — boss.send() does a DB write (~5-20ms latency)
   // Awaiting here would block the gateway event loop at scale.
   // pg-boss queue absorbs load; stale jobs auto-expire after 120s.
@@ -30,7 +37,8 @@ export async function execute(message: Message): Promise<void> {
       userId: message.author.id,
       guildId: message.guildId,
       channelId: message.channelId,
-      content: message.content,
+      hasRepeatPattern: /(.)\1{4,}/.test(message.content),
+      contentFingerprint: normalizedContent.slice(0, 50),
       timestamp: Date.now(),
     },
     { expireInSeconds: 120 },

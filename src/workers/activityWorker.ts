@@ -17,7 +17,9 @@ export type ActivityJobData = {
   userId: string;
   guildId: string;
   channelId: string;
-  content?: string;
+  // Pre-computed flags for message type (raw content is NOT stored — privacy)
+  hasRepeatPattern?: boolean;    // Layer 3: /(.)\1{4,}/ quality gate result
+  contentFingerprint?: string;   // Layer 3: first 50 normalized chars for dup detection
   timestamp: number;
   // voice-specific
   selfMute?: boolean;
@@ -129,8 +131,7 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
 
     // ── Layer 3: Content quality gate (message type only) ────────────────
     if (data.type === 'message') {
-      const content = data.content ?? '';
-      const valid = await isContentValid(content, char.discordId);
+      const valid = await isContentValid(data, char.discordId);
       if (!valid) {
         await incrementAnomalyCounter(char.id);
         return;
@@ -187,8 +188,10 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
     // Streak bonus goes DIRECTLY to tu_vi (bypasses daily cap — it's a reward)
     // Called outside transaction to release row lock before streak DB write
     const charForStreak = { ...char, streakDays: char.streakDays, lastActiveDate: char.lastActiveDate };
-    // Schedule streak update after transaction commits — use void (non-blocking)
-    void updateStreak(char.id, data.timestamp, charForStreak);
+    // Schedule streak update after transaction commits — fire-and-forget with error log
+    updateStreak(char.id, data.timestamp, charForStreak).catch((err) =>
+      logger.error('ActivityWorker', `updateStreak failed for char ${char.id}`, err),
+    );
   });
 }
 
@@ -223,16 +226,18 @@ async function incrementAnomalyCounter(charId: number): Promise<void> {
 
 /**
  * Validate message content quality to prevent spam farming.
- * Returns false (invalid) if content contains repeating char runs or is a recent duplicate.
+ * Accepts pre-computed flags from the gateway event (raw content is not stored).
+ * Returns false (invalid) if content has a repeat pattern or is a recent duplicate.
  */
-async function isContentValid(content: string, discordId: string): Promise<boolean> {
-  // Check for repeating character runs (e.g., "aaaaaa", "hhhhhhh")
-  if (/(.)\1{4,}/.test(content)) return false;
+async function isContentValid(data: ActivityJobData, discordId: string): Promise<boolean> {
+  // Check for repeating character runs (e.g., "aaaaaa") — pre-computed in messageCreate
+  if (data.hasRepeatPattern) return false;
 
-  // Duplicate content check: Redis SET with 5-minute window per user
-  // Uses a simple hash: first 50 chars normalized (lowercase, trim whitespace runs)
-  const normalized = content.toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 50);
-  const dupKey = `dup:${discordId}:${normalized}`;
+  // Duplicate content check: Redis SET NX with 5-minute window per user
+  // Uses pre-normalized fingerprint (first 50 chars, lowercase, collapsed whitespace)
+  const fingerprint = data.contentFingerprint ?? '';
+  if (!fingerprint) return false; // Empty fingerprint = treat as invalid
+  const dupKey = `dup:${discordId}:${fingerprint}`;
 
   // SET NX with 5-minute TTL — if key exists, content is a duplicate
   const isNew = await redis.set(dupKey, '1', 'EX', 300, 'NX');
