@@ -98,13 +98,13 @@ async function processVoiceMinuteTick(): Promise<void> {
  * Clearing them prevents infinite tu vi accumulation if LEAVE was missed.
  */
 export async function clearOrphanedVoiceSessions(): Promise<void> {
-  const maxAge = GAME_CONFIG.VOICE_MAX_MINUTES * 2; // 120 minutes
+  const orphanThresholdMinutes = GAME_CONFIG.VOICE_MAX_MINUTES * 2;
   const result = await db
     .update(characters)
     .set({ voiceSessionStartedAt: null })
     .where(
       sql`${characters.voiceSessionStartedAt} IS NOT NULL
-        AND ${characters.voiceSessionStartedAt} < now() - interval '${sql.raw(String(maxAge))} minutes'`,
+        AND ${characters.voiceSessionStartedAt} < now() - interval '${sql.raw(String(orphanThresholdMinutes))} minutes'`,
     )
     .returning({ id: characters.id });
 

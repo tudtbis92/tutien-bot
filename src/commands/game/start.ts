@@ -1,5 +1,5 @@
 import { EmbedBuilder, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { users } from '../../db/schema/users.js';
 import { characters, type SpiritualRoot } from '../../db/schema/characters.js';
@@ -7,7 +7,6 @@ import { GAME_CONFIG } from '../../constants/game.js';
 import { COLORS, embedFooter } from '../../ui/theme.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { resolveLocale, getT } from '../../i18n/index.js';
-import { sql } from 'drizzle-orm';
 
 /* eslint-disable i18next/no-literal-string -- slash command descriptions are static Discord API strings, not runtime i18n */
 export const data = new SlashCommandBuilder()
@@ -86,7 +85,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   // Roll spiritual root with weighted random
   const spiritualRoot = rollSpiritualRoot();
 
-  // INSERT new character
+  // INSERT new character.
+  // onConflictDoNothing guards against the rare concurrent /start race: the UNIQUE constraint
+  // on discord_id ensures only one row is ever created; a second concurrent INSERT is a no-op.
   await db.insert(characters).values({
     userId: user.id,
     discordId: interaction.user.id,
@@ -95,7 +96,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     tuVi: sql`0`,
     dailyTuvi: 0,
     professionPoints: {},
-  });
+  }).onConflictDoNothing();
 
   // Build success embed with spiritual root reveal
   const rootName = t(`game:spiritual_root.${spiritualRoot}`);

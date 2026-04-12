@@ -27,8 +27,7 @@ export async function execute(interaction: Interaction): Promise<void> {
         return;
       }
 
-      const currentPage = rawPage;
-      const newPage = direction === 'prev' ? currentPage - 1 : currentPage + 1;
+      const newPage = direction === 'prev' ? rawPage - 1 : rawPage + 1;
 
       // Negative page guard — cannot go before page 0
       if (newPage < 0) {
@@ -83,7 +82,7 @@ export async function execute(interaction: Interaction): Promise<void> {
     const locale = resolveLocale(errorUserRow?.locale, interaction.locale);
     const t = getT(locale);
 
-    const errorEmbed = buildErrorEmbed(t('errors.internalError'));
+      const errorEmbed = buildErrorEmbed(t('common:errors.internalError'));
 
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp({ embeds: [errorEmbed], ephemeral: true });

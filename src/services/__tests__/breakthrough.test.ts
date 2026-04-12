@@ -54,11 +54,12 @@ describe('canAttemptBreakthrough', () => {
   });
 
   it('returns insufficient_tuvi with correct required amount for realm 8 (LK Tầng Chín → TC)', () => {
-    // realmId 8 requires 22,000 tu vi to advance
+    // realmId 8: entryThreshold=44,600 + tuViRequired=22,000 → absoluteCap=66,600
+    // tuVi is CUMULATIVE — required is the absolute threshold, not the incremental amount
     const result = canAttemptBreakthrough({ realmId: 8, tuVi: 100n });
     expect(result.allowed).toBe(false);
     if (!result.allowed && result.reason === 'insufficient_tuvi') {
-      expect(result.required).toBe(22_000);
+      expect(result.required).toBe(66_600);
     }
   });
 
@@ -74,8 +75,9 @@ describe('canAttemptBreakthrough', () => {
   });
 
   it('returns allowed: true for realm 11 (TC Hậu Kỳ → KD) with sufficient tuVi', () => {
-    // realmId 11 requires 78,000 tu vi
-    const result = canAttemptBreakthrough({ realmId: 11, tuVi: 78_000n });
+    // realmId 11: entryThreshold=153,600 + tuViRequired=78,000 → absoluteCap=231,600
+    // tuVi is CUMULATIVE — must pass the absolute threshold, not just tuViRequired
+    const result = canAttemptBreakthrough({ realmId: 11, tuVi: 231_600n });
     expect(result.allowed).toBe(true);
   });
 });

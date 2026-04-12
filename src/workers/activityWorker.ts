@@ -147,9 +147,8 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
     // This is the ONLY correct atomic pattern — never read-then-write for cap checks.
 
     // Pre-check: if tuVi has already reached the breakthrough threshold, stop accumulating.
-    // Player must /breakthrough before earning more. This is a soft cap (read-then-check),
-    // race window is acceptable because: (a) row is locked by FOR UPDATE above, and
-    // (b) slight overage at the exact threshold moment is a game design non-issue.
+    // Player must /breakthrough before earning more. The row is already locked by FOR UPDATE
+    // above, so no race condition is possible — this check is authoritative.
     //
     // tuVi is CUMULATIVE — must compare against ABSOLUTE threshold (entryThreshold + tuViRequired),
     // NOT tuViRequired alone (which is an incremental value relative to entryThreshold).
@@ -201,9 +200,10 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
     // ── Post-award: daily streak logic (runs outside tx to avoid long hold) ─
     // Streak bonus goes DIRECTLY to tu_vi (bypasses daily cap — it's a reward)
     // Called outside transaction to release row lock before streak DB write
-    const charForStreak = { ...char, streakDays: char.streakDays, lastActiveDate: char.lastActiveDate };
-    // Schedule streak update after transaction commits — fire-and-forget with error log
-    updateStreak(char.id, data.timestamp, charForStreak).catch((err) =>
+    updateStreak(char.id, data.timestamp, {
+      streakDays: char.streakDays,
+      lastActiveDate: char.lastActiveDate,
+    }).catch((err) =>
       logger.error('ActivityWorker', `updateStreak failed for char ${char.id}`, err),
     );
   });

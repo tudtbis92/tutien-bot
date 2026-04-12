@@ -36,6 +36,8 @@ async function fetchShardStatuses(
 }
 
 function allShardsReady(shards: ShardStatus[], failed: boolean): boolean {
+  // shards.length === 0 means the manager has not yet spawned any shards (startup window).
+  // Treat as healthy so the deploy script's /ready check does not fail during spawn.
   return !failed && (shards.length === 0 || shards.every((s) => s.status === Status.Ready));
 }
 

@@ -27,8 +27,6 @@ import {
 } from 'discord.js';
 import { eq, sql, and, lte } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { users } from '../../db/schema/users.js';
-import { characters } from '../../db/schema/characters.js';
 import { items } from '../../db/schema/items.js';
 import { characterItems } from '../../db/schema/character_items.js';
 import { recipes } from '../../db/schema/recipes.js';
@@ -41,7 +39,7 @@ import { getProfessionLevel } from '../../types/professions.js';
 import type { ProfessionKey } from '../../types/professions.js';
 import { buildItemEmbed } from '../../ui/embeds/buildItemEmbed.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
-import { resolveLocale, getT } from '../../i18n/index.js';
+import { fetchCommandContext } from '../../utils/commandContext.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -60,6 +58,38 @@ type CraftResult =
       customEmoji: string;
       creatorTag: string;
     };
+
+// ── Inventory upsert helper ───────────────────────────────────────────────
+
+type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Upsert a standard (non-unique) item into a character's inventory.
+ * Inserts quantity 1; on conflict increments by 1.
+ * Returns the item's nameI18nKey for the result embed.
+ */
+async function addItemToInventory(
+  tx: TxClient,
+  characterId: number,
+  resultItemId: number,
+): Promise<string> {
+  const resultItemRow = await tx
+    .select({ nameI18nKey: items.nameI18nKey })
+    .from(items)
+    .where(eq(items.id, resultItemId))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  await tx
+    .insert(characterItems)
+    .values({ characterId, itemId: resultItemId, quantity: 1 })
+    .onConflictDoUpdate({
+      target: [characterItems.characterId, characterItems.itemId],
+      set: { quantity: sql`${characterItems.quantity} + 1` },
+    });
+
+  return resultItemRow?.nameI18nKey ?? 'game:items.unknown';
+}
 
 // ── Attribute rolling ─────────────────────────────────────────────────────
 
@@ -132,26 +162,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  const shardId = interaction.client.shard?.ids[0];
-
-  // Fetch user locale and character in parallel
-  const [userRow, char] = await Promise.all([
-    db
-      .select({ locale: users.locale })
-      .from(users)
-      .where(eq(users.discordId, interaction.user.id))
-      .limit(1)
-      .then((rows) => rows[0]),
-    db
-      .select()
-      .from(characters)
-      .where(eq(characters.discordId, interaction.user.id))
-      .limit(1)
-      .then((rows) => rows[0]),
-  ]);
-
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
+  const { t, char, shardId } = await fetchCommandContext(interaction);
 
   if (!char) {
     await interaction.editReply({
@@ -248,27 +259,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       );
 
       if (!archetype) {
-        // Fallback: treat as standard craft if no archetype found
-        const resultItemRow = await tx
-          .select()
-          .from(items)
-          .where(eq(items.id, recipe.resultItemId))
-          .limit(1)
-          .then((rows) => rows[0]);
-
-        await tx
-          .insert(characterItems)
-          .values({ characterId: char.id, itemId: recipe.resultItemId, quantity: 1 })
-          .onConflictDoUpdate({
-            target: [characterItems.characterId, characterItems.itemId],
-            set: { quantity: sql`${characterItems.quantity} + 1` },
-          });
-
-        return {
-          success: true,
-          isUnique: false,
-          itemNameI18nKey: resultItemRow?.nameI18nKey ?? 'game:items.unknown',
-        };
+        // Fallback: treat as standard craft if no archetype found for this profession
+        const nameI18nKey = await addItemToInventory(tx, char.id, recipe.resultItemId);
+        return { success: true, isUnique: false, itemNameI18nKey: nameI18nKey };
       }
 
       // Roll random attributes from archetype pool (2-4 attributes)
@@ -302,7 +295,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
       const newItemId = newItemRows[0]?.id;
       if (!newItemId) {
-        return { success: false, reason: 'insufficient_materials' }; // Should not happen
+        // Should not happen — INSERT with RETURNING always returns a row on success
+        throw new Error(`INSERT into items returned no id for recipe ${recipeId}`);
       }
 
       // INSERT into character_items for the new unique item
@@ -323,26 +317,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     }
 
     // h. Standard craft: add result item to inventory
-    const resultItemRow = await tx
-      .select()
-      .from(items)
-      .where(eq(items.id, recipe.resultItemId))
-      .limit(1)
-      .then((rows) => rows[0]);
-
-    await tx
-      .insert(characterItems)
-      .values({ characterId: char.id, itemId: recipe.resultItemId, quantity: 1 })
-      .onConflictDoUpdate({
-        target: [characterItems.characterId, characterItems.itemId],
-        set: { quantity: sql`${characterItems.quantity} + 1` },
-      });
-
-    return {
-      success: true,
-      isUnique: false,
-      itemNameI18nKey: resultItemRow?.nameI18nKey ?? 'game:items.unknown',
-    };
+    const nameI18nKey = await addItemToInventory(tx, char.id, recipe.resultItemId);
+    return { success: true, isUnique: false, itemNameI18nKey: nameI18nKey };
   });
 
   // 4. Handle result outside transaction

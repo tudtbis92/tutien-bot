@@ -25,8 +25,6 @@ import {
 } from 'discord.js';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { users } from '../../db/schema/users.js';
-import { characters } from '../../db/schema/characters.js';
 import { items } from '../../db/schema/items.js';
 import { characterItems } from '../../db/schema/character_items.js';
 import { GATHER_TIER_REQUIREMENTS, GATHER_REALM_REQUIREMENTS } from '../../constants/itemAttributes.js';
@@ -36,7 +34,7 @@ import type { ProfessionKey } from '../../types/professions.js';
 import { buildItemEmbed } from '../../ui/embeds/buildItemEmbed.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { tryAcquireCooldown } from '../../cache/cooldown.js';
-import { resolveLocale, getT } from '../../i18n/index.js';
+import { fetchCommandContext } from '../../utils/commandContext.js';
 
 // ── Material tier inference ───────────────────────────────────────────────
 
@@ -55,26 +53,26 @@ function inferMaterialTier(basePrice: bigint): number {
 }
 
 /**
- * Determine which profession is needed to gather a material item.
- * Uses item type mapping: material items default to 'duoc_su' unless overridden.
- * In Phase 2 each item type maps to the most relevant profession.
+ * Map item types to the corresponding gathering profession.
+ * Defined at module level — constant across all calls.
  */
-function getProfessionForItemType(
-  itemType: string,
-): ProfessionKey {
-  // Map item types to their corresponding gathering profession
-  const TYPE_TO_PROFESSION: Record<string, ProfessionKey> = {
-    material: 'duoc_su',      // Herb/material gathering = Herbalism
-    stone: 'khai_linh',       // Spirit stones = Spirit Stone Mining
-    artifact: 'luyen_co',     // Artifact materials = Artifact Refinement
-    equipment: 'luyen_kim',   // Metal/weapon materials = Metal Refinement
-    food: 'linh_tru',         // Food ingredients = Spirit Cooking
-    companion: 'thuan_thu',   // Beast parts = Beast Taming
-    formation: 'tran_phap',   // Formation materials = Formation Arrays
-    scroll: 'thuat_su',       // Knowledge scrolls = Divination
-    consumable: 'luyen_dan',  // Consumable ingredients = Pill Crafting
-  };
+const TYPE_TO_PROFESSION: Record<string, ProfessionKey> = {
+  material: 'duoc_su',      // Herb/material gathering = Herbalism
+  stone: 'khai_linh',       // Spirit stones = Spirit Stone Mining
+  artifact: 'luyen_co',     // Artifact materials = Artifact Refinement
+  equipment: 'luyen_kim',   // Metal/weapon materials = Metal Refinement
+  food: 'linh_tru',         // Food ingredients = Spirit Cooking
+  companion: 'thuan_thu',   // Beast parts = Beast Taming
+  formation: 'tran_phap',   // Formation materials = Formation Arrays
+  scroll: 'thuat_su',       // Knowledge scrolls = Divination
+  consumable: 'luyen_dan',  // Consumable ingredients = Pill Crafting
+};
 
+/**
+ * Determine which profession is needed to gather a material item.
+ * Falls back to 'duoc_su' for unknown item types.
+ */
+function getProfessionForItemType(itemType: string): ProfessionKey {
   return (TYPE_TO_PROFESSION[itemType] as ProfessionKey | undefined) ?? 'duoc_su';
 }
 
@@ -105,26 +103,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  const shardId = interaction.client.shard?.ids[0];
-
-  // Fetch user locale and character in parallel
-  const [userRow, char] = await Promise.all([
-    db
-      .select({ locale: users.locale })
-      .from(users)
-      .where(eq(users.discordId, interaction.user.id))
-      .limit(1)
-      .then((rows) => rows[0]),
-    db
-      .select()
-      .from(characters)
-      .where(eq(characters.discordId, interaction.user.id))
-      .limit(1)
-      .then((rows) => rows[0]),
-  ]);
-
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
+  const { t, char, shardId } = await fetchCommandContext(interaction);
 
   if (!char) {
     await interaction.editReply({

@@ -7,7 +7,7 @@
  * Source: RESEARCH.md "Pattern 3: Breakthrough Command", CONTEXT.md D-11..D-14
  */
 
-import { REALM_CONFIG, TU_VI_TO_ADVANCE, type RealmTier } from '../constants/realms.js';
+import { REALM_CONFIG, TU_VI_TO_ADVANCE, MAJOR_REALM_PREFIXES, type RealmTier } from '../constants/realms.js';
 
 /**
  * Get full RealmTier metadata for a given realm_id.
@@ -30,25 +30,10 @@ export function getRealmTier(realmId: number): RealmTier {
  * @param majorRealmIndex 0–11
  */
 export function getMajorRealmI18nPrefix(majorRealmIndex: number): string {
-  const PREFIXES = [
-    'luyen_khi',
-    'truc_co',
-    'kim_dan',
-    'nguyen_anh',
-    'hoa_than',
-    'luyen_hu',
-    'van_dinh',
-    'dai_thua',
-    'ban_tien',
-    'dia_tien',
-    'chan_tien',
-    'dai_la_tien',
-  ] as const;
-
-  if (majorRealmIndex < 0 || majorRealmIndex >= PREFIXES.length) {
+  if (majorRealmIndex < 0 || majorRealmIndex >= MAJOR_REALM_PREFIXES.length) {
     throw new RangeError(`Invalid majorRealmIndex: ${majorRealmIndex}. Must be 0–11.`);
   }
-  return PREFIXES[majorRealmIndex]!;
+  return MAJOR_REALM_PREFIXES[majorRealmIndex]!;
 }
 
 /**

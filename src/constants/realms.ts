@@ -150,7 +150,7 @@ const LUYEN_KHI_TIER_KEYS = [
 const STANDARD_TIER_KEYS = ['so_ky', 'trung_ky', 'hau_ky'] as const;
 
 /** Major realm i18n key prefixes (majorRealmIndex → i18n prefix) */
-const MAJOR_REALM_PREFIXES = [
+export const MAJOR_REALM_PREFIXES = [
   'luyen_khi',   // 0
   'truc_co',     // 1
   'kim_dan',     // 2

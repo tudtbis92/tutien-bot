@@ -16,10 +16,6 @@
 
 /* eslint-disable i18next/no-literal-string -- slash command name/description are static Discord API strings */
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { eq } from 'drizzle-orm';
-import { db } from '../../db/client.js';
-import { users } from '../../db/schema/users.js';
-import { characters } from '../../db/schema/characters.js';
 import {
   canAttemptBreakthrough,
   rollBreakthrough,
@@ -28,7 +24,7 @@ import {
 } from '../../services/breakthrough.js';
 import { buildBreakthroughEmbed } from '../../ui/embeds/buildBreakthroughEmbed.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
-import { resolveLocale, getT } from '../../i18n/index.js';
+import { fetchCommandContext } from '../../utils/commandContext.js';
 
 export const data = new SlashCommandBuilder()
   .setName('breakthrough')
@@ -42,26 +38,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  const shardId = interaction.client.shard?.ids[0];
-
-  // Fetch user locale and character in parallel
-  const [userRow, char] = await Promise.all([
-    db
-      .select({ locale: users.locale })
-      .from(users)
-      .where(eq(users.discordId, interaction.user.id))
-      .limit(1)
-      .then((rows) => rows[0]),
-    db
-      .select()
-      .from(characters)
-      .where(eq(characters.discordId, interaction.user.id))
-      .limit(1)
-      .then((rows) => rows[0]),
-  ]);
-
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
+  const { t, char, shardId } = await fetchCommandContext(interaction);
 
   if (!char) {
     await interaction.editReply({

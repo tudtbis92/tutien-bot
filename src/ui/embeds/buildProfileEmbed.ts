@@ -50,7 +50,7 @@ export function buildProfileEmbed(data: ProfileEmbedData, t: TFunction): EmbedBu
   let progressBar: string;
   if (!isFinite(tuViRequired)) {
     // Max tier — no advancement possible
-    tuViStr = `${formatBalance(data.tuVi)}`;
+    tuViStr = formatBalance(data.tuVi);
     progressBar = EMOJI.PROGRESS.repeat(10);
   } else {
     const progressNum = Number(progressAbsolute);
