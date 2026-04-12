@@ -42,7 +42,7 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 | # | Phase | Requirements | Status | Completed |
 |---|-------|-------------|--------|-----------|
 | 1 | Foundation | INFRA-01..07, I18N-01..03 (10) | ✅ Complete | 2026-04-11 |
-| 2 | Core Game Loop + Progression | CORE-01..08, PROG-01..08 (16) | ✅ Complete (7/7 plans, human UAT pending) | 2026-04-12 |
+| 2 | Core Game Loop + Progression | CORE-01..08, PROG-01..08 (16) | ✅ Complete (7/7 plans, UAT 5/5 passed) | 2026-04-12 |
 | 3 | Combat + Marketplace | COMBAT-01..04, MKT-01..12 (16) | Pending | - |
 | 4 | Season System + Admin | SEASON-01..05, ADMIN-01 (6) | Pending | - |
 
@@ -89,7 +89,6 @@ Phase 4 [Season System + Admin]    ░░░░░ NOT STARTED
 
 ### Active Todos
 
-- [ ] Human UAT for Phase 2: remaining 4 items in `.planning/phases/02-core-game-loop-progression/02-HUMAN-UAT.md` (Test 1 passed; Tests 2–5 pending)
 - [ ] Resolve two-tier currency decision before writing Phase 3 economy schema (probably not needed for v1)
 - [ ] Specify "what persists" across season reset before Phase 4 planning
 - [ ] VWAP outlier rejection algorithm needs research before Phase 3 planning
@@ -117,7 +116,7 @@ None currently.
 
 **Phase 02 completion note:**  
 - 7/7 plans executed, 23/23 tests pass, tsc clean, lint clean.
-- Human UAT in `02-HUMAN-UAT.md` — 5 items require live bot testing before formally closing Phase 2.
+- Human UAT complete: 5/5 tests passed. 5 bugs found and fixed during UAT.
 - Minor issues (MI-01..08) from 02-REVIEW.md deferred to a future cleanup pass.
 
 **Architecture reminders:**
@@ -132,4 +131,4 @@ None currently.
 ---
 
 *State initialized: 2026-04-11*  
-*Last updated: 2026-04-12 — Phase 2 UAT bugs fixed (breakthrough embed, absolute tu_vi threshold, Layer 1 removal, /language command)*
+*Last updated: 2026-04-12 — Phase 2 UAT complete (5/5 passed); Phase 2 formally closed*
