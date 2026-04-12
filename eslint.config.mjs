@@ -45,9 +45,10 @@ export default [
             'rest\\.put', 'Routes\\.applicationCommands',
             // Redis protocol commands
             'redis\\.set', 'redis\\.get', 'redis\\.ping', 'redis\\.pttl',
-            // SlashCommandBuilder — phase 1 commands are developer test, not i18n'd yet
+            // SlashCommandBuilder — command names/descriptions are static Discord API strings
             'new SlashCommandBuilder',
             '\\.setName', '\\.setDescription',
+            '\\.setNameLocalizations', '\\.setDescriptionLocalizations',
             // i18n translation function — keys are identifiers, not user strings
             '^t$', 'getT',
             // Node.js path/file operations
