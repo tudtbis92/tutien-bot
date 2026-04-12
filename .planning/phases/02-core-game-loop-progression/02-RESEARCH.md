@@ -25,15 +25,15 @@
 - Anomaly flag after 10+ quality/cap violations per day
 
 **Realm Structure (D-10..D-14):**
-- 11 major realms, 42 total tiers, realm_id SMALLINT 0–41
+- 12 major realms, 42 total tiers, realm_id SMALLINT 0–41
 - Luyện Khí: 9 tiers (Tầng Một–Tầng Chín)
-- Remaining 10 realms: Sơ Kỳ / Trung Kỳ / Hậu Kỳ each
+- Remaining 11 realms (Trúc Cơ → Đại La Tiên): Sơ Kỳ / Trung Kỳ / Hậu Kỳ each
 - Realm metadata in `src/constants/realms.ts` — NOT a DB table
 - Display names from i18n lookup keys (e.g., `game:realms.luyen_khi.tang_1`)
 
 **Breakthrough (D-15..D-19):**
 - Failure only at major realm boundary crossings (not minor tier advances)
-- Failure table: LK→TC 0%, TC→KD 20%, KD→NA 40%, NA→HT 60%, HT→LH 70%, LH→VD 75%, VD→DT 80%, DT→BT 85%, BT→DT 88%, DT→CT 90%
+- Failure table: LK→TC 0%, TC→KD 20%, KD→NA 40%, NA→HT 60%, HT→LH 70%, LH→VD 75%, VD→DT 80%, DT→BT 85%, BT→ĐT 88%, ĐT→CT 90%, CT→ĐLT 93%
 - Failure penalty: lose 50% of excess tu vi above current realm's entry threshold
 - Command: `/đột_phá` — success/fail from i18n `game:breakthrough.success/fail`
 
@@ -157,6 +157,7 @@ src/
 │   ├── character_items.ts  # NEW — player inventory
 │   ├── recipes.ts          # NEW — crafting recipes
 │   ├── recipe_ingredients.ts # NEW — recipe materials
+│   ├── guild_activity.ts   # NEW — guild membership tracking for guild leaderboard
 │   └── index.ts            # Re-export all schemas
 ├── events/
 │   ├── interactionCreate.ts # Phase 1 (extend for button/select)
@@ -744,6 +745,60 @@ const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
 
 ---
 
+### Pattern 8: Guild Activity Tracking for Guild Leaderboard (PROG-04)
+
+**What:** Characters are global (one character per user across all servers). To support a guild-specific leaderboard, we need a denormalized table recording which users have been active in which guilds.
+
+**When to use:** Guild-specific `/bxh` leaderboard query
+
+```typescript
+// src/db/schema/guild_activity.ts
+import { pgTable, integer, varchar, primaryKey, timestamp } from 'drizzle-orm/pg-core';
+import { characters } from './characters.js';
+
+export const guildActivity = pgTable('guild_activity', {
+  characterId: integer('character_id').notNull().references(() => characters.id),
+  guildId: varchar('guild_id', { length: 20 }).notNull(),
+  lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.characterId, table.guildId] }),
+]);
+```
+
+**Populated by:** ActivityWorker — after any successful tu vi award, upsert into `guild_activity` for the job's `(characterId, guildId)` pair:
+
+```typescript
+// In processActivityJob(), after successful tu vi award:
+await db
+  .insert(guildActivity)
+  .values({ characterId: char.id, guildId: data.guildId, lastActiveAt: sql`now()` })
+  .onConflictDoUpdate({
+    target: [guildActivity.characterId, guildActivity.guildId],
+    set: { lastActiveAt: sql`now()` },
+  });
+```
+
+**Guild leaderboard query:**
+
+```typescript
+const guildEntries = await db
+  .select({
+    discordId: characters.discordId,
+    realmId: characters.realmId,
+    tuVi: characters.tuVi,
+  })
+  .from(characters)
+  .innerJoin(guildActivity, eq(guildActivity.characterId, characters.id))
+  .where(eq(guildActivity.guildId, guildId))
+  .orderBy(sql`${characters.tuVi} DESC`)
+  .limit(PAGE_SIZE)
+  .offset(page * PAGE_SIZE);
+```
+
+**Key insight:** This pattern avoids querying the Discord API for guild member lists (which has rate limits and doesn't work cross-shard). The `guild_activity` table is updated organically as players generate activity in each guild.
+
+---
+
 ### Anti-Patterns to Avoid
 
 - **Synchronous DB write in messageCreate handler** — blocks gateway, causes disconnects at scale. Always enqueue to pg-boss.
@@ -855,10 +910,15 @@ export const TU_VI_TO_ADVANCE: readonly number[] = [
   // Chân Tiên Sơ/Trung/Hậu (realm_id 36-38) — legendary
   1_935_000_000,
   2_900_000_000,
-  Infinity,  // Max tier — cannot advance
+  4_350_000_000, // 38 → 39 (major boundary: 93% fail — CT → ĐLT)
+
+  // Đại La Tiên Sơ/Trung/Hậu (realm_id 39-41) — apex realm
+  6_525_000_000,
+  9_787_500_000,
+  Infinity,  // 41: Max tier — cannot advance (Đại La Tiên Hậu Kỳ)
 ] as const;
-// NOTE: This array has 39 entries for realm_id 0-38.
-// See Open Question #1 for the 42 vs 39 discrepancy.
+// 42 entries total for realm_id 0-41. Resolved via Option B (CONTEXT.md D-10).
+// [RESOLVED: Open Question #1 — Đại La Tiên added as 12th major realm]
 ```
 
 **Context for upper realms:** At 10,000/day max, reaching Hóa Thần requires 2,701,600 / 10,000 = 270 days minimum. These are truly multi-season goals for the most dedicated players.
@@ -873,9 +933,9 @@ export const TU_VI_TO_ADVANCE: readonly number[] = [
 export interface RealmTier {
   id: number;              // 0-41
   i18nKey: string;         // e.g., 'game:realms.luyen_khi.tang_1'
-  majorRealmIndex: number; // 0=LK, 1=TC, 2=KD, ... 10=CT
+  majorRealmIndex: number; // 0=LK, 1=TC, 2=KD, 3=NA, 4=HT, 5=LH, 6=VD, 7=DT, 8=BT, 9=ĐịaT, 10=CT, 11=ĐLT
   tierInMajor: number;     // 0=Sơ/Tầng1, 1=Trung/Tầng2, 2=Hậu/Tầng3, etc.
-  isMajorBoundary: boolean; // true for tier 8, 11, 14, 17, 20, 23, 26, 29, 32, 35
+  isMajorBoundary: boolean; // true for tier 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38 (Hậu Kỳ of realms TC-CT)
   failureChance: number;   // 0.0–1.0 (only relevant when isMajorBoundary=true)
   entryThreshold: number;  // cumulative tu_vi to REACH this tier (for penalty calc)
   tuViRequired: number;    // = TU_VI_TO_ADVANCE[id] — to advance TO next tier
@@ -1060,12 +1120,10 @@ Use a helper `getProfessionLevel(rawJson, profKey): number` that always returns 
 
 ---
 
-### Pitfall 8: Realm Count Discrepancy (39 vs 42)
-**What goes wrong:** The table in D-10 lists 9 Luyện Khí tiers + 10 major realms × 3 tiers = 39 total tiers. But D-11/D-29 say realm_id 0–41 (42 values).
+### Pitfall 8: Realm Count Discrepancy ~~(39 vs 42)~~ — RESOLVED
+**Resolution:** CONTEXT.md was updated (commit `78633e8`) to add **Đại La Tiên** as the 12th major realm (tiers 39–41). The formula is now correct: 9 (Luyện Khí) + 11 × 3 (Trúc Cơ through Đại La Tiên) = **42 tiers**. TU_VI_TO_ADVANCE has 42 entries (realm_id 0–41), and the `check` constraint `realm_id <= 41` is accurate.
 
-**Why it happens:** Internal inconsistency in CONTEXT.md. See Open Question #1 for resolution.
-
-**How to avoid:** Choose a resolution before writing `src/constants/realms.ts`. This is flagged as Open Question #1.
+**Action for executor:** Implement `src/constants/realms.ts` with the 42-entry TU_VI_TO_ADVANCE array above (realm_id 39–41 added for Đại La Tiên). Add i18n keys `game:realms.dai_la_tien.so_ky`, `game:realms.dai_la_tien.trung_ky`, `game:realms.dai_la_tien.hau_ky` in all three locales.
 
 ---
 
@@ -1198,19 +1256,11 @@ const result = await db.transaction(async (tx) => {
 
 ## Open Questions
 
-### Open Question 1: Realm Count Discrepancy (39 vs 42) ⚠️ MUST RESOLVE BEFORE CODING
+### ~~Open Question 1: Realm Count Discrepancy (39 vs 42)~~ — RESOLVED
 
-**What we know:** D-10 defines 11 major realms: Luyện Khí (9 sub-tiers) + 10 others (3 sub-tiers each) = 9 + 30 = **39 total tiers**. But D-11 and D-29 both reference realm_id 0–41, which implies **42 values**.
+**Resolution:** **Option B chosen.** CONTEXT.md updated (commit `78633e8`) to add **Đại La Tiên** as the 12th major realm with 3 tiers (Sơ/Trung/Hậu Kỳ, realm_id 39–41). Formula: 9 + 11×3 = 42. ✓
 
-**What's unclear:** Three tiers are unaccounted for.
-
-**Resolution options:**
-- **Option A:** Luyện Khí has 12 tiers (Tầng Một–Tầng Mười Hai). More common in traditional xianxia. Fits xianxia genre conventions. Realm IDs: LK = 0–11, then TC = 12–14, etc. = 12 + 30 = 42. ✓
-- **Option B:** Add a 12th major realm "Đại La Tiên" (tiers 39–41) at the apex. Realm IDs 36–38 = Chân Tiên, 39–41 = Đại La Tiên. Total = 9 + 11×3 = 42. ✓
-
-**Recommendation:** Option A (extend Luyện Khí to 12 tiers) — simpler, consistent with D-11 stating "11 major realms", no new named realm needed. Update D-10 to "Tầng Một through Tầng Mười Hai." The threshold curve above would add 3 more Luyện Khí tiers at lower cost (e.g., 29,000, 38,000, 51,000 for tiers 9-11 before TC begins at realm_id 12).
-
-**Blocked until:** Product owner confirms Option A or B.
+TU_VI_TO_ADVANCE array above reflects this with 42 entries. No further action needed on this question.
 
 ---
 
@@ -1307,7 +1357,7 @@ This is atomic-safe: the reset happens inside the concurrency:1 worker before th
 - Architecture Patterns: HIGH — verified against Context7 official docs + existing codebase
 - Agent-Designed Constants: MEDIUM — curves are reasonable but game balance is empirical
 - Pitfalls: HIGH — all pitfalls either verified from Phase 1 execution or confirmed in official docs
-- Realm Count: BLOCKED — internal discrepancy requires product owner decision
+- Realm Count: RESOLVED — 42 tiers confirmed, Đại La Tiên added as 12th realm (CONTEXT.md commit `78633e8`)
 
 **Research date:** 2026-04-12
 **Valid until:** 2026-10-12 (stable ecosystem — no fast-moving packages in this stack)
