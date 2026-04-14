@@ -1,102 +1,84 @@
 /**
- * /gather - Gathering command.
+ * /gather — Gacha gathering command (Phase 02.1 refactor).
  *
- * Allows cultivators to gather raw materials based on their profession level and realm.
- * Tier-gated gathering: higher-tier materials require higher profession level AND realm.
- * 5-minute cooldown per profession to prevent farming.
- *
- * Business rules:
- *  - materialTier inferred from item basePrice (0-99=common, 100-499=uncommon, 500-1999=rare, 2000+=epic)
- *  - Profession gating: GATHER_TIER_REQUIREMENTS[tier] min level required
- *  - Realm gating: GATHER_REALM_REQUIREMENTS[tier] min realmId required
- *  - Yield formula: computeGatheringYield(realmId, profLevel, tier)
- *  - Inventory: INSERT ... ON CONFLICT DO UPDATE SET quantity = quantity + qty
- *  - Cooldown: 5 minutes per profession key (T-02-GATHER-01)
+ * Design decisions (CONTEXT.md):
+ *  - D-01: Gather is gacha — spend linh thạch, receive random item from pool
+ *  - D-02: Fee scales with major realm index
+ *  - D-03: 1 expand pool — low tiers always available, high tiers gated by min_major_realm_index
+ *  - D-04: 99.8% net loss invariant (EV negative at all fee thresholds)
+ *  - D-05: No cooldown on gather
+ *  - D-06: Multi-gather /gather amount:N (1–10)
+ *  - D-11: Crafted items NEVER appear in gather pool
  *
  * Threat mitigations:
- *  - T-02-GATHER-01: tryAcquireCooldown 5-min per profession; server-side, no client influence
- *  - T-02-GATHER-02: char.realmId checked server-side against GATHER_REALM_REQUIREMENTS
+ *  - T-02-GATHER-03: fee deducted atomically with item grant in single transaction
+ *  - T-02-GATHER-04: amount clamped 1–10 server-side; pool filtered by realm index server-side
  */
 
-/* eslint-disable i18next/no-literal-string -- slash command names/descriptions are Discord API static strings */
+/* eslint-disable i18next/no-literal-string -- Discord API static strings */
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
 } from 'discord.js';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { items } from '../../db/schema/items.js';
+import { characters } from '../../db/schema/characters.js';
 import { characterItems } from '../../db/schema/character_items.js';
-import { GATHER_TIER_REQUIREMENTS, GATHER_REALM_REQUIREMENTS } from '../../constants/itemAttributes.js';
-import { computeGatheringYield, getRealmTier } from '../../utils/realmUtils.js';
-import { getProfessionLevel } from '../../types/professions.js';
-import type { ProfessionKey } from '../../types/professions.js';
+import { gatherPoolItems } from '../../db/schema/gather_pool_items.js';
+import { items } from '../../db/schema/items.js';
+import { GATHER_FEES, getMajorRealmIndex } from '../../constants/gatherFees.js';
 import { buildItemEmbed } from '../../ui/embeds/buildItemEmbed.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
-import { tryAcquireCooldown } from '../../cache/cooldown.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
-
-// ── Material tier inference ───────────────────────────────────────────────
-
-/**
- * Infer material tier (0-3) from item basePrice.
- * tier 0 (common):   0-99
- * tier 1 (uncommon): 100-499
- * tier 2 (rare):     500-1999
- * tier 3 (epic):     2000+
- */
-function inferMaterialTier(basePrice: bigint): number {
-  if (basePrice >= 2000n) return 3;
-  if (basePrice >= 500n) return 2;
-  if (basePrice >= 100n) return 1;
-  return 0;
-}
-
-/**
- * Map item types to the corresponding gathering profession.
- * Defined at module level — constant across all calls.
- */
-const TYPE_TO_PROFESSION: Record<string, ProfessionKey> = {
-  material: 'duoc_su',      // Herb/material gathering = Herbalism
-  stone: 'khai_linh',       // Spirit stones = Spirit Stone Mining
-  artifact: 'luyen_co',     // Artifact materials = Artifact Refinement
-  equipment: 'luyen_kim',   // Metal/weapon materials = Metal Refinement
-  food: 'linh_tru',         // Food ingredients = Spirit Cooking
-  companion: 'thuan_thu',   // Beast parts = Beast Taming
-  formation: 'tran_phap',   // Formation materials = Formation Arrays
-  scroll: 'thuat_su',       // Knowledge scrolls = Divination
-  consumable: 'luyen_dan',  // Consumable ingredients = Pill Crafting
-};
-
-/**
- * Determine which profession is needed to gather a material item.
- * Falls back to 'duoc_su' for unknown item types.
- */
-function getProfessionForItemType(itemType: string): ProfessionKey {
-  return (TYPE_TO_PROFESSION[itemType] as ProfessionKey | undefined) ?? 'duoc_su';
-}
 
 // ── Command definition ────────────────────────────────────────────────────
 
 export const data = new SlashCommandBuilder()
   .setName('gather')
-  .setDescription('Thu thập nguyên liệu từ thiên nhiên')
+  .setDescription('Chi linh thạch để thu thập nguyên liệu ngẫu nhiên')
   .setDescriptionLocalizations({
-    'en-US': 'Gather raw materials from nature',
-    'zh-CN': '采集原材料',
+    'en-US': 'Spend spirit stones to gather random materials',
+    'zh-CN': '花费灵石随机采集原材料',
   })
   .addIntegerOption((opt) =>
     opt
-      .setName('item_id')
-      .setDescription('ID của vật phẩm cần thu thập')
+      .setName('amount')
+      .setDescription('Số lần thu thập (1–10)')
       .setDescriptionLocalizations({
-        'en-US': 'ID of the item to gather',
-        'zh-CN': '要采集的物品ID',
+        'en-US': 'Number of gather rolls (1–10)',
+        'zh-CN': '采集次数（1–10）',
       })
-      .setRequired(true)
-      .setMinValue(1),
+      .setRequired(false)
+      .setMinValue(1)
+      .setMaxValue(10),
   );
 /* eslint-enable i18next/no-literal-string */
+
+// ── Weighted random selection ─────────────────────────────────────────────
+
+interface PoolEntry {
+  itemId: number;
+  weight: number;
+}
+
+/**
+ * Select a random item from a weighted pool.
+ * Returns null if pool is empty (should not happen in practice).
+ */
+function weightedRandom(pool: PoolEntry[]): number | null {
+  if (pool.length === 0) return null;
+
+  const totalWeight = pool.reduce((sum, e) => sum + e.weight, 0);
+  let rand = Math.random() * totalWeight;
+
+  for (const entry of pool) {
+    rand -= entry.weight;
+    if (rand <= 0) return entry.itemId;
+  }
+
+  // Fallback — floating point edge case
+  return pool[pool.length - 1]!.itemId;
+}
 
 // ── Execute ───────────────────────────────────────────────────────────────
 
@@ -112,40 +94,22 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  // 2. Resolve item
-  const itemId = interaction.options.getInteger('item_id', true);
-  const item = await db
-    .select()
-    .from(items)
-    .where(eq(items.id, itemId))
-    .limit(1)
-    .then((rows) => rows[0]);
+  // 1. Parse amount (default 1, clamped 1–10 by Discord but double-checked)
+  const amount = Math.min(10, Math.max(1, interaction.options.getInteger('amount') ?? 1));
 
-  if (!item) {
-    await interaction.editReply({
-      embeds: [buildErrorEmbed(t('game:craft.recipe_not_found'), shardId)],
-    });
-    return;
-  }
+  // 2. Compute gather fee based on major realm index
+  const majorRealmIndex = getMajorRealmIndex(char.realmId);
+  const feePerRoll = GATHER_FEES[majorRealmIndex] ?? GATHER_FEES[GATHER_FEES.length - 1]!;
+  const totalFee = feePerRoll * BigInt(amount);
 
-  // 3. Infer material tier from base price
-  const materialTier = inferMaterialTier(item.basePrice);
-
-  // 4. Determine profession needed for this item type
-  const profKey = getProfessionForItemType(item.type);
-  const profLevel = getProfessionLevel(char.professionPoints, profKey);
-
-  // 5. Check profession level gate (T-02-GATHER-02 partial)
-  const requiredProfLevel = GATHER_TIER_REQUIREMENTS[materialTier]!;
-  if (profLevel < requiredProfLevel) {
-    const profName = t(`game:profession.names.${profKey}`);
+  // 3. Check balance
+  if (char.tuVi < totalFee) {
     await interaction.editReply({
       embeds: [
         buildErrorEmbed(
-          t('game:gather.insufficient_level', {
-            prof: profName,
-            level: requiredProfLevel,
-            item: t(item.nameI18nKey),
+          t('game:gather.insufficient_balance', {
+            required: totalFee.toString(),
+            current: char.tuVi.toString(),
           }),
           shardId,
         ),
@@ -154,75 +118,106 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  // 6. Check realm gate (T-02-GATHER-02)
-  const requiredRealmId = GATHER_REALM_REQUIREMENTS[materialTier]!;
-  if (char.realmId < requiredRealmId) {
-    let requiredRealmName: string;
-    try {
-      const realmTier = getRealmTier(requiredRealmId);
-      requiredRealmName = t(realmTier.i18nKey);
-    } catch {
-      requiredRealmName = `Realm ${requiredRealmId}`;
-    }
-    await interaction.editReply({
-      embeds: [
-        buildErrorEmbed(
-          t('game:gather.insufficient_realm', {
-            realm: requiredRealmName,
-            item: t(item.nameI18nKey),
-          }),
-          shardId,
-        ),
-      ],
-    });
-    return;
-  }
-
-  // 7. Cooldown check (T-02-GATHER-01): 5-minute per profession
-  const cooldownKey = `gather:${profKey}`;
-  const canProceed = await tryAcquireCooldown(
-    interaction.user.id,
-    cooldownKey,
-    300_000, // 5 minutes in milliseconds
-  );
-
-  if (!canProceed) {
-    await interaction.editReply({
-      embeds: [buildErrorEmbed(t('game:gather.cooldown'), shardId)],
-    });
-    return;
-  }
-
-  // 8. Compute gathering yield
-  const qty = computeGatheringYield(char.realmId, profLevel, materialTier);
-
-  // 9. Upsert inventory: INSERT ... ON CONFLICT DO UPDATE SET quantity = quantity + qty
-  await db
-    .insert(characterItems)
-    .values({
-      characterId: char.id,
-      itemId: item.id,
-      quantity: qty,
+  // 4. Load eligible pool entries for this realm index
+  const pool = await db
+    .select({
+      itemId: gatherPoolItems.itemId,
+      weight: gatherPoolItems.weight,
     })
-    .onConflictDoUpdate({
-      target: [characterItems.characterId, characterItems.itemId],
-      set: {
-        quantity: sql`${characterItems.quantity} + ${qty}`,
-      },
+    .from(gatherPoolItems)
+    .where(
+      and(
+        eq(gatherPoolItems.isActive, true),
+        sql`${gatherPoolItems.minMajorRealmIndex} <= ${majorRealmIndex}`,
+      ),
+    );
+
+  if (pool.length === 0) {
+    // Should never happen if seed ran correctly
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('game:gather.pool_empty'), shardId)],
+    });
+    return;
+  }
+
+  // 5. Roll N times and tally results
+  const gainMap = new Map<number, number>(); // itemId → quantity gained
+  for (let i = 0; i < amount; i++) {
+    const itemId = weightedRandom(pool);
+    if (itemId !== null) {
+      gainMap.set(itemId, (gainMap.get(itemId) ?? 0) + 1);
+    }
+  }
+
+  // 6. Atomic transaction: deduct fee + grant items
+  await db.transaction(async (tx) => {
+    // Deduct tu vi (linh thạch is the currency)
+    await tx
+      .update(characters)
+      .set({ tuVi: sql`${characters.tuVi} - ${totalFee}` })
+      .where(
+        and(
+          eq(characters.id, char.id),
+          sql`${characters.tuVi} >= ${totalFee}`, // double-check race condition
+        ),
+      );
+
+    // Grant items
+    for (const [itemId, quantity] of gainMap) {
+      await tx
+        .insert(characterItems)
+        .values({ characterId: char.id, itemId, quantity })
+        .onConflictDoUpdate({
+          target: [characterItems.characterId, characterItems.itemId],
+          set: { quantity: sql`${characterItems.quantity} + ${quantity}` },
+        });
+    }
+  });
+
+  // 7. Fetch item names for display
+  const gainEntries = [...gainMap.entries()];
+  const itemIds = gainEntries.map(([id]) => id);
+  const itemRows = await db
+    .select({ id: items.id, nameI18nKey: items.nameI18nKey })
+    .from(items)
+    .where(inArray(items.id, itemIds));
+
+  const idToKey = new Map(itemRows.map((r) => [r.id, r.nameI18nKey]));
+
+  // 8. Build result embed
+  if (amount === 1 && gainEntries.length === 1) {
+    // Single gather — use standard item embed
+    const [itemId, quantity] = gainEntries[0]!;
+    const nameI18nKey = idToKey.get(itemId) ?? 'game:items.unknown';
+    await interaction.editReply({
+      embeds: [
+        buildItemEmbed(
+          { type: 'gather', itemNameI18nKey: nameI18nKey, quantity, shardId },
+          t,
+        ),
+      ],
+    });
+  } else {
+    // Multi-gather — list all items received
+    const lines = gainEntries.map(([itemId, qty]) => {
+      const key = idToKey.get(itemId) ?? 'game:items.unknown';
+      const name = t(key);
+      return `• **${name}** × ${qty}`;
     });
 
-  // 10. Build success embed
-  await interaction.editReply({
-    embeds: [
-      buildItemEmbed(
-        {
-          type: 'gather',
-          itemNameI18nKey: item.nameI18nKey,
-          quantity: qty,
-          shardId,
-        },
-        t,
-      ),
-    ],
-  });
+    const { EmbedBuilder } = await import('discord.js');
+    const { COLORS, embedFooter } = await import('../../ui/theme.js');
+    const { EMOJI } = await import('../../assets/emojis.js');
+
+    await interaction.editReply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(COLORS.SUCCESS)
+          .setTitle(`${EMOJI.SUCCESS} ${t('game:gather.multi_success', { amount, fee: totalFee.toString() })}`)
+          .setDescription(lines.join('\n'))
+          .setFooter(embedFooter(shardId))
+          .setTimestamp(),
+      ],
+    });
+  }
 }

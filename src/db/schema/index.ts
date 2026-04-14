@@ -12,3 +12,6 @@ export * from './character_items.js';
 export * from './recipes.js';
 export * from './recipe_ingredients.js';
 export * from './guild_activity.js';
+
+// Phase 2.1 schemas
+export * from './gather_pool_items.js';

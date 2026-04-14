@@ -113,16 +113,19 @@
       "luyen_khi_nc": "Luyện Khí",
       "tran_phap": "Trận Pháp",
       "linh_tru": "Linh Trù",
-      "luyen_co": "Luyện Cổ",
+      "luyen_co": "Luyện Cổ Trùng",
       "duoc_su": "Dược Sư",
       "thuan_thu": "Thuần Thú",
       "luyen_kim": "Luyện Kim",
-      "khai_linh": "Khai Linh",
+      "phu_su": "Phù Sư",
       "thuat_su": "Thuật Sư"
     }
   },
   "gather": {
     "success": "Thu thập thành công {{amount}}x {{item}}.",
+    "multi_success": "Thu thập {{amount}} lần (phí: {{fee}} linh thạch):",
+    "insufficient_balance": "Không đủ linh thạch. Cần {{required}}, hiện có {{current}}.",
+    "pool_empty": "Hiện không có nguyên liệu nào có thể thu thập.",
     "cooldown": "Bạn cần nghỉ ngơi trước khi thu thập tiếp.",
     "insufficient_level": "Cần cấp độ nghề {{prof}} tối thiểu {{level}} để thu thập {{item}}.",
     "insufficient_realm": "Cần đạt cảnh giới {{realm}} để thu thập {{item}}."
@@ -143,5 +146,10 @@
     "insufficient_materials": "Không đủ nguyên liệu.",
     "insufficient_level": "Cần cấp độ nghề {{level}} để chế tạo recipe này.",
     "recipe_not_found": "Không tìm thấy recipe."
+  },
+  "recipes": {
+    "title_all": "Danh Sách Công Thức",
+    "title_profession": "Công Thức: {{profession}}",
+    "empty": "Không có công thức nào."
   }
 }

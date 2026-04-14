@@ -19,11 +19,11 @@ export const PROFESSION_KEYS = [
   'luyen_khi_nc', // Luyện Khí Nghề — qi refinement tools
   'tran_phap',    // Trận Pháp — formation arrays
   'linh_tru',     // Linh Trù — spirit cooking
-  'luyen_co',     // Luyện Cổ — artifact refinement
+  'luyen_co',     // Luyện Cổ — gu insect cultivation (cổ trùng)
   'duoc_su',      // Dược Sư — herb cultivation
-  'thuan_thu',    // Thuần Thú — beast taming
+  'thuan_thu',    // Thuần Thú — spirit beast taming (produces Linh Thú)
   'luyen_kim',    // Luyện Kim — metal refinement
-  'khai_linh',    // Khai Linh — spirit stone excavation
+  'phu_su',       // Phù Sư — talisman crafting (phù chú)
   'thuat_su',     // Thuật Sư — divination
 ] as const;
 

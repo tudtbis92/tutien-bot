@@ -8,6 +8,7 @@ import {
   boolean,
   jsonb,
   pgEnum,
+  smallint,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { characters } from './characters.js';
@@ -32,6 +33,8 @@ export const items = pgTable('items', {
   // i18n key for item name, e.g., 'game:items.linh_thao.ten_cay'
   nameI18nKey: varchar('name_i18n_key', { length: 100 }).notNull(),
   type: itemTypeEnum('type').notNull(),
+  // Item tier 1–10 (Phase 02.1 uses 1–5 raw, 3–6 crafted)
+  tier: smallint('tier').notNull().default(1),
   // CRITICAL: BigInt default as sql`0` due to drizzle-kit serialization bug (see Phase 1 SUMMARY)
   basePrice: bigint('base_price', { mode: 'bigint' }).notNull().default(sql`0`),
   // Unique items have is_unique=true, creator info set, base_price=0

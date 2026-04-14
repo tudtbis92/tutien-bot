@@ -113,16 +113,19 @@
       "luyen_khi_nc": "炼气术",
       "tran_phap": "阵法",
       "linh_tru": "灵厨",
-      "luyen_co": "炼器",
+      "luyen_co": "蛊虫培育",
       "duoc_su": "药师",
-      "thuan_thu": "驯兽",
+      "thuan_thu": "驯灵兽",
       "luyen_kim": "炼金",
-      "khai_linh": "开灵",
+      "phu_su": "符师",
       "thuat_su": "术士"
     }
   },
   "gather": {
     "success": "成功采集{{amount}}个{{item}}。",
+    "multi_success": "采集{{amount}}次（费用：{{fee}}灵石）：",
+    "insufficient_balance": "灵石不足。需要{{required}}，当前有{{current}}。",
+    "pool_empty": "目前没有可采集的材料。",
     "cooldown": "你需要休息后才能继续采集。",
     "insufficient_level": "采集{{item}}需要{{prof}}职业最低{{level}}级。",
     "insufficient_realm": "采集{{item}}需要达到{{realm}}境界。"
@@ -143,5 +146,10 @@
     "insufficient_materials": "材料不足。",
     "insufficient_level": "制造此配方需要职业{{level}}级。",
     "recipe_not_found": "未找到配方。"
+  },
+  "recipes": {
+    "title_all": "配方列表",
+    "title_profession": "配方：{{profession}}",
+    "empty": "未找到配方。"
   }
 }

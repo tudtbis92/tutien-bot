@@ -48,7 +48,7 @@ const PROFESSION_CHOICE_NAMES: Record<ProfessionKey, string> = {
   duoc_su: 'Dược Sư',
   thuan_thu: 'Thuần Thú',
   luyen_kim: 'Luyện Kim',
-  khai_linh: 'Khai Linh',
+  phu_su: 'Phù Sư',
   thuat_su: 'Thuật Sư',
 };
 

@@ -113,16 +113,19 @@
       "luyen_khi_nc": "Qi Refinement",
       "tran_phap": "Formation Arrays",
       "linh_tru": "Spirit Cooking",
-      "luyen_co": "Artifact Refinement",
+      "luyen_co": "Gu Insect Cultivation",
       "duoc_su": "Herbalism",
-      "thuan_thu": "Beast Taming",
+      "thuan_thu": "Spirit Beast Taming",
       "luyen_kim": "Metal Refinement",
-      "khai_linh": "Spirit Stone Mining",
+      "phu_su": "Talisman Crafting",
       "thuat_su": "Divination"
     }
   },
   "gather": {
     "success": "Successfully gathered {{amount}}x {{item}}.",
+    "multi_success": "Gathered {{amount}} times (fee: {{fee}} spirit stones):",
+    "insufficient_balance": "Insufficient spirit stones. Need {{required}}, have {{current}}.",
+    "pool_empty": "No materials available to gather right now.",
     "cooldown": "You need to rest before gathering again.",
     "insufficient_level": "Requires {{prof}} profession level {{level}} minimum to gather {{item}}.",
     "insufficient_realm": "Requires {{realm}} realm to gather {{item}}."
@@ -143,5 +146,10 @@
     "insufficient_materials": "Insufficient materials.",
     "insufficient_level": "Requires profession level {{level}} to craft this recipe.",
     "recipe_not_found": "Recipe not found."
+  },
+  "recipes": {
+    "title_all": "Recipe List",
+    "title_profession": "Recipes: {{profession}}",
+    "empty": "No recipes found."
   }
 }

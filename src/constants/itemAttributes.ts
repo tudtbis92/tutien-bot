@@ -65,12 +65,12 @@ export const PROFESSION_UNIQUE_ARCHETYPES: readonly ProfessionUniqueArchetype[] 
   },
   {
     professionType: 'luyen_co',
-    uniqueItemNameI18nKey: 'game:items.unique.than_khi',
+    uniqueItemNameI18nKey: 'game:items.unique.co_trung_vuong',
     attributePool: [
-      'spiritual_resonance',
-      'realm_insight',
-      'artifact_power',
-      'passive_income',
+      'venom_potency',
+      'swarm_size',
+      'poison_duration',
+      'mutation_chance',
     ],
   },
   {
@@ -85,12 +85,12 @@ export const PROFESSION_UNIQUE_ARCHETYPES: readonly ProfessionUniqueArchetype[] 
   },
   {
     professionType: 'thuan_thu',
-    uniqueItemNameI18nKey: 'game:items.unique.than_thu',
+    uniqueItemNameI18nKey: 'game:items.unique.than_linh_thu',
     attributePool: [
-      'combat_assist',
-      'gathering_partner',
-      'loyalty',
-      'special_skill',
+      'combat_power',
+      'loyalty_bond',
+      'bloodline_purity',
+      'growth_potential',
     ],
   },
   {
@@ -104,13 +104,13 @@ export const PROFESSION_UNIQUE_ARCHETYPES: readonly ProfessionUniqueArchetype[] 
     ],
   },
   {
-    professionType: 'khai_linh',
-    uniqueItemNameI18nKey: 'game:items.unique.linh_thach_nguyen',
+    professionType: 'phu_su',
+    uniqueItemNameI18nKey: 'game:items.unique.than_phu',
     attributePool: [
-      'passive_income_rate',
-      'mining_bonus',
-      'ore_quality',
-      'vein_sense',
+      'seal_power',
+      'activation_speed',
+      'talisman_durability',
+      'elemental_affinity',
     ],
   },
   {
