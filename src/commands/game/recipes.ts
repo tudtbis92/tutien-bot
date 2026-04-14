@@ -2,13 +2,13 @@
  * /recipes — List available crafting recipes.
  *
  * Shows paginated recipe list. Can filter by profession.
- * Marks recipes as available (✅) or locked (🔒) based on character's profession level.
+ * Only shows recipes the character has unlocked (prof level >= minProfessionLevel).
  *
  * Design (CONTEXT.md D-13):
  *  - Auto-unlock: recipe visible when prof_level >= min_profession_level
  *  - D-11: Crafted items are NOT in gather pool
  *
- * Shows 5 recipes per page; pagination via `page` option.
+ * Shows 5 recipes per page; pagination via ◀/▶ buttons.
  */
 
 /* eslint-disable i18next/no-literal-string -- Discord API static strings */
@@ -23,7 +23,7 @@ import { recipeIngredients } from '../../db/schema/recipe_ingredients.js';
 import { items } from '../../db/schema/items.js';
 import { getProfessionLevel } from '../../types/professions.js';
 import type { ProfessionKey } from '../../types/professions.js';
-import { buildRecipesEmbed, type RecipeDisplayItem } from '../../ui/embeds/buildRecipesEmbed.js';
+import { buildRecipesPage, type RecipeDisplayItem } from '../../ui/embeds/buildRecipesEmbed.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 
@@ -104,22 +104,32 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     .where(professionFilter ? eq(recipes.professionType, professionFilter) : undefined)
     .orderBy(asc(recipes.professionType), asc(recipes.minProfessionLevel));
 
-  if (allRecipes.length === 0) {
+  // 2. Filter by character's profession level — only show unlocked recipes (Gap 4 fix)
+  const visibleRecipes = allRecipes.filter((r) => {
+    const charLevel = getProfessionLevel(
+      char.professionPoints,
+      r.professionType as ProfessionKey,
+    );
+    return charLevel >= r.minProfessionLevel;
+  });
+
+  // 3. Empty-state check (covers: no DB recipes AND no unlocked recipes for this character)
+  if (visibleRecipes.length === 0) {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('game:recipes.empty'), shardId)],
     });
     return;
   }
 
-  // 2. Paginate
-  const totalPages = Math.ceil(allRecipes.length / RECIPES_PER_PAGE);
+  // 4. Paginate over visible recipes only
+  const totalPages = Math.ceil(visibleRecipes.length / RECIPES_PER_PAGE);
   const clampedPage = Math.min(page, totalPages);
-  const pageRecipes = allRecipes.slice(
+  const pageRecipes = visibleRecipes.slice(
     (clampedPage - 1) * RECIPES_PER_PAGE,
     clampedPage * RECIPES_PER_PAGE,
   );
 
-  // 3. Fetch result items for this page
+  // 5. Fetch result items for this page
   const resultItemIds = pageRecipes.map((r) => r.resultItemId);
   const resultItems = await db
     .select({ id: items.id, nameI18nKey: items.nameI18nKey, tier: items.tier })
@@ -132,7 +142,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
   const resultItemMap = new Map(resultItems.map((r) => [r.id, r]));
 
-  // 4. Fetch ingredients for this page's recipes
+  // 6. Fetch ingredients for this page's recipes
   const pageRecipeIds = pageRecipes.map((r) => r.id);
   const allIngredients = await db
     .select({
@@ -147,7 +157,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         : inArray(recipeIngredients.recipeId, pageRecipeIds),
     );
 
-  // 5. Fetch ingredient item names
+  // 7. Fetch ingredient item names
   const ingredientItemIds = [...new Set(allIngredients.map((i) => i.itemId))];
   const ingredientItems =
     ingredientItemIds.length > 0
@@ -163,7 +173,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
   const ingredientNameMap = new Map(ingredientItems.map((i) => [i.id, i.nameI18nKey]));
 
-  // 6. Group ingredients by recipe
+  // 8. Group ingredients by recipe
   const ingByRecipe = new Map<number, { nameKey: string; quantity: number }[]>();
   for (const ing of allIngredients) {
     if (!ingByRecipe.has(ing.recipeId)) ingByRecipe.set(ing.recipeId, []);
@@ -173,7 +183,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     });
   }
 
-  // 7. Build display items
+  // 9. Build display items
   const charProfLevel = professionFilter
     ? getProfessionLevel(char.professionPoints, professionFilter)
     : undefined;
@@ -190,20 +200,18 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     };
   });
 
-  // 8. Render embed
-  await interaction.editReply({
-    embeds: [
-      buildRecipesEmbed(
-        {
-          recipes: displayRecipes,
-          professionKey: professionFilter ?? undefined,
-          characterProfLevel: charProfLevel,
-          page: clampedPage,
-          totalPages,
-          shardId,
-        },
-        t,
-      ),
-    ],
-  });
+  // 10. Render embed with pagination buttons
+  const { embed, row } = buildRecipesPage(
+    {
+      recipes: displayRecipes,
+      professionKey: professionFilter ?? undefined,
+      characterProfLevel: charProfLevel,
+      page: clampedPage,
+      totalPages,
+      shardId,
+    },
+    t,
+  );
+
+  await interaction.editReply({ embeds: [embed], components: [row] });
 }

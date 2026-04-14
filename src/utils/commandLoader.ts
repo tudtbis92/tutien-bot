@@ -22,7 +22,7 @@ export function collectCommandFilePaths(commandsPath: string): string[] {
   return folders.flatMap((folder) => {
     const folderPath = join(commandsPath, folder);
     return readdirSync(folderPath)
-      .filter((f) => f.endsWith('.js'))
+      .filter((f) => f.endsWith('.js') || f.endsWith('.ts'))
       .map((f) => join(folderPath, f));
   });
 }

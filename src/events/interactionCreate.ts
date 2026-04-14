@@ -1,13 +1,22 @@
 import { Events, type Interaction } from 'discord.js';
-import { eq } from 'drizzle-orm';
+import { eq, asc, inArray } from 'drizzle-orm';
 import { logger } from '../utils/logger.js';
 import { buildErrorEmbed } from '../ui/embeds/buildErrorEmbed.js';
 import { resolveLocale, getT } from '../i18n/index.js';
 import { db } from '../db/client.js';
 import { users } from '../db/schema/users.js';
+import { characters } from '../db/schema/characters.js';
+import { recipes as recipesSchema } from '../db/schema/recipes.js';
+import { recipeIngredients } from '../db/schema/recipe_ingredients.js';
+import { items } from '../db/schema/items.js';
+import { getProfessionLevel } from '../types/professions.js';
+import type { ProfessionKey } from '../types/professions.js';
 import { buildLeaderboardPage } from '../commands/game/leaderboard.js';
+import { buildRecipesPage } from '../ui/embeds/buildRecipesEmbed.js';
 
 export const name = Events.InteractionCreate;
+
+const RECIPES_PER_PAGE = 5;
 
 export async function execute(interaction: Interaction): Promise<void> {
   // ── Button interaction routing ──────────────────────────────────────────────
@@ -52,6 +61,167 @@ export async function execute(interaction: Interaction): Promise<void> {
       const shardId = interaction.client.shard?.ids[0];
 
       const { embed, row } = await buildLeaderboardPage(scope, newPage, t, shardId);
+      await interaction.editReply({ embeds: [embed], components: [row] });
+      return;
+    }
+
+    // /recipes pagination buttons: customId = 'recipes_prev_{page}_{profession|none}' or 'recipes_next_{page}_{profession|none}'
+    if (customId.startsWith('recipes_prev_') || customId.startsWith('recipes_next_')) {
+      const parts = customId.split('_');
+      // Format: ['recipes', 'prev'|'next', '{page}', '{profession|none}']
+      const direction = parts[1] as 'prev' | 'next';
+      const rawPage = parseInt(parts[2] ?? '', 10);
+
+      // T-GAP-01: NaN guard
+      if (isNaN(rawPage)) {
+        await interaction.deferUpdate();
+        return;
+      }
+
+      const newPage = direction === 'prev' ? rawPage - 1 : rawPage + 1;
+
+      // Underflow guard — recipes are 1-indexed
+      if (newPage < 1) {
+        await interaction.deferUpdate();
+        return;
+      }
+
+      await interaction.deferUpdate();
+
+      // T-GAP-02: profession string is parameterized via Drizzle WHERE — no SQL injection risk
+      const professionRaw = parts.slice(3).join('_');
+      const professionFilter = professionRaw === 'none' ? null : (professionRaw as ProfessionKey);
+
+      // Resolve user locale
+      const [userRow] = await db
+        .select({ locale: users.locale })
+        .from(users)
+        .where(eq(users.discordId, interaction.user.id));
+      const locale = resolveLocale(userRow?.locale, null);
+      const t = getT(locale);
+      const shardId = interaction.client.shard?.ids[0];
+
+      // Fetch character for profession level filtering
+      const [charRow] = await db
+        .select({ id: characters.id, discordId: characters.discordId, professionPoints: characters.professionPoints })
+        .from(characters)
+        .where(eq(characters.discordId, interaction.user.id));
+
+      if (!charRow) {
+        await interaction.deferUpdate();
+        return;
+      }
+
+      // Re-run recipes query (mirrors recipes.ts execute())
+      const allRecipesRows = await db
+        .select({
+          id: recipesSchema.id,
+          resultItemId: recipesSchema.resultItemId,
+          professionType: recipesSchema.professionType,
+          minProfessionLevel: recipesSchema.minProfessionLevel,
+        })
+        .from(recipesSchema)
+        .where(professionFilter ? eq(recipesSchema.professionType, professionFilter) : undefined)
+        .orderBy(asc(recipesSchema.professionType), asc(recipesSchema.minProfessionLevel));
+
+      // Apply profession-level filter
+      const visibleRecipes = allRecipesRows.filter((r) => {
+        const charLevel = getProfessionLevel(
+          charRow.professionPoints,
+          r.professionType as ProfessionKey,
+        );
+        return charLevel >= r.minProfessionLevel;
+      });
+
+      if (visibleRecipes.length === 0) {
+        await interaction.deferUpdate();
+        return;
+      }
+
+      const totalPages = Math.ceil(visibleRecipes.length / RECIPES_PER_PAGE);
+      const clampedPage = Math.min(newPage, totalPages);
+      const pageRecipes = visibleRecipes.slice(
+        (clampedPage - 1) * RECIPES_PER_PAGE,
+        clampedPage * RECIPES_PER_PAGE,
+      );
+
+      // Fetch result items
+      const resultItemIds = pageRecipes.map((r) => r.resultItemId);
+      const resultItemRows = await db
+        .select({ id: items.id, nameI18nKey: items.nameI18nKey, tier: items.tier })
+        .from(items)
+        .where(
+          resultItemIds.length === 1
+            ? eq(items.id, resultItemIds[0]!)
+            : inArray(items.id, resultItemIds),
+        );
+      const resultItemMap = new Map(resultItemRows.map((r) => [r.id, r]));
+
+      // Fetch ingredients
+      const pageRecipeIds = pageRecipes.map((r) => r.id);
+      const allIngredients = await db
+        .select({
+          recipeId: recipeIngredients.recipeId,
+          itemId: recipeIngredients.itemId,
+          quantity: recipeIngredients.quantity,
+        })
+        .from(recipeIngredients)
+        .where(
+          pageRecipeIds.length === 1
+            ? eq(recipeIngredients.recipeId, pageRecipeIds[0]!)
+            : inArray(recipeIngredients.recipeId, pageRecipeIds),
+        );
+
+      const ingredientItemIds = [...new Set(allIngredients.map((i) => i.itemId))];
+      const ingredientItems =
+        ingredientItemIds.length > 0
+          ? await db
+              .select({ id: items.id, nameI18nKey: items.nameI18nKey })
+              .from(items)
+              .where(
+                ingredientItemIds.length === 1
+                  ? eq(items.id, ingredientItemIds[0]!)
+                  : inArray(items.id, ingredientItemIds),
+              )
+          : [];
+      const ingredientNameMap = new Map(ingredientItems.map((i) => [i.id, i.nameI18nKey]));
+
+      const ingByRecipe = new Map<number, { nameKey: string; quantity: number }[]>();
+      for (const ing of allIngredients) {
+        if (!ingByRecipe.has(ing.recipeId)) ingByRecipe.set(ing.recipeId, []);
+        ingByRecipe.get(ing.recipeId)!.push({
+          nameKey: ingredientNameMap.get(ing.itemId) ?? 'game:items.unknown',
+          quantity: ing.quantity,
+        });
+      }
+
+      const charProfLevel = professionFilter
+        ? getProfessionLevel(charRow.professionPoints, professionFilter)
+        : undefined;
+
+      const displayRecipes = pageRecipes.map((r) => {
+        const resultItem = resultItemMap.get(r.resultItemId);
+        return {
+          recipeId: r.id,
+          outputNameKey: resultItem?.nameI18nKey ?? 'game:items.unknown',
+          outputTier: resultItem?.tier ?? 1,
+          profession: r.professionType,
+          minProfessionLevel: r.minProfessionLevel,
+          ingredients: ingByRecipe.get(r.id) ?? [],
+        };
+      });
+
+      const { embed, row } = buildRecipesPage(
+        {
+          recipes: displayRecipes,
+          professionKey: professionFilter ?? undefined,
+          characterProfLevel: charProfLevel,
+          page: clampedPage,
+          totalPages,
+          shardId,
+        },
+        t,
+      );
       await interaction.editReply({ embeds: [embed], components: [row] });
       return;
     }

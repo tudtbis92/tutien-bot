@@ -22,7 +22,7 @@ import {
 } from 'discord.js';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { characters } from '../../db/schema/characters.js';
+import { users } from '../../db/schema/users.js';
 import { characterItems } from '../../db/schema/character_items.js';
 import { gatherPoolItems } from '../../db/schema/gather_pool_items.js';
 import { items } from '../../db/schema/items.js';
@@ -85,7 +85,7 @@ function weightedRandom(pool: PoolEntry[]): number | null {
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  const { t, char, shardId } = await fetchCommandContext(interaction);
+  const { t, char, user, shardId } = await fetchCommandContext(interaction);
 
   if (!char) {
     await interaction.editReply({
@@ -102,14 +102,15 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const feePerRoll = GATHER_FEES[majorRealmIndex] ?? GATHER_FEES[GATHER_FEES.length - 1]!;
   const totalFee = feePerRoll * BigInt(amount);
 
-  // 3. Check balance
-  if (char.tuVi < totalFee) {
+  // 3. Check linh thạch balance (users.balance — NOT characters.tuVi)
+  const userBalance = user?.balance ?? 0n;
+  if (userBalance < totalFee) {
     await interaction.editReply({
       embeds: [
         buildErrorEmbed(
           t('game:gather.insufficient_balance', {
             required: totalFee.toString(),
-            current: char.tuVi.toString(),
+            current: userBalance.toString(),
           }),
           shardId,
         ),
@@ -149,30 +150,55 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     }
   }
 
-  // 6. Atomic transaction: deduct fee + grant items
-  await db.transaction(async (tx) => {
-    // Deduct tu vi (linh thạch is the currency)
-    await tx
-      .update(characters)
-      .set({ tuVi: sql`${characters.tuVi} - ${totalFee}` })
-      .where(
-        and(
-          eq(characters.id, char.id),
-          sql`${characters.tuVi} >= ${totalFee}`, // double-check race condition
-        ),
-      );
+  // 6. Atomic transaction: deduct linh thạch fee from users.balance + grant items
+  try {
+    await db.transaction(async (tx) => {
+      // Deduct linh thạch from users.balance (NOT characters.tuVi)
+      // The WHERE condition is the atomic race-condition guard.
+      const deductResult = await tx
+        .update(users)
+        .set({ balance: sql`${users.balance} - ${totalFee}` })
+        .where(
+          and(
+            eq(users.discordId, char.discordId),
+            sql`${users.balance} >= ${totalFee}`, // race condition guard
+          ),
+        );
 
-    // Grant items
-    for (const [itemId, quantity] of gainMap) {
-      await tx
-        .insert(characterItems)
-        .values({ characterId: char.id, itemId, quantity })
-        .onConflictDoUpdate({
-          target: [characterItems.characterId, characterItems.itemId],
-          set: { quantity: sql`${characterItems.quantity} + ${quantity}` },
-        });
+      if ((deductResult.rowCount ?? 0) === 0) {
+        throw new Error('INSUFFICIENT_BALANCE');
+      }
+
+      // Grant items
+      for (const [itemId, quantity] of gainMap) {
+        await tx
+          .insert(characterItems)
+          .values({ characterId: char.id, itemId, quantity })
+          .onConflictDoUpdate({
+            target: [characterItems.characterId, characterItems.itemId],
+            set: { quantity: sql`${characterItems.quantity} + ${quantity}` },
+          });
+      }
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === 'INSUFFICIENT_BALANCE') {
+      await interaction.editReply({
+        embeds: [
+          buildErrorEmbed(
+            t('game:gather.insufficient_balance', {
+              required: totalFee.toString(),
+              current: userBalance.toString(),
+            }),
+            shardId,
+          ),
+        ],
+      });
+      return;
     }
-  });
+    throw err;
+  }
+
+  const remainingBalance = userBalance - totalFee;
 
   // 7. Fetch item names for display
   const gainEntries = [...gainMap.entries()];
@@ -192,7 +218,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     await interaction.editReply({
       embeds: [
         buildItemEmbed(
-          { type: 'gather', itemNameI18nKey: nameI18nKey, quantity, shardId },
+          { type: 'gather', itemNameI18nKey: nameI18nKey, quantity, remainingBalance, shardId },
           t,
         ),
       ],
@@ -204,6 +230,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       const name = t(key);
       return `• **${name}** × ${qty}`;
     });
+
+    lines.push('');
+    lines.push(`${t('game:gather.remaining_balance_label')}: **${remainingBalance.toString()}**`);
 
     const { EmbedBuilder } = await import('discord.js');
     const { COLORS, embedFooter } = await import('../../ui/theme.js');

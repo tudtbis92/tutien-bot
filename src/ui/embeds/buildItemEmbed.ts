@@ -31,6 +31,8 @@ export interface ItemResultData {
   customEmoji?: string;
   /** Discord tag of the crafter for credit display (unique_craft only) */
   creatorTag?: string;
+  /** Remaining linh thạch balance after fee deduction (gather only) */
+  remainingBalance?: bigint;
   /** Optional shard ID for footer */
   shardId?: number;
 }
@@ -60,16 +62,31 @@ function buildStandardItemEmbed(data: ItemResultData, t: TFunction): EmbedBuilde
     ? `${EMOJI.SUCCESS} ${t('game:gather.success', { amount: data.quantity, item: itemName })}`
     : `${EMOJI.SUCCESS} ${t('game:craft.success', { item: itemName })}`;
 
+  // Gather: title already contains item name + quantity — no description duplication.
+  // Craft: description shows item name × quantity as before.
   const description = isGather
-    ? `**${t(data.itemNameI18nKey)}** × ${data.quantity}`
+    ? null
     : `**${t(data.itemNameI18nKey)}** × ${data.quantity}`;
 
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(COLORS.SUCCESS)
     .setTitle(title)
-    .setDescription(description)
     .setFooter(embedFooter(data.shardId))
     .setTimestamp();
+
+  if (description !== null) {
+    embed.setDescription(description);
+  }
+
+  if (isGather && data.remainingBalance !== undefined) {
+    embed.addFields({
+      name: t('game:gather.remaining_balance_label'),
+      value: data.remainingBalance.toString(),
+      inline: true,
+    });
+  }
+
+  return embed;
 }
 
 function buildUniqueItemEmbed(data: ItemResultData, t: TFunction): EmbedBuilder {

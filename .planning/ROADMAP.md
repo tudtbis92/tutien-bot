@@ -76,6 +76,17 @@ Plans:
 
 ---
 
+### Phase 02.1: Gather & Craft — Seed Data + Cơ Chế Chi Tiết (INSERTED)
+
+**Goal:** Hoàn thiện vòng lặp gather/craft bằng cách thiết kế và seed game data thực tế (items catalog, recipes, recipe_ingredients), đồng thời review và điều chỉnh các cơ chế chi tiết (tier gates, cooldown, yield formula, unique roll) để đảm bảo gameplay cân bằng và playable
+**Requirements**: PROG-06, PROG-07 (unblocked by real data)
+**Depends on:** Phase 2
+**Directory:** `.planning/phases/02.1-gather-craft-seed-data/`
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 02.1 to break down)
+
 ### Phase 3: Combat + Marketplace
 
 **Goal:** A living economy loop — players hunt yêu thú and duel each other to acquire items, then trade on a global VWAP-priced marketplace where every transaction is automatically matched
@@ -130,10 +141,11 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation | 1/1 | Complete   | 2026-04-11 |
 | 2. Core Game Loop + Progression | 7/7 | Complete   | 2026-04-12 |
+| 02.1. Gather & Craft — Seed Data + Cơ Chế Chi Tiết | 0/? | Not started | - |
 | 3. Combat + Marketplace | 0/? | Not started | - |
 | 4. Season System + Admin | 0/? | Not started | - |
 
 ---
 
 *Roadmap created: 2026-04-11*  
-*Last updated: 2026-04-12 — Phase 2 complete (7/7 plans, MA-01/MA-02 fixes, ASCII command renames)*
+*Last updated: 2026-04-12 — Phase 02.1 inserted (URGENT): Gather & Craft seed data + cơ chế chi tiết*

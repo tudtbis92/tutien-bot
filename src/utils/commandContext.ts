@@ -10,6 +10,8 @@ export interface CommandContext {
   locale: SupportedLocale;
   t: TFunction;
   char: Character | undefined;
+  /** Linh thạch wallet — from users.balance. Undefined if user row not found. */
+  user: { balance: bigint } | undefined;
   shardId: number | undefined;
 }
 
@@ -34,7 +36,7 @@ export async function fetchCommandContext(
 
   const [userRow, char] = await Promise.all([
     db
-      .select({ locale: users.locale })
+      .select({ locale: users.locale, balance: users.balance })
       .from(users)
       .where(eq(users.discordId, interaction.user.id))
       .limit(1)
@@ -50,5 +52,5 @@ export async function fetchCommandContext(
   const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);
 
-  return { locale, t, char, shardId };
+  return { locale, t, char, user: userRow ?? undefined, shardId };
 }
