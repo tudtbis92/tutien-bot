@@ -1,7 +1,7 @@
 /**
  * Phase 02.1 Seed Script
  *
- * Seeds: items (50 raw + 44 crafted), recipes (44), recipe_ingredients (~110),
+ * Seeds: items (50 raw + 43 crafted + 10 unique = 103 total), recipes (43), recipe_ingredients (~110),
  *        gather_pool_items (50 raw materials with weights and realm gates)
  *
  * Idempotent: uses INSERT ... ON CONFLICT DO UPDATE to allow re-running safely.
