@@ -378,6 +378,30 @@ const CRAFTED_ITEMS: CraftedItemDef[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Unique Items — 1 per profession (output of unique craft roll)
+// Keys must match PROFESSION_UNIQUE_ARCHETYPES in src/constants/itemAttributes.ts
+// ---------------------------------------------------------------------------
+interface UniqueItemDef {
+  slug: string;
+  type: ItemType;
+  tier: number;
+  basePrice: bigint;
+}
+
+const UNIQUE_ITEMS: UniqueItemDef[] = [
+  { slug: 'than_dan',       type: 'consumable', tier: 5, basePrice: 0n }, // luyen_dan
+  { slug: 'khi_luyen_tu',   type: 'artifact',   tier: 5, basePrice: 0n }, // luyen_khi_nc
+  { slug: 'ky_tran_co',     type: 'formation',  tier: 5, basePrice: 0n }, // tran_phap
+  { slug: 'linh_thien',     type: 'food',       tier: 5, basePrice: 0n }, // linh_tru
+  { slug: 'co_trung_vuong', type: 'companion',  tier: 5, basePrice: 0n }, // luyen_co
+  { slug: 'linh_thao_than', type: 'material',   tier: 5, basePrice: 0n }, // duoc_su
+  { slug: 'than_linh_thu',  type: 'companion',  tier: 5, basePrice: 0n }, // thuan_thu
+  { slug: 'than_binh',      type: 'equipment',  tier: 5, basePrice: 0n }, // luyen_kim
+  { slug: 'than_phu',       type: 'scroll',     tier: 5, basePrice: 0n }, // phu_su
+  { slug: 'thien_menh_thu', type: 'scroll',     tier: 5, basePrice: 0n }, // thuat_su
+];
+
+// ---------------------------------------------------------------------------
 // Gather pool config: tier → { minMajorRealmIndex, weight }
 // ---------------------------------------------------------------------------
 const TIER_POOL_CONFIG: Record<number, { minMajorRealmIndex: number; weight: number }> = {
@@ -412,6 +436,13 @@ async function seed(): Promise<void> {
       tier: c.tier,
       basePrice: c.basePrice,
       isUnique: false,
+    })),
+    ...UNIQUE_ITEMS.map((u) => ({
+      nameI18nKey: `game:items.unique.${u.slug}`,
+      type: u.type,
+      tier: u.tier,
+      basePrice: u.basePrice,
+      isUnique: false, // catalog item — not player-unique instance
     })),
   ];
 

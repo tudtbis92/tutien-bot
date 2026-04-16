@@ -13,6 +13,7 @@ import { getProfessionLevel } from '../types/professions.js';
 import type { ProfessionKey } from '../types/professions.js';
 import { buildLeaderboardPage } from '../commands/game/leaderboard.js';
 import { buildRecipesPage } from '../ui/embeds/buildRecipesEmbed.js';
+import { buildBagPage } from '../commands/game/bag.js';
 
 export const name = Events.InteractionCreate;
 
@@ -223,6 +224,44 @@ export async function execute(interaction: Interaction): Promise<void> {
         t,
       );
       await interaction.editReply({ embeds: [embed], components: [row] });
+      return;
+    }
+
+    // /bag pagination buttons: customId = 'bag_prev_{page}_{characterId}' or 'bag_next_{page}_{characterId}'
+    if (customId.startsWith('bag_prev_') || customId.startsWith('bag_next_')) {
+      const parts = customId.split('_');
+      // Format: ['bag', 'prev'|'next', '{page}', '{characterId}']
+      const direction = parts[1] as 'prev' | 'next';
+      const rawPage = parseInt(parts[2] ?? '', 10);
+      const characterId = parseInt(parts[3] ?? '', 10);
+
+      if (isNaN(rawPage) || isNaN(characterId)) {
+        await interaction.deferUpdate();
+        return;
+      }
+
+      const newPage = direction === 'prev' ? rawPage - 1 : rawPage + 1;
+      if (newPage < 1) {
+        await interaction.deferUpdate();
+        return;
+      }
+
+      await interaction.deferUpdate();
+
+      const [userRow] = await db
+        .select({ locale: users.locale })
+        .from(users)
+        .where(eq(users.discordId, interaction.user.id));
+      const locale = resolveLocale(userRow?.locale, null);
+      const t = getT(locale);
+      const shardId = interaction.client.shard?.ids[0];
+
+      const result = await buildBagPage(characterId, newPage, t, shardId);
+      if (!result) {
+        await interaction.deferUpdate();
+        return;
+      }
+      await interaction.editReply({ embeds: [result.embed], components: [result.row] });
       return;
     }
 

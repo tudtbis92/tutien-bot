@@ -19,16 +19,10 @@ import { EMOJI } from '../../assets/emojis.js';
 export interface ItemResultData {
   /** Type of item result */
   type: 'gather' | 'craft' | 'unique_craft';
-  /** i18n key for the item name (e.g. 'game:items.linh_thao.ten_cay') */
+  /** i18n key for the item name (e.g. 'game:items.unique.than_dan') */
   itemNameI18nKey: string;
   /** Quantity of items received */
   quantity: number;
-  /** Whether this is a unique item (unique_craft only) */
-  isUnique?: boolean;
-  /** Custom name provided by the crafter (unique_craft only) */
-  customName?: string;
-  /** Custom emoji provided by the crafter (unique_craft only) */
-  customEmoji?: string;
   /** Discord tag of the crafter for credit display (unique_craft only) */
   creatorTag?: string;
   /** Remaining linh thạch balance after fee deduction (gather only) */
@@ -90,15 +84,12 @@ function buildStandardItemEmbed(data: ItemResultData, t: TFunction): EmbedBuilde
 }
 
 function buildUniqueItemEmbed(data: ItemResultData, t: TFunction): EmbedBuilder {
-  const displayName = data.customName ?? t(data.itemNameI18nKey);
-  const emojiPrefix = data.customEmoji ? `${data.customEmoji} ` : '✨ ';
-
-  const title = `${emojiPrefix}${t('game:craft.unique_success', { name: displayName })}`;
+  const itemName = t(data.itemNameI18nKey);
 
   const lines: string[] = [
-    `**${emojiPrefix}${displayName}**`,
+    `✨ **${itemName}**`,
     '',
-    `📜 *${t(data.itemNameI18nKey)}*`,
+    `📜 *${t('game:craft.unique_pending_appraisal')}*`,
   ];
 
   if (data.creatorTag) {
@@ -107,7 +98,7 @@ function buildUniqueItemEmbed(data: ItemResultData, t: TFunction): EmbedBuilder 
 
   return new EmbedBuilder()
     .setColor(COLORS.GOLD)
-    .setTitle(title)
+    .setTitle(`✨ ${t('game:craft.unique_success', { name: itemName })}`)
     .setDescription(lines.join('\n'))
     .setFooter(embedFooter(data.shardId))
     .setTimestamp();

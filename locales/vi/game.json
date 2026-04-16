@@ -93,7 +93,8 @@
     "spiritual_root": "Linh Căn",
     "streak": "Chuỗi Ngày",
     "daily_cap": "Hạn Ngạch Hôm Nay",
-    "professions": "Nghề Nghiệp"
+    "professions": "Nghề Nghiệp",
+    "balance": "Linh Thạch"
   },
   "leaderboard": {
     "title": "Bảng Xếp Hạng Tu Tiên",
@@ -143,7 +144,8 @@
   },
   "craft": {
     "success": "Chế tạo thành công {{item}}!",
-    "unique_success": "🌟 Kỳ tích! Bạn đã tạo ra vật phẩm đặc biệt: {{name}}!",
+    "unique_success": "🌟 Kỳ tích! Bạn đã tạo ra vật phẩm bí ẩn: {{name}}!",
+    "unique_pending_appraisal": "Vật phẩm chưa được giám định — phẩm chất và tên sẽ được tiết lộ sau khi giám định.",
     "insufficient_materials": "Không đủ nguyên liệu.",
     "insufficient_level": "Cần cấp độ nghề {{level}} để chế tạo recipe này.",
     "recipe_not_found": "Không tìm thấy recipe."
@@ -152,6 +154,10 @@
     "title_all": "Danh Sách Công Thức",
     "title_profession": "Công Thức: {{profession}}",
     "empty": "Không có công thức nào."
+  },
+  "bag": {
+    "title": "Túi Đồ",
+    "empty": "Túi đồ trống."
   },
   "items": {
     "raw": {
@@ -250,6 +256,18 @@
       "menh_van_tinh": "Mệnh Vận Tinh",
       "tinh_tu_menh_ban": "Tinh Tú Mệnh Bản",
       "thien_co_du_trac": "Thiên Cơ Dự Trắc"
+    },
+    "unique": {
+      "than_dan":       "Vô Danh Đan",
+      "khi_luyen_tu":   "Kỳ Quái Vật Phẩm",
+      "ky_tran_co":     "Bí Ẩn Trận Cổ",
+      "linh_thien":     "Thần Thực Bí Ẩn",
+      "co_trung_vuong": "Cổ Trùng Bí Ẩn",
+      "linh_thao_than": "Dị Thảo Bí Ẩn",
+      "than_linh_thu":  "Linh Thú Bí Ẩn",
+      "than_binh":      "Thần Binh Bí Ẩn",
+      "than_phu":       "Thiên Phù Bí Ẩn",
+      "thien_menh_thu": "Thiên Cơ Thư Bí Ẩn"
     },
     "unknown": "Vật Phẩm Không Rõ"
   }

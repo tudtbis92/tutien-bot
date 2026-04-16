@@ -19,6 +19,8 @@ export interface ProfileEmbedData {
   dailyTuvi: number;
   streakDays: number;
   professionPoints: Record<string, number>;
+  /** Linh thạch balance from users.balance. Undefined if user row not found. */
+  balance?: bigint;
 }
 
 /** Build a 10-block Unicode progress bar (▰▰▰▱▱▱▱▱▱▱ style) */
@@ -71,6 +73,11 @@ export function buildProfileEmbed(data: ProfileEmbedData, t: TFunction): EmbedBu
       { name: `${EMOJI.TU_VI} ${t('game:profile.tu_vi')}`, value: tuViStr, inline: false },
       { name: `${EMOJI.QUOTA} ${t('game:profile.daily_cap')}`, value: dailyProgress, inline: true },
       { name: `${EMOJI.STREAK} ${t('game:profile.streak')}`, value: `${data.streakDays}`, inline: true },
+      {
+        name: `💎 ${t('game:profile.balance')}`,
+        value: data.balance !== undefined ? formatBalance(data.balance) : '—',
+        inline: true,
+      },
     )
     .setFooter(embedFooter())
     .setTimestamp();

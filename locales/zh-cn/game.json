@@ -93,7 +93,8 @@
     "spiritual_root": "灵根",
     "streak": "连续天数",
     "daily_cap": "今日限额",
-    "professions": "职业"
+    "professions": "职业",
+    "balance": "灵石"
   },
   "leaderboard": {
     "title": "修仙排行榜",
@@ -143,7 +144,8 @@
   },
   "craft": {
     "success": "成功制造{{item}}！",
-    "unique_success": "🌟 奇迹！你创造了独特物品：{{name}}！",
+    "unique_success": "🌟 奇迹！你创造了神秘物品：{{name}}！",
+    "unique_pending_appraisal": "物品尚未鉴定——品质和名称将在鉴定后揭晓。",
     "insufficient_materials": "材料不足。",
     "insufficient_level": "制造此配方需要职业{{level}}级。",
     "recipe_not_found": "未找到配方。"
@@ -152,6 +154,10 @@
     "title_all": "配方列表",
     "title_profession": "配方：{{profession}}",
     "empty": "未找到配方。"
+  },
+  "bag": {
+    "title": "背包",
+    "empty": "背包为空。"
   },
   "items": {
     "raw": {
@@ -250,6 +256,18 @@
       "menh_van_tinh": "命运晶",
       "tinh_tu_menh_ban": "星宿命盘",
       "thien_co_du_trac": "天机预测"
+    },
+    "unique": {
+      "than_dan":       "无名丹",
+      "khi_luyen_tu":   "奇异炼气器",
+      "ky_tran_co":     "神秘阵鼓",
+      "linh_thien":     "神秘灵宴",
+      "co_trung_vuong": "神秘蛊虫",
+      "linh_thao_than": "异草",
+      "than_linh_thu":  "神秘灵兽",
+      "than_binh":      "神秘神兵",
+      "than_phu":       "神秘天符",
+      "thien_menh_thu": "神秘天机书"
     },
     "unknown": "未知物品"
   }

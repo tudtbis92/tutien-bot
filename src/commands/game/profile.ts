@@ -17,7 +17,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
-  const { t, char, shardId } = await fetchCommandContext(interaction);
+  const { t, char, user, shardId } = await fetchCommandContext(interaction);
 
   // User has no character — guide them to /start
   if (!char) {
@@ -38,6 +38,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       dailyTuvi: char.dailyTuvi,
       streakDays: char.streakDays,
       professionPoints: (char.professionPoints as Record<string, number>) ?? {},
+      balance: user?.balance,
     },
     t,
   );

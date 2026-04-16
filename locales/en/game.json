@@ -93,7 +93,8 @@
     "spiritual_root": "Spiritual Root",
     "streak": "Streak Days",
     "daily_cap": "Today's Quota",
-    "professions": "Professions"
+    "professions": "Professions",
+    "balance": "Spirit Stones"
   },
   "leaderboard": {
     "title": "Cultivation Leaderboard",
@@ -143,7 +144,8 @@
   },
   "craft": {
     "success": "Successfully crafted {{item}}!",
-    "unique_success": "🌟 Miracle! You have created a unique item: {{name}}!",
+    "unique_success": "🌟 Miracle! You have created a mystery item: {{name}}!",
+    "unique_pending_appraisal": "Item not yet appraised — quality and name will be revealed after appraisal.",
     "insufficient_materials": "Insufficient materials.",
     "insufficient_level": "Requires profession level {{level}} to craft this recipe.",
     "recipe_not_found": "Recipe not found."
@@ -152,6 +154,10 @@
     "title_all": "Recipe List",
     "title_profession": "Recipes: {{profession}}",
     "empty": "No recipes found."
+  },
+  "bag": {
+    "title": "Inventory",
+    "empty": "Your inventory is empty."
   },
   "items": {
     "raw": {
@@ -250,6 +256,18 @@
       "menh_van_tinh": "Fate Star Crystal",
       "tinh_tu_menh_ban": "Star Fate Chart",
       "thien_co_du_trac": "Heavenly Mechanism Forecast"
+    },
+    "unique": {
+      "than_dan":       "Nameless Pill",
+      "khi_luyen_tu":   "Strange Artifact",
+      "ky_tran_co":     "Mystery Formation Drum",
+      "linh_thien":     "Mysterious Spirit Feast",
+      "co_trung_vuong": "Mystery Gu Worm",
+      "linh_thao_than": "Strange Spirit Herb",
+      "than_linh_thu":  "Mystery Spirit Beast",
+      "than_binh":      "Mystery Divine Weapon",
+      "than_phu":       "Mystery Heaven Talisman",
+      "thien_menh_thu": "Mystery Heaven Scroll"
     },
     "unknown": "Unknown Item"
   }
