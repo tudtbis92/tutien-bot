@@ -42,6 +42,7 @@ import {
 } from '../../constants/itemAttributes.js';
 import { getProfessionLevel } from '../../types/professions.js';
 import type { ProfessionKey } from '../../types/professions.js';
+import { getMajorRealmIndex } from '../../constants/gatherFees.js';
 import { buildItemEmbed } from '../../ui/embeds/buildItemEmbed.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
@@ -196,9 +197,17 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         );
     }
 
-    // f. Roll craft outcome (3-way: fail / success / unique)
-    const majorRealmIndex = Math.floor(char.realmId / 9);
-    const outcome = craftRoll(majorRealmIndex, profLevel);
+    // f. Fetch result item tier, then roll craft outcome (3-way: fail / success / unique)
+    const resultItemTierRow = await tx
+      .select({ tier: items.tier })
+      .from(items)
+      .where(eq(items.id, recipe.resultItemId))
+      .limit(1)
+      .then((rows) => rows[0]);
+    const itemTier = resultItemTierRow?.tier ?? 1;
+
+    const majorRealmIndex = getMajorRealmIndex(char.realmId);
+    const outcome = craftRoll(majorRealmIndex, profLevel, itemTier);
 
     if (outcome === 'fail') {
       // Ingredients already consumed — craft fails (materials lost)

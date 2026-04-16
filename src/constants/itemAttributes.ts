@@ -128,30 +128,36 @@ export const PROFESSION_UNIQUE_ARCHETYPES: readonly ProfessionUniqueArchetype[] 
 /**
  * Three-outcome craft roll.
  *
- * Base rates (any tier, Luyện Khí — majorRealmIndex 0, profLevel 0):
+ * Base rates (tier 1, Luyện Khí — majorRealmIndex 0, profLevel 0):
  *   fail:    40.00%
  *   success: 59.98%
  *   unique:   0.02%
  *
- * Scaling per main realm (majorRealmIndex = floor(realmId / 9)):
+ * Tier penalty: each tier above 1 adds +10% to failRate.
+ *   tierPenalty = (itemTier - 1) * 0.10
+ *
+ * Scaling per main realm (getMajorRealmIndex(realmId)):
  *   fail    -= 3% per realm index  (floor at 0%)
  *   success += 3% per realm index
  *   unique  unchanged
  *
  * Scaling per allocated skill point in the relevant profession:
- *   unique  += 0.02% per point  (e.g. profLevel 1 → 0.02%, profLevel 2 → 0.04%)
+ *   unique  += 0.02% per point  (e.g. profLevel 1 → 0.04%, profLevel 2 → 0.06%)
  *   fail    -= 0.02% per point  (floor at 0%)
  *   success fills remainder     (1 − fail − unique)
  *
- * @param majorRealmIndex - floor(character.realmId / 9); range 0–4
+ * @param majorRealmIndex - getMajorRealmIndex(character.realmId); range 0–11
  * @param profLevel       - allocated skill points in the recipe's profession
+ * @param itemTier        - tier of the result item (1-based); higher tier → harder craft
  */
 export function craftRoll(
   majorRealmIndex: number,
   profLevel: number,
+  itemTier: number,
 ): 'fail' | 'success' | 'unique' {
+  const tierPenalty = (itemTier - 1) * 0.10;
   const uniqueRate = 0.0002 + profLevel * 0.0002;
-  const failRate = Math.max(0, 0.40 - majorRealmIndex * 0.03 - profLevel * 0.0002);
+  const failRate = Math.max(0, 0.40 + tierPenalty - majorRealmIndex * 0.03 - profLevel * 0.0002);
   // successRate = 1 − failRate − uniqueRate (fills automatically)
 
   const roll = Math.random();
@@ -165,7 +171,7 @@ export function craftRoll(
  * Kept for reference; will be removed in a future cleanup pass.
  */
 export function rollUniqueChance(profLevel: number): boolean {
-  return craftRoll(0, profLevel) === 'unique';
+  return craftRoll(0, profLevel, 1) === 'unique';
 }
 
 /**
