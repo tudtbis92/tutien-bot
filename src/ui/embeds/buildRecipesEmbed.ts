@@ -78,11 +78,12 @@ export function buildRecipesPage(
       : undefined;
     const statusIcon = canCraft === true ? '✅' : canCraft === false ? '🔒' : '';
 
-    lines.push(`${statusIcon} ${badge} **${outputName}** \`#${recipe.recipeId}\`${profLevelStr}`);
+    lines.push(`${statusIcon} ${badge} **${outputName}**${profLevelStr}`);
 
     // Ingredients list
     const ingParts = recipe.ingredients.map((ing) => `${t(ing.nameKey)} ×${ing.quantity}`);
     lines.push(`　└ ${ingParts.join(', ')}`);
+    lines.push(`　└ 🔧 \`/craft recipe_id:${recipe.recipeId}\``);
   }
 
   const description = lines.length > 0

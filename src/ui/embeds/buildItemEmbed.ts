@@ -21,6 +21,8 @@ export interface ItemResultData {
   type: 'gather' | 'craft' | 'unique_craft';
   /** i18n key for the item name (e.g. 'game:items.unique.than_dan') */
   itemNameI18nKey: string;
+  /** Item-specific emoji from the catalog (customEmoji field); falls back to tier badge if absent */
+  itemEmoji?: string;
   /** Quantity of items received */
   quantity: number;
   /** Discord tag of the crafter for credit display (unique_craft only) */
@@ -51,13 +53,12 @@ export function buildItemEmbed(data: ItemResultData, t: TFunction): EmbedBuilder
 function buildStandardItemEmbed(data: ItemResultData, t: TFunction): EmbedBuilder {
   const itemName = t(data.itemNameI18nKey);
   const isGather = data.type === 'gather';
+  const displayEmoji = data.itemEmoji ?? EMOJI.SUCCESS;
 
   const title = isGather
-    ? `${EMOJI.SUCCESS} ${t('game:gather.success', { amount: data.quantity, item: itemName })}`
-    : `${EMOJI.SUCCESS} ${t('game:craft.success', { item: itemName })}`;
+    ? `${displayEmoji} ${t('game:gather.success', { amount: data.quantity, item: itemName })}`
+    : `${displayEmoji} ${t('game:craft.success', { item: itemName })}`;
 
-  // Gather: title already contains item name + quantity — no description duplication.
-  // Craft: description shows item name × quantity as before.
   const description = isGather
     ? null
     : `**${t(data.itemNameI18nKey)}** × ${data.quantity}`;
@@ -85,9 +86,10 @@ function buildStandardItemEmbed(data: ItemResultData, t: TFunction): EmbedBuilde
 
 function buildUniqueItemEmbed(data: ItemResultData, t: TFunction): EmbedBuilder {
   const itemName = t(data.itemNameI18nKey);
+  const displayEmoji = data.itemEmoji ?? '✨';
 
   const lines: string[] = [
-    `✨ **${itemName}**`,
+    `${displayEmoji} **${itemName}**`,
     '',
     `📜 *${t('game:craft.unique_pending_appraisal')}*`,
   ];

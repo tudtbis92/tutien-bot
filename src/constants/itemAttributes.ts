@@ -126,19 +126,46 @@ export const PROFESSION_UNIQUE_ARCHETYPES: readonly ProfessionUniqueArchetype[] 
 ] as const;
 
 /**
- * Roll whether a craft attempt creates a unique item.
+ * Three-outcome craft roll.
  *
- * Probability scales with profession level (1 to 42):
- * - Level 1:  1.0%
- * - Level 10: 4.15%
- * - Level 20: 7.65%
- * - Level 42: ~15% (capped)
+ * Base rates (any tier, Luyện Khí — majorRealmIndex 0, profLevel 0):
+ *   fail:    40.00%
+ *   success: 59.98%
+ *   unique:   0.02%
  *
- * Source: CONTEXT.md D-26, RESEARCH.md "Unique Item Trigger Probability"
+ * Scaling per main realm (majorRealmIndex = floor(realmId / 9)):
+ *   fail    -= 3% per realm index  (floor at 0%)
+ *   success += 3% per realm index
+ *   unique  unchanged
+ *
+ * Scaling per allocated skill point in the relevant profession:
+ *   unique  += 0.02% per point  (e.g. profLevel 1 → 0.02%, profLevel 2 → 0.04%)
+ *   fail    -= 0.02% per point  (floor at 0%)
+ *   success fills remainder     (1 − fail − unique)
+ *
+ * @param majorRealmIndex - floor(character.realmId / 9); range 0–4
+ * @param profLevel       - allocated skill points in the recipe's profession
+ */
+export function craftRoll(
+  majorRealmIndex: number,
+  profLevel: number,
+): 'fail' | 'success' | 'unique' {
+  const uniqueRate = 0.0002 + profLevel * 0.0002;
+  const failRate = Math.max(0, 0.40 - majorRealmIndex * 0.03 - profLevel * 0.0002);
+  // successRate = 1 − failRate − uniqueRate (fills automatically)
+
+  const roll = Math.random();
+  if (roll < uniqueRate) return 'unique';
+  if (roll < uniqueRate + failRate) return 'fail';
+  return 'success';
+}
+
+/**
+ * @deprecated Use craftRoll() instead.
+ * Kept for reference; will be removed in a future cleanup pass.
  */
 export function rollUniqueChance(profLevel: number): boolean {
-  const probability = Math.min(0.15, 0.01 + (profLevel - 1) * 0.0035);
-  return Math.random() < probability;
+  return craftRoll(0, profLevel) === 'unique';
 }
 
 /**

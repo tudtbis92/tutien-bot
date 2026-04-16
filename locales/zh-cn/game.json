@@ -148,7 +148,8 @@
     "unique_pending_appraisal": "物品尚未鉴定——品质和名称将在鉴定后揭晓。",
     "insufficient_materials": "材料不足。",
     "insufficient_level": "制造此配方需要职业{{level}}级。",
-    "recipe_not_found": "未找到配方。"
+    "recipe_not_found": "未找到配方。",
+    "fail": "制作失败——材料已被消耗。"
   },
   "recipes": {
     "title_all": "配方列表",

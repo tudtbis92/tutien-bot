@@ -79,7 +79,7 @@ export async function buildBagPage(
   // Fetch item names for this page
   const pageItemIds = pageRows.map((r) => r.itemId);
   const itemRows = await db
-    .select({ id: items.id, nameI18nKey: items.nameI18nKey, tier: items.tier })
+    .select({ id: items.id, nameI18nKey: items.nameI18nKey, tier: items.tier, emoji: items.customEmoji })
     .from(items)
     .where(pageItemIds.length === 1 ? eq(items.id, pageItemIds[0]!) : inArray(items.id, pageItemIds));
 
@@ -90,7 +90,9 @@ export async function buildBagPage(
   const lines = pageRows.map((row) => {
     const item = itemMap.get(row.itemId);
     const name = item ? t(item.nameI18nKey) : t('game:items.unknown');
-    const badge = item ? (TIER_BADGE[item.tier] ?? '⬛') : '⬛';
+    const badge = item
+      ? (item.emoji ?? TIER_BADGE[item.tier] ?? '⬛')
+      : '⬛';
     return `${badge} **${name}** × ${row.quantity}`;
   });
 

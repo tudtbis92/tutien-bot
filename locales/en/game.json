@@ -148,7 +148,8 @@
     "unique_pending_appraisal": "Item not yet appraised — quality and name will be revealed after appraisal.",
     "insufficient_materials": "Insufficient materials.",
     "insufficient_level": "Requires profession level {{level}} to craft this recipe.",
-    "recipe_not_found": "Recipe not found."
+    "recipe_not_found": "Recipe not found.",
+    "fail": "Craft failed — materials have been consumed."
   },
   "recipes": {
     "title_all": "Recipe List",

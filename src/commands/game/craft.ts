@@ -37,7 +37,7 @@ import { characterItems } from '../../db/schema/character_items.js';
 import { recipes } from '../../db/schema/recipes.js';
 import { recipeIngredients } from '../../db/schema/recipe_ingredients.js';
 import {
-  rollUniqueChance,
+  craftRoll,
   PROFESSION_UNIQUE_ARCHETYPES,
 } from '../../constants/itemAttributes.js';
 import { getProfessionLevel } from '../../types/professions.js';
@@ -49,9 +49,9 @@ import { fetchCommandContext } from '../../utils/commandContext.js';
 // ── Types ─────────────────────────────────────────────────────────────────
 
 type CraftResult =
-  | { success: false; reason: 'not_found' | 'insufficient_level' | 'insufficient_materials' }
-  | { success: true; isUnique: false; itemNameI18nKey: string }
-  | { success: true; isUnique: true; itemNameI18nKey: string; creatorTag: string };
+  | { success: false; reason: 'not_found' | 'insufficient_level' | 'insufficient_materials' | 'fail' }
+  | { success: true; isUnique: false; itemNameI18nKey: string; itemEmoji?: string }
+  | { success: true; isUnique: true; itemNameI18nKey: string; itemEmoji?: string; creatorTag: string };
 
 // ── Inventory upsert helper ───────────────────────────────────────────────
 
@@ -60,15 +60,15 @@ type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 /**
  * Upsert an item into a character's inventory by item id.
  * Inserts quantity 1; on conflict increments by 1.
- * Returns the item's nameI18nKey for the result embed.
+ * Returns the item's nameI18nKey and customEmoji for the result embed.
  */
 async function addItemToInventory(
   tx: TxClient,
   characterId: number,
   resultItemId: number,
-): Promise<string> {
+): Promise<{ nameI18nKey: string; emoji?: string }> {
   const resultItemRow = await tx
-    .select({ nameI18nKey: items.nameI18nKey })
+    .select({ nameI18nKey: items.nameI18nKey, emoji: items.customEmoji })
     .from(items)
     .where(eq(items.id, resultItemId))
     .limit(1)
@@ -82,7 +82,10 @@ async function addItemToInventory(
       set: { quantity: sql`${characterItems.quantity} + 1` },
     });
 
-  return resultItemRow?.nameI18nKey ?? 'game:items.unknown';
+  return {
+    nameI18nKey: resultItemRow?.nameI18nKey ?? 'game:items.unknown',
+    emoji: resultItemRow?.emoji ?? undefined,
+  };
 }
 
 // ── Command definition ────────────────────────────────────────────────────
@@ -193,21 +196,29 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         );
     }
 
-    // f. Roll unique chance
-    if (rollUniqueChance(profLevel)) {
+    // f. Roll craft outcome (3-way: fail / success / unique)
+    const majorRealmIndex = Math.floor(char.realmId / 9);
+    const outcome = craftRoll(majorRealmIndex, profLevel);
+
+    if (outcome === 'fail') {
+      // Ingredients already consumed — craft fails (materials lost)
+      return { success: false, reason: 'fail' };
+    }
+
+    if (outcome === 'unique') {
       const archetype = PROFESSION_UNIQUE_ARCHETYPES.find((a) => a.professionType === profKey);
 
       if (archetype) {
         // Look up the seeded catalog item for this profession's unique archetype
         const uniqueItem = await tx
-          .select({ id: items.id, nameI18nKey: items.nameI18nKey })
+          .select({ id: items.id, nameI18nKey: items.nameI18nKey, emoji: items.customEmoji })
           .from(items)
           .where(eq(items.nameI18nKey, archetype.uniqueItemNameI18nKey))
           .limit(1)
           .then((rows) => rows[0]);
 
         if (uniqueItem) {
-          // Grant one of the profession's mystery item (upsert into inventory)
+          // Grant the profession's mystery item (upsert into inventory)
           await tx
             .insert(characterItems)
             .values({ characterId: char.id, itemId: uniqueItem.id, quantity: 1 })
@@ -220,16 +231,17 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
             success: true,
             isUnique: true,
             itemNameI18nKey: uniqueItem.nameI18nKey,
+            itemEmoji: uniqueItem.emoji ?? undefined,
             creatorTag: interaction.user.tag,
           };
         }
-        // Fallback: no catalog item found (seed not yet run) — treat as standard craft
+        // Fallback: catalog item not found (seed not run) — treat as standard craft
       }
     }
 
     // g. Standard craft: add result item to inventory
-    const nameI18nKey = await addItemToInventory(tx, char.id, recipe.resultItemId);
-    return { success: true, isUnique: false, itemNameI18nKey: nameI18nKey };
+    const itemResult = await addItemToInventory(tx, char.id, recipe.resultItemId);
+    return { success: true, isUnique: false, itemNameI18nKey: itemResult.nameI18nKey, itemEmoji: itemResult.emoji };
   });
 
   // Handle result
@@ -244,6 +256,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         .limit(1)
         .then((rows) => rows[0]);
       errorMsg = t('game:craft.insufficient_level', { level: recipe?.minProfessionLevel ?? '?' });
+    } else if (result.reason === 'fail') {
+      errorMsg = t('game:craft.fail');
     } else {
       const errorMsgKey =
         result.reason === 'not_found' ? 'game:craft.recipe_not_found' : 'game:craft.insufficient_materials';
@@ -260,6 +274,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         {
           type: result.isUnique ? 'unique_craft' : 'craft',
           itemNameI18nKey: result.itemNameI18nKey,
+          itemEmoji: result.itemEmoji,
           quantity: 1,
           creatorTag: result.isUnique ? result.creatorTag : undefined,
           shardId,

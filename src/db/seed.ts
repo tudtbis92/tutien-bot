@@ -38,6 +38,7 @@ interface RawItemDef {
   type: ItemType;
   tier: number;
   basePrice: bigint;
+  emoji?: string;
 }
 
 interface CraftedItemDef {
@@ -48,6 +49,7 @@ interface CraftedItemDef {
   profession: ProfessionType;
   minProfessionLevel: number;
   ingredients: { slug: string; quantity: number }[];
+  emoji?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -55,74 +57,74 @@ interface CraftedItemDef {
 // ---------------------------------------------------------------------------
 const RAW_ITEMS: RawItemDef[] = [
   // LUYỆN ĐAN
-  { slug: 'linh_thao_so_khai',   type: 'consumable', tier: 1, basePrice: 2n },
-  { slug: 'thanh_tam_hoa',       type: 'consumable', tier: 2, basePrice: 5n },
-  { slug: 'huyen_tinh_thao',     type: 'consumable', tier: 3, basePrice: 12n },
-  { slug: 'dan_nguyen_qua',      type: 'consumable', tier: 4, basePrice: 30n },
-  { slug: 'cuu_diep_linh_chi',   type: 'consumable', tier: 5, basePrice: 80n },
+  { slug: 'linh_thao_so_khai',   type: 'consumable', tier: 1, basePrice: 2n,  emoji: '🌿' },
+  { slug: 'thanh_tam_hoa',       type: 'consumable', tier: 2, basePrice: 5n,  emoji: '🌸' },
+  { slug: 'huyen_tinh_thao',     type: 'consumable', tier: 3, basePrice: 12n, emoji: '🍀' },
+  { slug: 'dan_nguyen_qua',      type: 'consumable', tier: 4, basePrice: 30n, emoji: '🍇' },
+  { slug: 'cuu_diep_linh_chi',   type: 'consumable', tier: 5, basePrice: 80n, emoji: '🌺' },
 
   // LUYỆN KHÍ NGHỀ
-  { slug: 'khi_tu_thach',        type: 'material',   tier: 1, basePrice: 2n },
-  { slug: 'linh_khi_tinh',       type: 'material',   tier: 2, basePrice: 5n },
-  { slug: 'thuan_khi_ngoc',      type: 'material',   tier: 3, basePrice: 12n },
-  { slug: 'thien_nguyen_tinh',   type: 'material',   tier: 4, basePrice: 30n },
-  { slug: 'hu_khong_khi_doan',   type: 'material',   tier: 5, basePrice: 80n },
+  { slug: 'khi_tu_thach',        type: 'material',   tier: 1, basePrice: 2n,  emoji: '🪨' },
+  { slug: 'linh_khi_tinh',       type: 'material',   tier: 2, basePrice: 5n,  emoji: '💠' },
+  { slug: 'thuan_khi_ngoc',      type: 'material',   tier: 3, basePrice: 12n, emoji: '🔷' },
+  { slug: 'thien_nguyen_tinh',   type: 'material',   tier: 4, basePrice: 30n, emoji: '🌀' },
+  { slug: 'hu_khong_khi_doan',   type: 'material',   tier: 5, basePrice: 80n, emoji: '🌊' },
 
   // TRẬN PHÁP
-  { slug: 'tran_van_thach',      type: 'formation',  tier: 1, basePrice: 2n },
-  { slug: 'linh_sa',             type: 'formation',  tier: 2, basePrice: 5n },
-  { slug: 'tran_co_ngoc',        type: 'formation',  tier: 3, basePrice: 12n },
-  { slug: 'co_tran_van_phien',   type: 'formation',  tier: 4, basePrice: 30n },
-  { slug: 'thien_dia_tran_tinh', type: 'formation',  tier: 5, basePrice: 80n },
+  { slug: 'tran_van_thach',      type: 'formation',  tier: 1, basePrice: 2n,  emoji: '🪬' },
+  { slug: 'linh_sa',             type: 'formation',  tier: 2, basePrice: 5n,  emoji: '🔮' },
+  { slug: 'tran_co_ngoc',        type: 'formation',  tier: 3, basePrice: 12n, emoji: '🧿' },
+  { slug: 'co_tran_van_phien',   type: 'formation',  tier: 4, basePrice: 30n, emoji: '🔯' },
+  { slug: 'thien_dia_tran_tinh', type: 'formation',  tier: 5, basePrice: 80n, emoji: '⚡' },
 
   // LINH TRÙ
-  { slug: 'linh_mi',             type: 'food',       tier: 1, basePrice: 2n },
-  { slug: 'thanh_lo_thao',       type: 'food',       tier: 2, basePrice: 5n },
-  { slug: 'huyen_vu_nam',        type: 'food',       tier: 3, basePrice: 12n },
-  { slug: 'phuong_hoang_qua',    type: 'food',       tier: 4, basePrice: 30n },
-  { slug: 'long_tuy_tinh_hoa',   type: 'food',       tier: 5, basePrice: 80n },
+  { slug: 'linh_mi',             type: 'food',       tier: 1, basePrice: 2n,  emoji: '🍚' },
+  { slug: 'thanh_lo_thao',       type: 'food',       tier: 2, basePrice: 5n,  emoji: '🥬' },
+  { slug: 'huyen_vu_nam',        type: 'food',       tier: 3, basePrice: 12n, emoji: '🍄' },
+  { slug: 'phuong_hoang_qua',    type: 'food',       tier: 4, basePrice: 30n, emoji: '🍑' },
+  { slug: 'long_tuy_tinh_hoa',   type: 'food',       tier: 5, basePrice: 80n, emoji: '🐉' },
 
   // LUYỆN CỔ TRÙNG
-  { slug: 'son_truong_mat',      type: 'companion',  tier: 1, basePrice: 2n },
-  { slug: 'doc_truong_nhuong',   type: 'companion',  tier: 2, basePrice: 5n },
-  { slug: 'linh_truong_kien',    type: 'companion',  tier: 3, basePrice: 12n },
-  { slug: 'co_doc_tinh',         type: 'companion',  tier: 4, basePrice: 30n },
-  { slug: 'van_truong_than_co',  type: 'companion',  tier: 5, basePrice: 80n },
+  { slug: 'son_truong_mat',      type: 'companion',  tier: 1, basePrice: 2n,  emoji: '🐛' },
+  { slug: 'doc_truong_nhuong',   type: 'companion',  tier: 2, basePrice: 5n,  emoji: '🐍' },
+  { slug: 'linh_truong_kien',    type: 'companion',  tier: 3, basePrice: 12n, emoji: '🦂' },
+  { slug: 'co_doc_tinh',         type: 'companion',  tier: 4, basePrice: 30n, emoji: '🕷️' },
+  { slug: 'van_truong_than_co',  type: 'companion',  tier: 5, basePrice: 80n, emoji: '🐲' },
 
   // DƯỢC SƯ
-  { slug: 'tieu_can_thao',       type: 'material',   tier: 1, basePrice: 2n },
-  { slug: 'hoa_ich_tho',         type: 'material',   tier: 2, basePrice: 5n },
-  { slug: 'sam_linh_can',        type: 'material',   tier: 3, basePrice: 12n },
-  { slug: 'thien_nien_do_quyen', type: 'material',   tier: 4, basePrice: 30n },
-  { slug: 'van_linh_tien_hoa',   type: 'material',   tier: 5, basePrice: 80n },
+  { slug: 'tieu_can_thao',       type: 'material',   tier: 1, basePrice: 2n,  emoji: '🌱' },
+  { slug: 'hoa_ich_tho',         type: 'material',   tier: 2, basePrice: 5n,  emoji: '🌼' },
+  { slug: 'sam_linh_can',        type: 'material',   tier: 3, basePrice: 12n, emoji: '🫚' },
+  { slug: 'thien_nien_do_quyen', type: 'material',   tier: 4, basePrice: 30n, emoji: '🌹' },
+  { slug: 'van_linh_tien_hoa',   type: 'material',   tier: 5, basePrice: 80n, emoji: '🌷' },
 
   // THUẦN THÚ
-  { slug: 'thu_long_tho',        type: 'companion',  tier: 1, basePrice: 2n },
-  { slug: 'tieu_thu_loi',        type: 'companion',  tier: 2, basePrice: 5n },
-  { slug: 'linh_thu_vay',        type: 'companion',  tier: 3, basePrice: 12n },
-  { slug: 'manh_thu_nanh',       type: 'companion',  tier: 4, basePrice: 30n },
-  { slug: 'than_thu_tinh_huyet', type: 'companion',  tier: 5, basePrice: 80n },
+  { slug: 'thu_long_tho',        type: 'companion',  tier: 1, basePrice: 2n,  emoji: '🐇' },
+  { slug: 'tieu_thu_loi',        type: 'companion',  tier: 2, basePrice: 5n,  emoji: '🦊' },
+  { slug: 'linh_thu_vay',        type: 'companion',  tier: 3, basePrice: 12n, emoji: '🦎' },
+  { slug: 'manh_thu_nanh',       type: 'companion',  tier: 4, basePrice: 30n, emoji: '🐯' },
+  { slug: 'than_thu_tinh_huyet', type: 'companion',  tier: 5, basePrice: 80n, emoji: '🦁' },
 
   // LUYỆN KIM
-  { slug: 'pho_thong_khoang',    type: 'equipment',  tier: 1, basePrice: 2n },
-  { slug: 'thiet_linh_phien',    type: 'equipment',  tier: 2, basePrice: 5n },
-  { slug: 'thanh_dong_khoi',     type: 'equipment',  tier: 3, basePrice: 12n },
-  { slug: 'bach_ngan_tinh',      type: 'equipment',  tier: 4, basePrice: 30n },
-  { slug: 'cuc_pham_than_kim',   type: 'equipment',  tier: 5, basePrice: 80n },
+  { slug: 'pho_thong_khoang',    type: 'equipment',  tier: 1, basePrice: 2n,  emoji: '⛏️' },
+  { slug: 'thiet_linh_phien',    type: 'equipment',  tier: 2, basePrice: 5n,  emoji: '🔩' },
+  { slug: 'thanh_dong_khoi',     type: 'equipment',  tier: 3, basePrice: 12n, emoji: '🪙' },
+  { slug: 'bach_ngan_tinh',      type: 'equipment',  tier: 4, basePrice: 30n, emoji: '💰' },
+  { slug: 'cuc_pham_than_kim',   type: 'equipment',  tier: 5, basePrice: 80n, emoji: '💎' },
 
-  // PHÙ SƯ (formerly khai_linh)
-  { slug: 'linh_sa_boi',         type: 'scroll',     tier: 1, basePrice: 2n },
-  { slug: 'phu_giay_linh',       type: 'scroll',     tier: 2, basePrice: 5n },
-  { slug: 'huyen_muc_tinh',      type: 'scroll',     tier: 3, basePrice: 12n },
-  { slug: 'kim_sa_linh',         type: 'scroll',     tier: 4, basePrice: 30n },
-  { slug: 'tien_bich_huyet',     type: 'scroll',     tier: 5, basePrice: 80n },
+  // PHÙ SƯ
+  { slug: 'linh_sa_boi',         type: 'scroll',     tier: 1, basePrice: 2n,  emoji: '🖌️' },
+  { slug: 'phu_giay_linh',       type: 'scroll',     tier: 2, basePrice: 5n,  emoji: '📄' },
+  { slug: 'huyen_muc_tinh',      type: 'scroll',     tier: 3, basePrice: 12n, emoji: '🖊️' },
+  { slug: 'kim_sa_linh',         type: 'scroll',     tier: 4, basePrice: 30n, emoji: '✒️' },
+  { slug: 'tien_bich_huyet',     type: 'scroll',     tier: 5, basePrice: 80n, emoji: '📜' },
 
   // THUẬT SƯ
-  { slug: 'tien_tri_gian',       type: 'scroll',     tier: 1, basePrice: 2n },
-  { slug: 'van_menh_soi',        type: 'scroll',     tier: 2, basePrice: 5n },
-  { slug: 'tinh_tu_tinh',        type: 'scroll',     tier: 3, basePrice: 12n },
-  { slug: 'co_ngu_gian_phien',   type: 'scroll',     tier: 4, basePrice: 30n },
-  { slug: 'thien_co_cuon',       type: 'scroll',     tier: 5, basePrice: 80n },
+  { slug: 'tien_tri_gian',       type: 'scroll',     tier: 1, basePrice: 2n,  emoji: '🔭' },
+  { slug: 'van_menh_soi',        type: 'scroll',     tier: 2, basePrice: 5n,  emoji: '🔮' },
+  { slug: 'tinh_tu_tinh',        type: 'scroll',     tier: 3, basePrice: 12n, emoji: '🌙' },
+  { slug: 'co_ngu_gian_phien',   type: 'scroll',     tier: 4, basePrice: 30n, emoji: '🌟' },
+  { slug: 'thien_co_cuon',       type: 'scroll',     tier: 5, basePrice: 80n, emoji: '⭐' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -131,22 +133,22 @@ const RAW_ITEMS: RawItemDef[] = [
 const CRAFTED_ITEMS: CraftedItemDef[] = [
   // LUYỆN ĐAN (5)
   {
-    slug: 'khi_hoi_dan', type: 'consumable', tier: 3, basePrice: 30n,
+    slug: 'khi_hoi_dan', type: 'consumable', tier: 3, basePrice: 30n, emoji: '💊',
     profession: 'luyen_dan', minProfessionLevel: 1,
     ingredients: [{ slug: 'linh_thao_so_khai', quantity: 3 }, { slug: 'tieu_can_thao', quantity: 2 }],
   },
   {
-    slug: 'tam_thanh_dan', type: 'consumable', tier: 3, basePrice: 80n,
+    slug: 'tam_thanh_dan', type: 'consumable', tier: 3, basePrice: 80n, emoji: '🔵',
     profession: 'luyen_dan', minProfessionLevel: 5,
     ingredients: [{ slug: 'thanh_tam_hoa', quantity: 5 }, { slug: 'hoa_ich_tho', quantity: 3 }],
   },
   {
-    slug: 'huyen_tinh_dan', type: 'consumable', tier: 4, basePrice: 200n,
+    slug: 'huyen_tinh_dan', type: 'consumable', tier: 4, basePrice: 200n, emoji: '⚫',
     profession: 'luyen_dan', minProfessionLevel: 10,
     ingredients: [{ slug: 'huyen_tinh_thao', quantity: 4 }, { slug: 'thanh_tam_hoa', quantity: 2 }],
   },
   {
-    slug: 'ngu_linh_dan', type: 'consumable', tier: 4, basePrice: 500n,
+    slug: 'ngu_linh_dan', type: 'consumable', tier: 4, basePrice: 500n, emoji: '🟣',
     profession: 'luyen_dan', minProfessionLevel: 20,
     ingredients: [
       { slug: 'dan_nguyen_qua', quantity: 3 },
@@ -155,68 +157,68 @@ const CRAFTED_ITEMS: CraftedItemDef[] = [
     ],
   },
   {
-    slug: 'cuu_chuyen_kim_dan', type: 'consumable', tier: 5, basePrice: 1500n,
+    slug: 'cuu_chuyen_kim_dan', type: 'consumable', tier: 5, basePrice: 1500n, emoji: '🟡',
     profession: 'luyen_dan', minProfessionLevel: 35,
     ingredients: [{ slug: 'cuu_diep_linh_chi', quantity: 3 }, { slug: 'dan_nguyen_qua', quantity: 2 }],
   },
 
   // LUYỆN KHÍ NGHỀ (4)
   {
-    slug: 'tu_khi_binh', type: 'artifact', tier: 3, basePrice: 30n,
+    slug: 'tu_khi_binh', type: 'artifact', tier: 3, basePrice: 30n, emoji: '🏺',
     profession: 'luyen_khi_nc', minProfessionLevel: 1,
     ingredients: [{ slug: 'khi_tu_thach', quantity: 3 }, { slug: 'tran_van_thach', quantity: 2 }],
   },
   {
-    slug: 'linh_khi_duong', type: 'artifact', tier: 3, basePrice: 80n,
+    slug: 'linh_khi_duong', type: 'artifact', tier: 3, basePrice: 80n, emoji: '🔵',
     profession: 'luyen_khi_nc', minProfessionLevel: 5,
     ingredients: [{ slug: 'linh_khi_tinh', quantity: 4 }, { slug: 'khi_tu_thach', quantity: 2 }],
   },
   {
-    slug: 'thuan_khi_tru', type: 'artifact', tier: 4, basePrice: 200n,
+    slug: 'thuan_khi_tru', type: 'artifact', tier: 4, basePrice: 200n, emoji: '🪄',
     profession: 'luyen_khi_nc', minProfessionLevel: 10,
     ingredients: [{ slug: 'thuan_khi_ngoc', quantity: 3 }, { slug: 'linh_khi_tinh', quantity: 2 }],
   },
   {
-    slug: 'thien_nguyen_dinh', type: 'artifact', tier: 4, basePrice: 600n,
+    slug: 'thien_nguyen_dinh', type: 'artifact', tier: 4, basePrice: 600n, emoji: '⚱️',
     profession: 'luyen_khi_nc', minProfessionLevel: 20,
     ingredients: [{ slug: 'thien_nguyen_tinh', quantity: 3 }, { slug: 'thuan_khi_ngoc', quantity: 2 }],
   },
 
   // TRẬN PHÁP (4)
   {
-    slug: 'ket_gioi_phu', type: 'formation', tier: 3, basePrice: 30n,
+    slug: 'ket_gioi_phu', type: 'formation', tier: 3, basePrice: 30n, emoji: '🔵',
     profession: 'tran_phap', minProfessionLevel: 1,
     ingredients: [{ slug: 'tran_van_thach', quantity: 3 }, { slug: 'linh_sa', quantity: 2 }],
   },
   {
-    slug: 'cong_kich_tran_ban', type: 'formation', tier: 3, basePrice: 80n,
+    slug: 'cong_kich_tran_ban', type: 'formation', tier: 3, basePrice: 80n, emoji: '⚔️',
     profession: 'tran_phap', minProfessionLevel: 5,
     ingredients: [{ slug: 'linh_sa', quantity: 4 }, { slug: 'tran_van_thach', quantity: 2 }],
   },
   {
-    slug: 'ho_than_tran_co', type: 'formation', tier: 4, basePrice: 200n,
+    slug: 'ho_than_tran_co', type: 'formation', tier: 4, basePrice: 200n, emoji: '🛡️',
     profession: 'tran_phap', minProfessionLevel: 10,
     ingredients: [{ slug: 'tran_co_ngoc', quantity: 3 }, { slug: 'linh_sa', quantity: 2 }],
   },
   {
-    slug: 'thien_dia_cam_che', type: 'formation', tier: 4, basePrice: 600n,
+    slug: 'thien_dia_cam_che', type: 'formation', tier: 4, basePrice: 600n, emoji: '🌐',
     profession: 'tran_phap', minProfessionLevel: 20,
     ingredients: [{ slug: 'thien_dia_tran_tinh', quantity: 3 }, { slug: 'co_tran_van_phien', quantity: 2 }],
   },
 
   // LINH TRÙ (4)
   {
-    slug: 'thanh_tam_canh', type: 'food', tier: 3, basePrice: 30n,
+    slug: 'thanh_tam_canh', type: 'food', tier: 3, basePrice: 30n, emoji: '🥗',
     profession: 'linh_tru', minProfessionLevel: 1,
     ingredients: [{ slug: 'linh_mi', quantity: 3 }, { slug: 'thanh_lo_thao', quantity: 2 }],
   },
   {
-    slug: 'linh_thu_thai', type: 'food', tier: 3, basePrice: 80n,
+    slug: 'linh_thu_thai', type: 'food', tier: 3, basePrice: 80n, emoji: '🍱',
     profession: 'linh_tru', minProfessionLevel: 5,
     ingredients: [{ slug: 'thanh_lo_thao', quantity: 4 }, { slug: 'linh_mi', quantity: 2 }],
   },
   {
-    slug: 'huyen_vu_ninh', type: 'food', tier: 4, basePrice: 200n,
+    slug: 'huyen_vu_ninh', type: 'food', tier: 4, basePrice: 200n, emoji: '🍲',
     profession: 'linh_tru', minProfessionLevel: 10,
     ingredients: [
       { slug: 'huyen_vu_nam', quantity: 3 },
@@ -225,127 +227,127 @@ const CRAFTED_ITEMS: CraftedItemDef[] = [
     ],
   },
   {
-    slug: 'phung_hoang_yen', type: 'food', tier: 4, basePrice: 600n,
+    slug: 'phung_hoang_yen', type: 'food', tier: 4, basePrice: 600n, emoji: '🦅',
     profession: 'linh_tru', minProfessionLevel: 20,
     ingredients: [{ slug: 'phuong_hoang_qua', quantity: 3 }, { slug: 'long_tuy_tinh_hoa', quantity: 2 }],
   },
 
   // LUYỆN CỔ TRÙNG (5)
   {
-    slug: 'doc_truong_so', type: 'companion', tier: 3, basePrice: 30n,
+    slug: 'doc_truong_so', type: 'companion', tier: 3, basePrice: 30n, emoji: '🐌',
     profession: 'luyen_co', minProfessionLevel: 1,
     ingredients: [{ slug: 'son_truong_mat', quantity: 5 }, { slug: 'doc_truong_nhuong', quantity: 3 }],
   },
   {
-    slug: 'linh_truong_binh', type: 'companion', tier: 3, basePrice: 80n,
+    slug: 'linh_truong_binh', type: 'companion', tier: 3, basePrice: 80n, emoji: '🐜',
     profession: 'luyen_co', minProfessionLevel: 5,
     ingredients: [{ slug: 'doc_truong_nhuong', quantity: 4 }, { slug: 'son_truong_mat', quantity: 3 }],
   },
   {
-    slug: 'co_nguyen_truong', type: 'companion', tier: 4, basePrice: 200n,
+    slug: 'co_nguyen_truong', type: 'companion', tier: 4, basePrice: 200n, emoji: '🦗',
     profession: 'luyen_co', minProfessionLevel: 10,
     ingredients: [{ slug: 'linh_truong_kien', quantity: 3 }, { slug: 'doc_truong_nhuong', quantity: 2 }],
   },
   {
-    slug: 'truong_vuong_tieu', type: 'companion', tier: 4, basePrice: 500n,
+    slug: 'truong_vuong_tieu', type: 'companion', tier: 4, basePrice: 500n, emoji: '🦟',
     profession: 'luyen_co', minProfessionLevel: 20,
     ingredients: [{ slug: 'co_doc_tinh', quantity: 3 }, { slug: 'linh_truong_kien', quantity: 2 }],
   },
   {
-    slug: 'van_doc_than_truong', type: 'companion', tier: 5, basePrice: 1500n,
+    slug: 'van_doc_than_truong', type: 'companion', tier: 5, basePrice: 1500n, emoji: '🐲',
     profession: 'luyen_co', minProfessionLevel: 35,
     ingredients: [{ slug: 'van_truong_than_co', quantity: 3 }, { slug: 'co_doc_tinh', quantity: 2 }],
   },
 
   // DƯỢC SƯ (4)
   {
-    slug: 'linh_thao_thuoc_bot', type: 'consumable', tier: 3, basePrice: 30n,
+    slug: 'linh_thao_thuoc_bot', type: 'consumable', tier: 3, basePrice: 30n, emoji: '🌿',
     profession: 'duoc_su', minProfessionLevel: 1,
     ingredients: [{ slug: 'tieu_can_thao', quantity: 5 }, { slug: 'linh_thao_so_khai', quantity: 2 }],
   },
   {
-    slug: 'ich_tho_cao', type: 'consumable', tier: 3, basePrice: 80n,
+    slug: 'ich_tho_cao', type: 'consumable', tier: 3, basePrice: 80n, emoji: '🧴',
     profession: 'duoc_su', minProfessionLevel: 5,
     ingredients: [{ slug: 'hoa_ich_tho', quantity: 4 }, { slug: 'tieu_can_thao', quantity: 3 }],
   },
   {
-    slug: 'sam_linh_duoc', type: 'consumable', tier: 4, basePrice: 200n,
+    slug: 'sam_linh_duoc', type: 'consumable', tier: 4, basePrice: 200n, emoji: '🧪',
     profession: 'duoc_su', minProfessionLevel: 10,
     ingredients: [{ slug: 'sam_linh_can', quantity: 3 }, { slug: 'hoa_ich_tho', quantity: 2 }],
   },
   {
-    slug: 'van_linh_dich', type: 'consumable', tier: 4, basePrice: 600n,
+    slug: 'van_linh_dich', type: 'consumable', tier: 4, basePrice: 600n, emoji: '⚗️',
     profession: 'duoc_su', minProfessionLevel: 20,
     ingredients: [{ slug: 'van_linh_tien_hoa', quantity: 3 }, { slug: 'thien_nien_do_quyen', quantity: 2 }],
   },
 
-  // THUẦN THÚ (4) — crafted items are Linh Thú (spirit beasts)
+  // THUẦN THÚ (4)
   {
-    slug: 'tu_linh_cuu', type: 'companion', tier: 3, basePrice: 30n,
+    slug: 'tu_linh_cuu', type: 'companion', tier: 3, basePrice: 30n, emoji: '🐦',
     profession: 'thuan_thu', minProfessionLevel: 1,
     ingredients: [{ slug: 'thu_long_tho', quantity: 5 }, { slug: 'tieu_thu_loi', quantity: 2 }],
   },
   {
-    slug: 'phong_loan_linh', type: 'companion', tier: 3, basePrice: 80n,
+    slug: 'phong_loan_linh', type: 'companion', tier: 3, basePrice: 80n, emoji: '🦅',
     profession: 'thuan_thu', minProfessionLevel: 5,
     ingredients: [{ slug: 'tieu_thu_loi', quantity: 4 }, { slug: 'thu_long_tho', quantity: 3 }],
   },
   {
-    slug: 'vun_linh_nhan', type: 'companion', tier: 4, basePrice: 200n,
+    slug: 'vun_linh_nhan', type: 'companion', tier: 4, basePrice: 200n, emoji: '🦁',
     profession: 'thuan_thu', minProfessionLevel: 10,
     ingredients: [{ slug: 'linh_thu_vay', quantity: 3 }, { slug: 'tieu_thu_loi', quantity: 2 }],
   },
   {
-    slug: 'than_thu_bao_than', type: 'companion', tier: 4, basePrice: 600n,
+    slug: 'than_thu_bao_than', type: 'companion', tier: 4, basePrice: 600n, emoji: '🐉',
     profession: 'thuan_thu', minProfessionLevel: 20,
     ingredients: [{ slug: 'than_thu_tinh_huyet', quantity: 3 }, { slug: 'manh_thu_nanh', quantity: 2 }],
   },
 
   // LUYỆN KIM (5)
   {
-    slug: 'so_cap_dao_phien', type: 'equipment', tier: 3, basePrice: 30n,
+    slug: 'so_cap_dao_phien', type: 'equipment', tier: 3, basePrice: 30n, emoji: '🗡️',
     profession: 'luyen_kim', minProfessionLevel: 1,
     ingredients: [{ slug: 'pho_thong_khoang', quantity: 4 }, { slug: 'thiet_linh_phien', quantity: 2 }],
   },
   {
-    slug: 'trung_cap_giap_manh', type: 'equipment', tier: 3, basePrice: 80n,
+    slug: 'trung_cap_giap_manh', type: 'equipment', tier: 3, basePrice: 80n, emoji: '🛡️',
     profession: 'luyen_kim', minProfessionLevel: 5,
     ingredients: [{ slug: 'thiet_linh_phien', quantity: 4 }, { slug: 'pho_thong_khoang', quantity: 2 }],
   },
   {
-    slug: 'thanh_dong_vu_khi', type: 'equipment', tier: 4, basePrice: 200n,
+    slug: 'thanh_dong_vu_khi', type: 'equipment', tier: 4, basePrice: 200n, emoji: '⚔️',
     profession: 'luyen_kim', minProfessionLevel: 10,
     ingredients: [{ slug: 'thanh_dong_khoi', quantity: 3 }, { slug: 'thiet_linh_phien', quantity: 2 }],
   },
   {
-    slug: 'bach_ngan_an_giam', type: 'equipment', tier: 4, basePrice: 500n,
+    slug: 'bach_ngan_an_giam', type: 'equipment', tier: 4, basePrice: 500n, emoji: '🗜️',
     profession: 'luyen_kim', minProfessionLevel: 20,
     ingredients: [{ slug: 'bach_ngan_tinh', quantity: 3 }, { slug: 'thanh_dong_khoi', quantity: 2 }],
   },
   {
-    slug: 'than_kim_chu_phap', type: 'equipment', tier: 5, basePrice: 1500n,
+    slug: 'than_kim_chu_phap', type: 'equipment', tier: 5, basePrice: 1500n, emoji: '⚡',
     profession: 'luyen_kim', minProfessionLevel: 35,
     ingredients: [{ slug: 'cuc_pham_than_kim', quantity: 3 }, { slug: 'bach_ngan_tinh', quantity: 2 }],
   },
 
-  // PHÙ SƯ (4) — crafted items are Phù Chú (talismans)
+  // PHÙ SƯ (4)
   {
-    slug: 'hoa_phu_so_cap', type: 'scroll', tier: 3, basePrice: 30n,
+    slug: 'hoa_phu_so_cap', type: 'scroll', tier: 3, basePrice: 30n, emoji: '🔥',
     profession: 'phu_su', minProfessionLevel: 1,
     ingredients: [{ slug: 'linh_sa_boi', quantity: 4 }, { slug: 'phu_giay_linh', quantity: 2 }],
   },
   {
-    slug: 'ho_than_phu', type: 'scroll', tier: 3, basePrice: 80n,
+    slug: 'ho_than_phu', type: 'scroll', tier: 3, basePrice: 80n, emoji: '🧧',
     profession: 'phu_su', minProfessionLevel: 5,
     ingredients: [{ slug: 'phu_giay_linh', quantity: 4 }, { slug: 'linh_sa_boi', quantity: 3 }],
   },
   {
-    slug: 'loi_phu_trung_cap', type: 'scroll', tier: 4, basePrice: 200n,
+    slug: 'loi_phu_trung_cap', type: 'scroll', tier: 4, basePrice: 200n, emoji: '⚡',
     profession: 'phu_su', minProfessionLevel: 10,
     ingredients: [{ slug: 'huyen_muc_tinh', quantity: 3 }, { slug: 'phu_giay_linh', quantity: 2 }],
   },
   {
-    slug: 'phong_an_dai_phu', type: 'scroll', tier: 4, basePrice: 600n,
+    slug: 'phong_an_dai_phu', type: 'scroll', tier: 4, basePrice: 600n, emoji: '🌪️',
     profession: 'phu_su', minProfessionLevel: 20,
     ingredients: [
       { slug: 'kim_sa_linh', quantity: 3 },
@@ -356,22 +358,22 @@ const CRAFTED_ITEMS: CraftedItemDef[] = [
 
   // THUẬT SƯ (4)
   {
-    slug: 'boi_toan_gian', type: 'scroll', tier: 3, basePrice: 30n,
+    slug: 'boi_toan_gian', type: 'scroll', tier: 3, basePrice: 30n, emoji: '🎴',
     profession: 'thuat_su', minProfessionLevel: 1,
     ingredients: [{ slug: 'tien_tri_gian', quantity: 4 }, { slug: 'van_menh_soi', quantity: 2 }],
   },
   {
-    slug: 'menh_van_tinh', type: 'scroll', tier: 3, basePrice: 80n,
+    slug: 'menh_van_tinh', type: 'scroll', tier: 3, basePrice: 80n, emoji: '🌠',
     profession: 'thuat_su', minProfessionLevel: 5,
     ingredients: [{ slug: 'van_menh_soi', quantity: 4 }, { slug: 'tien_tri_gian', quantity: 2 }],
   },
   {
-    slug: 'tinh_tu_menh_ban', type: 'scroll', tier: 4, basePrice: 200n,
+    slug: 'tinh_tu_menh_ban', type: 'scroll', tier: 4, basePrice: 200n, emoji: '🗺️',
     profession: 'thuat_su', minProfessionLevel: 10,
     ingredients: [{ slug: 'tinh_tu_tinh', quantity: 3 }, { slug: 'van_menh_soi', quantity: 2 }],
   },
   {
-    slug: 'thien_co_du_trac', type: 'scroll', tier: 4, basePrice: 600n,
+    slug: 'thien_co_du_trac', type: 'scroll', tier: 4, basePrice: 600n, emoji: '🔯',
     profession: 'thuat_su', minProfessionLevel: 20,
     ingredients: [{ slug: 'thien_co_cuon', quantity: 3 }, { slug: 'co_ngu_gian_phien', quantity: 2 }],
   },
@@ -386,19 +388,20 @@ interface UniqueItemDef {
   type: ItemType;
   tier: number;
   basePrice: bigint;
+  emoji?: string;
 }
 
 const UNIQUE_ITEMS: UniqueItemDef[] = [
-  { slug: 'than_dan',       type: 'consumable', tier: 5, basePrice: 0n }, // luyen_dan
-  { slug: 'khi_luyen_tu',   type: 'artifact',   tier: 5, basePrice: 0n }, // luyen_khi_nc
-  { slug: 'ky_tran_co',     type: 'formation',  tier: 5, basePrice: 0n }, // tran_phap
-  { slug: 'linh_thien',     type: 'food',       tier: 5, basePrice: 0n }, // linh_tru
-  { slug: 'co_trung_vuong', type: 'companion',  tier: 5, basePrice: 0n }, // luyen_co
-  { slug: 'linh_thao_than', type: 'material',   tier: 5, basePrice: 0n }, // duoc_su
-  { slug: 'than_linh_thu',  type: 'companion',  tier: 5, basePrice: 0n }, // thuan_thu
-  { slug: 'than_binh',      type: 'equipment',  tier: 5, basePrice: 0n }, // luyen_kim
-  { slug: 'than_phu',       type: 'scroll',     tier: 5, basePrice: 0n }, // phu_su
-  { slug: 'thien_menh_thu', type: 'scroll',     tier: 5, basePrice: 0n }, // thuat_su
+  { slug: 'than_dan',       type: 'consumable', tier: 5, basePrice: 0n, emoji: '🌟' }, // luyen_dan
+  { slug: 'khi_luyen_tu',   type: 'artifact',   tier: 5, basePrice: 0n, emoji: '🌀' }, // luyen_khi_nc
+  { slug: 'ky_tran_co',     type: 'formation',  tier: 5, basePrice: 0n, emoji: '🔯' }, // tran_phap
+  { slug: 'linh_thien',     type: 'food',       tier: 5, basePrice: 0n, emoji: '🍽️' }, // linh_tru
+  { slug: 'co_trung_vuong', type: 'companion',  tier: 5, basePrice: 0n, emoji: '👑' }, // luyen_co
+  { slug: 'linh_thao_than', type: 'material',   tier: 5, basePrice: 0n, emoji: '🌿' }, // duoc_su
+  { slug: 'than_linh_thu',  type: 'companion',  tier: 5, basePrice: 0n, emoji: '🐉' }, // thuan_thu
+  { slug: 'than_binh',      type: 'equipment',  tier: 5, basePrice: 0n, emoji: '⚡' }, // luyen_kim
+  { slug: 'than_phu',       type: 'scroll',     tier: 5, basePrice: 0n, emoji: '📜' }, // phu_su
+  { slug: 'thien_menh_thu', type: 'scroll',     tier: 5, basePrice: 0n, emoji: '☯️' }, // thuat_su
 ];
 
 // ---------------------------------------------------------------------------
@@ -429,6 +432,7 @@ async function seed(): Promise<void> {
       tier: r.tier,
       basePrice: r.basePrice,
       isUnique: false,
+      customEmoji: r.emoji ?? null,
     })),
     ...CRAFTED_ITEMS.map((c) => ({
       nameI18nKey: `game:items.crafted.${c.slug}`,
@@ -436,6 +440,7 @@ async function seed(): Promise<void> {
       tier: c.tier,
       basePrice: c.basePrice,
       isUnique: false,
+      customEmoji: c.emoji ?? null,
     })),
     ...UNIQUE_ITEMS.map((u) => ({
       nameI18nKey: `game:items.unique.${u.slug}`,
@@ -443,6 +448,7 @@ async function seed(): Promise<void> {
       tier: u.tier,
       basePrice: u.basePrice,
       isUnique: false, // catalog item — not player-unique instance
+      customEmoji: u.emoji ?? null,
     })),
   ];
 
@@ -459,6 +465,7 @@ async function seed(): Promise<void> {
           type: itemDef.type,
           tier: itemDef.tier,
           basePrice: itemDef.basePrice,
+          customEmoji: itemDef.customEmoji,
         },
       })
       .returning({ id: schema.items.id });

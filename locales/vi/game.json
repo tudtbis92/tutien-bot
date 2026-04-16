@@ -148,7 +148,8 @@
     "unique_pending_appraisal": "Vật phẩm chưa được giám định — phẩm chất và tên sẽ được tiết lộ sau khi giám định.",
     "insufficient_materials": "Không đủ nguyên liệu.",
     "insufficient_level": "Cần cấp độ nghề {{level}} để chế tạo recipe này.",
-    "recipe_not_found": "Không tìm thấy recipe."
+    "recipe_not_found": "Không tìm thấy recipe.",
+    "fail": "Chế tạo thất bại — nguyên liệu đã bị tiêu hao."
   },
   "recipes": {
     "title_all": "Danh Sách Công Thức",
