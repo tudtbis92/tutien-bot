@@ -146,6 +146,18 @@ export const PROFESSION_UNIQUE_ARCHETYPES: readonly ProfessionUniqueArchetype[] 
  *   fail    -= 0.02% per point  (floor at 0%)
  *   success fills remainder     (1 − fail − unique)
  *
+ * Defensive clamp: failRate is capped at (1 − uniqueRate) so that
+ *   failRate + uniqueRate never exceeds 1, keeping successRate ≥ 0.
+ *
+ * ⚠️  WARNING — TIER 7+ ITEMS:
+ *   At tier 7, realm 0: rawFailRate = 1.00 which equals (1 − uniqueRate) after
+ *   clamp, leaving successRate = 0%.  Players at Luyện Khí (realm 0) cannot
+ *   succeed crafting tier 7+ items regardless of profLevel.
+ *   Before seeding tier 7+ crafted items, add a minRealmId requirement to the
+ *   recipes table so the /craft command gate-checks realm before consuming
+ *   materials.  Formula review may also be needed (e.g. raise base success,
+ *   lower tierPenalty, or increase realmBonus per index).
+ *
  * @param majorRealmIndex - getMajorRealmIndex(character.realmId); range 0–11
  * @param profLevel       - allocated skill points in the recipe's profession
  * @param itemTier        - tier of the result item (1-based); higher tier → harder craft
@@ -157,8 +169,10 @@ export function craftRoll(
 ): 'fail' | 'success' | 'unique' {
   const tierPenalty = (itemTier - 1) * 0.10;
   const uniqueRate = 0.0002 + profLevel * 0.0002;
-  const failRate = Math.max(0, 0.40 + tierPenalty - majorRealmIndex * 0.03 - profLevel * 0.0002);
-  // successRate = 1 − failRate − uniqueRate (fills automatically)
+  // Clamp failRate so failRate + uniqueRate ≤ 1 (successRate always ≥ 0)
+  const rawFailRate = 0.40 + tierPenalty - majorRealmIndex * 0.03 - profLevel * 0.0002;
+  const failRate = Math.min(1 - uniqueRate, Math.max(0, rawFailRate));
+  // successRate = 1 − failRate − uniqueRate (fills automatically, always ≥ 0)
 
   const roll = Math.random();
   if (roll < uniqueRate) return 'unique';
