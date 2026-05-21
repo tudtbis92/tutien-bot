@@ -2,6 +2,10 @@ import { PgBoss } from 'pg-boss';
 import type { Job } from 'pg-boss';
 import { config } from '../config.js';
 import { runVwapRecalc } from '../jobs/vwapRecalc.js';
+import { runFootballFetchFixtures } from '../jobs/footballFetchFixtures.js';
+import { runFootballRefreshOdds } from '../jobs/footballRefreshOdds.js';
+import { runFootballPollScores } from '../jobs/footballPollScores.js';
+import { runFootballResolveMatches } from '../jobs/footballResolveMatches.js';
 import { registerActivityWorker } from './activityWorker.js';
 import { registerVoiceMinuteWorker, clearOrphanedVoiceSessions } from './voiceWorker.js';
 import { logger } from '../utils/logger.js';
@@ -105,7 +109,59 @@ async function registerJobs(b: PgBoss): Promise<void> {
     }
   });
 
-  logger.info('pgBoss', 'Jobs registered: activity-queue, voice-minute-tick, vwap-recalc @ 0 * * * * (top of hour)');
+  // Register Football Fetch Fixtures
+  await b.createQueue('football-fetch-fixtures');
+  await b.schedule('football-fetch-fixtures', '0 */6 * * *', {});
+  await b.work('football-fetch-fixtures', { localConcurrency: 1 }, async (jobs: Job[]) => {
+    for (const job of jobs) {
+      try {
+        await runFootballFetchFixtures(job);
+      } catch (err) {
+        logger.error('pgBoss', `Job ${job.id} (football-fetch-fixtures) failed`, err);
+      }
+    }
+  });
+
+  // Register Football Refresh Odds
+  await b.createQueue('football-refresh-odds');
+  await b.schedule('football-refresh-odds', '0 */2 * * *', {});
+  await b.work('football-refresh-odds', { localConcurrency: 1 }, async (jobs: Job[]) => {
+    for (const job of jobs) {
+      try {
+        await runFootballRefreshOdds(job);
+      } catch (err) {
+        logger.error('pgBoss', `Job ${job.id} (football-refresh-odds) failed`, err);
+      }
+    }
+  });
+
+  // Register Football Poll Scores
+  await b.createQueue('football-poll-scores');
+  await b.schedule('football-poll-scores', '*/15 * * * *', {});
+  await b.work('football-poll-scores', { localConcurrency: 1 }, async (jobs: Job[]) => {
+    for (const job of jobs) {
+      try {
+        await runFootballPollScores(job);
+      } catch (err) {
+        logger.error('pgBoss', `Job ${job.id} (football-poll-scores) failed`, err);
+      }
+    }
+  });
+
+  // Register Football Resolve Matches
+  await b.createQueue('football-resolve-matches');
+  await b.schedule('football-resolve-matches', '0 */2 * * *', {});
+  await b.work('football-resolve-matches', { localConcurrency: 1 }, async (jobs: Job[]) => {
+    for (const job of jobs) {
+      try {
+        await runFootballResolveMatches(job);
+      } catch (err) {
+        logger.error('pgBoss', `Job ${job.id} (football-resolve-matches) failed`, err);
+      }
+    }
+  });
+
+  logger.info('pgBoss', 'Jobs registered: activity-queue, voice-minute-tick, vwap-recalc @ 0 * * * *, football-fetch-fixtures @ 0 */6 * * *, football-refresh-odds @ 0 */2 * * *, football-poll-scores @ */15 * * * *, football-resolve-matches @ 0 */2 * * *');
 }
 
 /**
