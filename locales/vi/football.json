@@ -1,0 +1,67 @@
+{
+  "predictions": {
+    "title": "⚽ Dự Đoán Bóng Đá",
+    "not_registered": "Bạn cần tạo nhân vật trước khi đặt cược.",
+    "match_not_found": "Không tìm thấy trận đấu này.",
+    "already_started": "Trận đấu đã bắt đầu. Không thể đặt cược.",
+    "insufficient_balance": "Không đủ linh thạch. Cần tối thiểu {{amount}}.",
+    "bet_too_low": "Cược tối thiểu là {{min}} linh thạch.",
+    "bet_too_high": "Cược tối đa là {{max}} linh thạch.",
+    "result_selected": "Bạn đã chọn: {{prediction}}. Xác nhận cược để hoàn tất.",
+    "score_selected": "Bạn đã chọn tỉ số: {{score}}. Xác nhận cược để hoàn tất.",
+    "bet_placed": "Đặt cược thành công! {{prediction}} với {{wager}} linh thạch. Thanh toán tiềm năng: {{payout}}.",
+    "bet_edited": "Dự đoán đã được cập nhật. Cược cũ đã hoàn tiền.",
+    "void_refund": "Trận đấu bị hủy. Cược của bạn đã được hoàn tiền: {{amount}} linh thạch.",
+    "bet_won": "Chúc mừng! Bạn thắng cược {{wager}} → nhận {{payout}} linh thạch.",
+    "bet_lost": "Rất tiếc, cược của bạn không trúng. Thua {{wager}} linh thạch.",
+    "list_title": "Các trận đang mở cược",
+    "no_active": "Hiện không có trận nào đang mở cược.",
+    "history_title": "Lịch sử cược của bạn",
+    "no_history": "Bạn chưa đặt cược trận nào.",
+    "page": "Trang {{current}}/{{total}}",
+    "status": {
+      "pending": "Đang chờ",
+      "won": "Thắng",
+      "lost": "Thua",
+      "void": "Hủy"
+    }
+  },
+  "embed": {
+    "kickoff": "Thời gian đá",
+    "league": "Giải đấu",
+    "odds": "Tỷ lệ cược",
+    "home": "Chủ nhà",
+    "draw": "Hòa",
+    "away": "Khách",
+    "instruction": "Chọn kết quả bên dưới hoặc click nút tỉ số chính xác để đặt cược!",
+    "result_placeholder": "Chọn kết quả trận đấu...",
+    "home_win_label": "Chủ nhà thắng",
+    "draw_label": "Hòa",
+    "away_win_label": "Khách thắng",
+    "odds_label": "Tỷ lệ cược",
+    "status": "Trạng thái",
+    "live": "TỶ SỐ TRỰC TIẾP"
+  },
+  "status": {
+    "1h": "Hiệp 1",
+    "ht": "Nghỉ giữa hiệp",
+    "2h": "Hiệp 2",
+    "et": "Hiệp phụ",
+    "p": "Luân lưu",
+    "ft": "Kết thúc",
+    "aet": "Kết thúc (Hiệp phụ)",
+    "pen": "Kết thúc (Luân lưu)"
+  },
+  "config": {
+    "channel_set": "Đã cài kênh dự đoán: {{channel}}.",
+    "enabled": "Đã bật dự đoán bóng đá cho kênh này.",
+    "disabled": "Đã tắt dự đoán bóng đá cho kênh này.",
+    "league_toggled": "{{league}}: {{status}}",
+    "league_status": {
+      "on": "ĐÃ BẬT",
+      "off": "ĐÃ TẮT"
+    },
+    "admin_only": "Chỉ admin server mới có thể thay đổi cài đặt dự đoán.",
+    "league_required": "Bạn cần chọn một giải đấu khi sử dụng hành động 'league'."
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "predictions": {
+    "title": "⚽ 足球预测",
+    "not_registered": "你需要先创建角色才能下注。",
+    "match_not_found": "未找到该场比赛。",
+    "already_started": "比赛已经开始，无法下注。",
+    "insufficient_balance": "灵石不足。你需要至少 {{amount}} 灵石。",
+    "bet_too_low": "最低下注额为 {{min}} 灵石。",
+    "bet_too_high": "最高下注额为 {{max}} 灵石。",
+    "result_selected": "你选择了：{{prediction}}。请确认下注以完成。",
+    "score_selected": "你选择了波胆：{{score}}。请确认下注以完成。",
+    "bet_placed": "下注成功！预测 {{prediction}}，投注 {{wager}} 灵石。预计奖金：{{payout}}。",
+    "bet_edited": "预测已更新。之前的投注已退还。",
+    "void_refund": "比赛已取消。你的投注已退还：{{amount}} 灵石。",
+    "bet_won": "恭喜！你赢得了投注 {{wager}} → 获得 {{payout}} 灵石。",
+    "bet_lost": "很遗憾，你未中奖。损失了 {{wager}} 灵石。",
+    "list_title": "当前开放预测的比赛",
+    "no_active": "目前没有开放预测的比赛。",
+    "history_title": "你的投注历史",
+    "no_history": "你还没有进行过任何预测。",
+    "page": "第 {{current}}/{{total}} 页",
+    "status": {
+      "pending": "进行中",
+      "won": "已中奖",
+      "lost": "未中奖",
+      "void": "已失效"
+    }
+  },
+  "embed": {
+    "kickoff": "开赛时间",
+    "league": "赛事",
+    "odds": "比赛赔率",
+    "home": "主队",
+    "draw": "平局",
+    "away": "客队",
+    "instruction": "在下方选择比赛结果或点击具体比分进行投注！",
+    "result_placeholder": "选择比赛结果...",
+    "home_win_label": "主胜",
+    "draw_label": "平局",
+    "away_win_label": "客胜",
+    "odds_label": "赔率",
+    "status": "状态",
+    "live": "实时比分"
+  },
+  "status": {
+    "1h": "上半场",
+    "ht": "中场休息",
+    "2h": "下半场",
+    "et": "加时赛",
+    "p": "点球大战",
+    "ft": "已结束",
+    "aet": "加时赛结束",
+    "pen": "点球大战结束"
+  },
+  "config": {
+    "channel_set": "预测频道已设置为：{{channel}}。",
+    "enabled": "此频道的足球预测已启用。",
+    "disabled": "此频道的足球预测已禁用。",
+    "league_toggled": "{{league}}: {{status}}",
+    "league_status": {
+      "on": "已启用",
+      "off": "已禁用"
+    },
+    "admin_only": "只有服务器管理员可以修改预测设置。",
+    "league_required": "使用 'league' 操作时必须选择一个联赛。"
+  }
+}

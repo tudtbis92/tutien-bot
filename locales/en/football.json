@@ -1,0 +1,67 @@
+{
+  "predictions": {
+    "title": "⚽ Football Predictions",
+    "not_registered": "You need to create a character before placing bets.",
+    "match_not_found": "Match not found.",
+    "already_started": "The match has already started. You cannot place a bet.",
+    "insufficient_balance": "Insufficient spirit stones. You need at least {{amount}}.",
+    "bet_too_low": "Minimum bet is {{min}} spirit stones.",
+    "bet_too_high": "Maximum bet is {{max}} spirit stones.",
+    "result_selected": "You selected: {{prediction}}. Confirm your bet to complete.",
+    "score_selected": "You selected correct score: {{score}}. Confirm your bet to complete.",
+    "bet_placed": "Bet successfully placed! {{prediction}} with {{wager}} spirit stones. Potential payout: {{payout}}.",
+    "bet_edited": "Prediction has been updated. Previous bet has been refunded.",
+    "void_refund": "Match voided. Your bet has been refunded: {{amount}} spirit stones.",
+    "bet_won": "Congratulations! You won the bet {{wager}} → received {{payout}} spirit stones.",
+    "bet_lost": "Unfortunately, your bet did not win. Lost {{wager}} spirit stones.",
+    "list_title": "Matches currently open for betting",
+    "no_active": "There are no matches currently open for betting.",
+    "history_title": "Your Betting History",
+    "no_history": "You have not placed any bets.",
+    "page": "Page {{current}}/{{total}}",
+    "status": {
+      "pending": "Pending",
+      "won": "Won",
+      "lost": "Lost",
+      "void": "Void"
+    }
+  },
+  "embed": {
+    "kickoff": "Kickoff Time",
+    "league": "League",
+    "odds": "Match Odds",
+    "home": "Home",
+    "draw": "Draw",
+    "away": "Away",
+    "instruction": "Select a result below or click an exact score button to place your wager!",
+    "result_placeholder": "Choose match result...",
+    "home_win_label": "Home Win",
+    "draw_label": "Draw",
+    "away_win_label": "Away Win",
+    "odds_label": "Odds",
+    "status": "Status",
+    "live": "LIVE SCORE"
+  },
+  "status": {
+    "1h": "First Half",
+    "ht": "Half Time",
+    "2h": "Second Half",
+    "et": "Extra Time",
+    "p": "Penalty Shootout",
+    "ft": "Finished",
+    "aet": "Finished after Extra Time",
+    "pen": "Finished after Penalty"
+  },
+  "config": {
+    "channel_set": "Prediction channel set to: {{channel}}.",
+    "enabled": "Football predictions have been enabled for this channel.",
+    "disabled": "Football predictions have been disabled for this channel.",
+    "league_toggled": "{{league}}: {{status}}",
+    "league_status": {
+      "on": "ENABLED",
+      "off": "DISABLED"
+    },
+    "admin_only": "Only server administrators can modify prediction settings.",
+    "league_required": "You must select a league when using the 'league' action."
+  }
+}
