@@ -117,7 +117,8 @@ export class FootballApiClient {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async getFixtures(leagueId: string, _season: number, _params: Record<string, string> = {}, ttlMinutes = 60): Promise<any[]> {
-    const data = await this.getScoreboard(leagueId, ttlMinutes);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (await this.getScoreboard(leagueId, ttlMinutes)) as any;
     return data.events || [];
   }
 

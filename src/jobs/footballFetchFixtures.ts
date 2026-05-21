@@ -42,7 +42,7 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
     try {
       logger.info('FootballFetchFixtures', `Fetching fixtures for ${league.name} (Slug: ${league.id})`);
 
-      const data = await apiClient.getScoreboard(league.id, 60); // Cache for 1 hour
+      const data = (await apiClient.getScoreboard(league.id, 60)) as { events?: EspnEvent[] }; // Cache for 1 hour
 
       if (!data.events || !Array.isArray(data.events)) {
         continue;
@@ -50,7 +50,7 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
 
       totalFetched += data.events.length;
 
-      for (const event of data.events as EspnEvent[]) {
+      for (const event of data.events) {
         try {
           const fixtureId = event.id; // ESPN event ID
           const competition = event.competitions[0];
