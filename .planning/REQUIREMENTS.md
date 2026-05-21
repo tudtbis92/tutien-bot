@@ -75,10 +75,10 @@
 - [ ] **PRED-04**: Odds refresh every 15 minutes for kickoff-removed future (current odds stay for live)
 - [ ] **PRED-05**: Register + rotate API-Football keys in Redis; handle rate limits
 - [ ] **PRED-06**: Odds engine uses BIGINT-safe arithmetic (lossless, no floating-point drift)
-- [ ] **PRED-07**: Prediction embed displays match info, pick buttons, confirm button, timer
+- [x] **PRED-07**: Prediction embed displays match info, pick buttons, confirm button, timer
 - [ ] **PRED-08**: Message component interaction (button clicks) drives the betting flow
-- [ ] **PRED-09**: 3 prediction types: home/draw/away result, correct score, and double chance
-- [ ] **PRED-10**: Per-channel prediction config (on/off toggle, per-league toggle)
+- [x] **PRED-09**: 3 prediction types: home/draw/away result, correct score, and double chance
+- [x] **PRED-10**: Per-channel prediction config (on/off toggle, per-league toggle)
 - [x] **PRED-11**: Full i18n coverage for all prediction strings (VI/EN/ZH-CN)
 - [x] **PRED-12**: /predictions command + /config predictions admin command
 - [x] **PRED-13**: API-Football keys documented in .env.example with ToS warning
@@ -160,10 +160,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRED-04 | Phase 02.2: Football Prediction Event System | Pending |
 | PRED-05 | Phase 02.2: Football Prediction Event System | Pending |
 | PRED-06 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-07 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-07 | Phase 02.2: Football Prediction Event System | Complete |
 | PRED-08 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-09 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-10 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-09 | Phase 02.2: Football Prediction Event System | Complete |
+| PRED-10 | Phase 02.2: Football Prediction Event System | Complete |
 | PRED-11 | Phase 02.2: Football Prediction Event System | Complete (2026-05-21) |
 | PRED-12 | Phase 02.2: Football Prediction Event System | Complete (2026-05-21) |
 | COMBAT-01 | Phase 3: Combat + Marketplace | Pending |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-last_updated: "2026-05-21T04:02:02.394Z"
+last_updated: "2026-05-21T04:21:13.792Z"
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 12
-  percent: 33
+  completed_plans: 13
+  percent: 50
 ---
 
 # State: TuTien Bot
@@ -22,12 +22,12 @@ progress:
 ## Current Position
 
 Phase: 02.2 (add-football-prediction-event-system) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Phase: 02.1 (gather-craft-seed-data) — NEXT (INSERTED, urgent)
 Phase: 02.2 (add-football-prediction-event-system) — NEXT (INSERTED, urgent)
 
 ```
-Progress: [█████████░] 86%
+Progress: [█████████░] 93%
 
 Phase 1  [Foundation]                    █████ COMPLETE (2026-04-11)
 Phase 2  [Core Game Loop]                █████ COMPLETE (2026-04-12, 7/7 plans)
@@ -69,6 +69,7 @@ Phase 4  [Season System + Admin]         ░░░░░ NOT STARTED
 | Phase 01 P01 | multi-session | 14 tasks | 55 files |
 | Phase 02 P01-07 | multi-session | 23+ tasks | 36+ files |
 | Phase 02.2 P05 | 12min | 2 tasks | 8 files |
+| Phase 02.2 P04 | 14min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,8 @@ Phase 4  [Season System + Admin]         ░░░░░ NOT STARTED
 | ActivityWorker uses `localConcurrency: 5` | Per-user `SELECT FOR UPDATE` makes parallel processing safe; `concurrency: 1` would be a bottleneck | Phase 2 UAT |
 | 53-key i18n structure for football predictions | Covers predictions.* (18), embed.* (14), status.* (8), config.* (9) in VI/EN/ZH-CN; all files share identical key structure | Phase 02.2 P05 |
 | /config predictions uses interaction.channelId | No separate channel parameter — uses the invocation channel directly; league_id=0 for global, league_id>0 per-league | Phase 02.2 P05 |
+| Match lifecycle uses Discord REST API over gateway | REST post/patch avoids shard dependency for background cron job embed operations | Phase 02.2 P04 |
+| 4 separate pg-boss cron jobs for Option C lifecycle | Fetch every 6h, refresh odds every 2h, poll every 15min, resolve every 2h — dedicated jobs per lifecycle phase | Phase 02.2 P04 |
 
 ### Active Todos
 
@@ -125,7 +128,7 @@ None currently.
 
 ## Session Continuity
 
-**To resume work:** Continue Phase 02.2 plan 3/5 (next PLAN.md without SUMMARY in `.planning/phases/02.2-add-football-prediction-event-system/`).
+**To resume work:** Phase 02.2 all plans complete. Ready for next phase (02.1, Phase 3, or Phase 4).
 
 **Phase 02 completion note:**  
 
@@ -145,4 +148,4 @@ None currently.
 ---
 
 *State initialized: 2026-04-11*  
-*Last updated: 2026-05-21 — Phase 02.2 P05 complete: i18n + commands + .env.example*
+*Last updated: 2026-05-21 — Phase 02.2 P04 complete: match lifecycle cron jobs + embed service*

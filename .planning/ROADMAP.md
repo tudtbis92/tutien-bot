@@ -81,13 +81,13 @@ Plans:
 **Goal:** Players bet linh thạch on real football matches — predict results (Win/Draw/Lose) and exact scores via message components, with automated payouts from real bookmaker odds
 **Requirements**: PRED-01, PRED-02, PRED-03, PRED-04, PRED-05, PRED-06, PRED-07, PRED-08, PRED-09, PRED-10, PRED-11, PRED-12
 **Depends on:** Phase 2
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 Plans:
-- [ ] 02.2-01-PLAN.md — DB schema (football_matches, football_bets, api_cache, guild_settings) + constants
-- [ ] 02.2-02-PLAN.md — API-Football client with key rotation + BIGINT-safe odds calculator
-- [ ] 02.2-03-PLAN.md — Prediction embed builder + message component handlers (result, score, confirm)
-- [ ] 02.2-04-PLAN.md — pg-boss cron jobs (fetch fixtures, poll scores, resolve matches) + lifecycle service
+- [x] 02.2-01-PLAN.md — DB schema (football_matches, football_bets, api_cache, guild_settings) + constants
+- [x] 02.2-02-PLAN.md — API-Football client with key rotation + BIGINT-safe odds calculator
+- [x] 02.2-03-PLAN.md — Prediction embed builder + message component handlers (result, score, confirm)
+- [x] 02.2-04-PLAN.md — pg-boss cron jobs (fetch fixtures, poll scores, resolve matches) + lifecycle service
 - [x] 02.2-05-PLAN.md — i18n translations (VI/EN/ZH-CN) + /predictions + /config commands + env setup
 
 ### Phase 02.1: Gather & Craft — Seed Data + Cơ Chế Chi Tiết (INSERTED)
@@ -156,7 +156,7 @@ Plans:
 | 1. Foundation | 1/1 | Complete   | 2026-04-11 |
 | 2. Core Game Loop + Progression | 7/7 | Complete   | 2026-04-12 |
 | 02.1. Gather & Craft — Seed Data + Cơ Chế Chi Tiết | 0/? | Not started (INSERTED) | - |
-| 02.2. Football Prediction Event System | 1/5 | In progress | - |
+| 02.2. Football Prediction Event System | 5/5 | Complete   | 2026-05-21 |
 | 3. Combat + Marketplace | 0/? | Not started | - |
 | 4. Season System + Admin | 0/? | Not started | - |
 
