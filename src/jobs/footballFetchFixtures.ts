@@ -18,6 +18,45 @@ interface ApiLeagueResponse {
   seasons?: ApiLeagueSeason[];
 }
 
+/** API-Football fixture response shape (for dynamic data from external API) */
+interface ApiFixtureTeam {
+  id: number;
+  name: string;
+}
+
+interface ApiFixtureStatus {
+  short: string;
+}
+
+interface ApiFixtureFixture {
+  id: number;
+  date: string;
+  status: ApiFixtureStatus;
+}
+
+interface ApiFixtureLeague {
+  id: number;
+  name: string;
+  season: number;
+}
+
+interface ApiFixtureGoals {
+  home: number | null;
+  away: number | null;
+}
+
+interface ApiFixtureTeams {
+  home: ApiFixtureTeam;
+  away: ApiFixtureTeam;
+}
+
+interface ApiFixtureResponse {
+  fixture: ApiFixtureFixture;
+  league: ApiFixtureLeague;
+  teams: ApiFixtureTeams;
+  goals: ApiFixtureGoals;
+}
+
 /**
  * Determine the current season for a league (caches results inside Database)
  */
@@ -76,7 +115,7 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
           to: toStr,
         },
         60 // Cache for 1 hour
-      )) as Record<string, unknown>[];
+      )) as ApiFixtureResponse[];
 
       if (!Array.isArray(fixtures)) {
         continue;
