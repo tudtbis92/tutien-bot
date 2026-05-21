@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   calculatePayout,
-  parseOdds,
   validateBetAmount,
-  extractCorrectScoreOdds,
+  convertAmericanToDecimal,
+  parseEspnOdds,
 } from '../oddsCalculator.js';
 import { FOOTBALL_CONFIG } from '../../../constants/footballConfig.js';
 
@@ -24,56 +24,60 @@ describe('calculatePayout', () => {
   });
 });
 
-describe('parseOdds', () => {
-  const mockOddsResponse = {
-    response: [
+describe('convertAmericanToDecimal', () => {
+  it('should convert positive odds correctly', () => {
+    // +295 -> (295/100) + 1 = 3.95
+    expect(convertAmericanToDecimal(295)).toBe('3.95');
+    expect(convertAmericanToDecimal('+295')).toBe('3.95');
+  });
+
+  it('should convert negative odds correctly', () => {
+    // -105 -> (100/105) + 1 = 1.9523... -> 1.95
+    expect(convertAmericanToDecimal(-105)).toBe('1.95');
+    expect(convertAmericanToDecimal('-105')).toBe('1.95');
+  });
+
+  it('should handle even odds', () => {
+    expect(convertAmericanToDecimal(100)).toBe('2.00');
+    expect(convertAmericanToDecimal(-100)).toBe('2.00');
+  });
+});
+
+describe('parseEspnOdds', () => {
+  const mockEspnEvent = {
+    id: '740966',
+    competitions: [
       {
-        bookmakers: [
+        odds: [
           {
-            name: 'bet365',
-            bets: [
-              {
-                id: 1,
-                name: 'Match Winner',
-                values: [
-                  { value: 'Home', odd: '1.50' },
-                  { value: 'Draw', odd: '4.00' },
-                  { value: 'Away', odd: '6.50' },
-                ],
-              },
-              {
-                id: 8,
-                name: 'Correct Score',
-                values: [
-                  { value: '1:0', odd: '7.50' },
-                  { value: '2 - 1', odd: '9.00' },
-                  { value: '0:0', odd: '12.00' },
-                ],
-              },
-            ],
+            moneyline: {
+              home: { close: { odds: '-105' } },
+              away: { close: { odds: '+240' } },
+              draw: { close: { odds: '+295' } },
+            },
+            link: {
+              href: 'https://sportsbook.draftkings.com/gateway?preurl=https%3A%2F%2Fsportsbook.draftkings.com%2Fevent%2F34167921',
+            },
           },
         ],
       },
     ],
   };
 
-  it('should parse match winner odds correctly', () => {
-    const result = parseOdds(mockOddsResponse, 'result');
-    expect(result.home).toBe('1.50');
-    expect(result.draw).toBe('4.00');
-    expect(result.away).toBe('6.50');
+  it('should parse ESPN moneyline odds correctly', () => {
+    const result = parseEspnOdds(mockEspnEvent);
+    expect(result.home).toBe('1.95');
+    expect(result.away).toBe('3.40');
+    expect(result.draw).toBe('3.95');
   });
 
-  it('should parse correct score odds correctly', () => {
-    const result = parseOdds(mockOddsResponse, 'score');
-    expect(result.scoreMap).toBeDefined();
-    expect(result.scoreMap?.['1-0']).toBe('7.50');
-    expect(result.scoreMap?.['2-1']).toBe('9.00');
-    expect(result.scoreMap?.['0-0']).toBe('12.00');
+  it('should extract DraftKings event ID from link', () => {
+    const result = parseEspnOdds(mockEspnEvent);
+    expect(result.dkEventId).toBe('34167921');
   });
 
-  it('should return empty result for missing bookmakers', () => {
-    const result = parseOdds({}, 'result');
+  it('should handle missing odds gracefully', () => {
+    const result = parseEspnOdds({});
     expect(result.home).toBeUndefined();
   });
 });
@@ -97,41 +101,5 @@ describe('validateBetAmount', () => {
     const validAmount = FOOTBALL_CONFIG.MIN_BET + 50n;
     const result = validateBetAmount(validAmount);
     expect(result.valid).toBe(true);
-  });
-});
-
-describe('extractCorrectScoreOdds', () => {
-  const mockOddsResponse = {
-    response: [
-      {
-        bookmakers: [
-          {
-            name: 'bet365',
-            bets: [
-              {
-                id: 8,
-                name: 'Correct Score',
-                values: [
-                  { value: '1:0', odd: '7.50' },
-                  { value: '2 - 1', odd: '9.00' },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  };
-
-  it('should extract correct score values into a map with normalized keys', () => {
-    const map = extractCorrectScoreOdds(mockOddsResponse);
-    expect(map.get('1-0')).toBe('7.50');
-    expect(map.get('2-1')).toBe('9.00');
-    expect(map.size).toBe(2);
-  });
-
-  it('should return empty map for missing correct score bets', () => {
-    const map = extractCorrectScoreOdds({});
-    expect(map.size).toBe(0);
   });
 });

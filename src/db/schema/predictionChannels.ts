@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, varchar, boolean, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, boolean, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const predictionChannels = pgTable(
   'prediction_channels',
@@ -6,7 +6,7 @@ export const predictionChannels = pgTable(
     id: serial('id').primaryKey(),
     guildId: varchar('guild_id', { length: 20 }).notNull(),
     channelId: varchar('channel_id', { length: 20 }).notNull(),
-    leagueId: integer('league_id').notNull(), // 0 = global toggle for the entire channel
+    leagueId: varchar('league_id', { length: 20 }).notNull(), // '0' or 'global' = global toggle
     enabled: boolean('enabled').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

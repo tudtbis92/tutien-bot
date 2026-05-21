@@ -6,6 +6,27 @@ import { FootballApiClient } from '../services/football/apiClient.js';
 import { updateLiveScoreEmbed, resolveMatchBets } from '../services/football/matchLifecycleService.js';
 import { logger } from '../utils/logger.js';
 
+interface EspnCompetitor {
+  homeAway: 'home' | 'away';
+  team: {
+    id: string;
+    displayName: string;
+  };
+  score: string;
+}
+
+interface EspnEvent {
+  id: string;
+  competitions: {
+    competitors: EspnCompetitor[];
+    status: {
+      type: {
+        name: string;
+      };
+    };
+  }[];
+}
+
 export async function runFootballPollScores(job: Job): Promise<void> {
   logger.info('FootballPollScores', `Job started: ${job.id}`);
   
@@ -36,26 +57,37 @@ export async function runFootballPollScores(job: Job): Promise<void> {
     return;
   }
 
-  const fixtureIds = matchesToPoll.map((m) => m.fixtureId);
-  logger.info('FootballPollScores', `Polling scores for ${fixtureIds.length} matches (Fixture IDs: ${fixtureIds.join(', ')})...`);
-
+  // Group matches by league to optimize API calls
+  const leagueIds = Array.from(new Set(matchesToPoll.map((m) => m.leagueId)));
+  
   try {
-    // getFixtureScores automatically handles batching of max 20 per call
-    const liveFixtures = await apiClient.getFixtureScores(fixtureIds, 0); // Bypass cache for live scores
+    const allLiveEvents = (await apiClient.getFixtureScores(leagueIds, 0)) as EspnEvent[]; // Bypass cache
 
     let updatedCount = 0;
 
-    for (const fixture of liveFixtures) {
+    for (const event of allLiveEvents) {
       try {
-        const fixtureId = fixture.fixture.id;
-        const newStatus = fixture.fixture.status.short || 'FT';
-        const homeScore = fixture.goals.home;
-        const awayScore = fixture.goals.away;
+        const fixtureId = event.id;
+        const competition = event.competitions[0];
+        if (!competition) continue;
+
+        const espnStatus = competition.status.type.name;
+        let newStatus = 'NS';
+        if (espnStatus === 'STATUS_FINAL') newStatus = 'FT';
+        else if (espnStatus === 'STATUS_IN_PROGRESS') newStatus = 'LIVE';
+        else if (espnStatus === 'STATUS_HALFTIME') newStatus = 'HT';
+
+        const homeCompetitor = competition.competitors.find((c) => c.homeAway === 'home');
+        const awayCompetitor = competition.competitors.find((c) => c.homeAway === 'away');
+        if (!homeCompetitor || !awayCompetitor) continue;
+
+        const homeScore = parseInt(homeCompetitor.score, 10) || 0;
+        const awayScore = parseInt(awayCompetitor.score, 10) || 0;
 
         const dbMatch = matchesToPoll.find((m) => m.fixtureId === fixtureId);
         if (!dbMatch) continue;
 
-        // Skip updating if scores and status are identical to avoid unnecessary DB writes and Discord rate limits
+        // Skip updating if scores and status are identical
         if (
           dbMatch.status === newStatus &&
           dbMatch.homeScore === homeScore &&
@@ -69,8 +101,8 @@ export async function runFootballPollScores(job: Job): Promise<void> {
           .update(footballMatches)
           .set({
             status: newStatus,
-            homeScore: homeScore !== null ? Number(homeScore) : null,
-            awayScore: awayScore !== null ? Number(awayScore) : null,
+            homeScore,
+            awayScore,
             updatedAt: new Date(),
           })
           .where(eq(footballMatches.fixtureId, fixtureId))
@@ -80,25 +112,22 @@ export async function runFootballPollScores(job: Job): Promise<void> {
           updatedCount++;
           const updatedMatch = updatedRows[0];
 
-          // Update the announcement embed with score line and live status
+          // Update the announcement embed
           await updateLiveScoreEmbed(updatedMatch);
 
-          // If the match transitioned to finished, immediately resolve the wagers
-          const finishedStatuses = ['FT', 'AET', 'PEN'];
-          if (finishedStatuses.includes(newStatus)) {
-            logger.info('FootballPollScores', `Match ${updatedMatch.id} (Fixture: ${fixtureId}) finished with status: ${newStatus}. Triggering wagers resolution...`);
+          // Resolve bets if finished
+          if (newStatus === 'FT') {
+            logger.info('FootballPollScores', `Match ${updatedMatch.id} finished. Triggering resolution...`);
             await resolveMatchBets(updatedMatch);
           }
         }
       } catch (fixtureErr: unknown) {
-        const fixtureErrMsg = fixtureErr instanceof Error ? fixtureErr.message : String(fixtureErr);
-        logger.error('FootballPollScores', `Failed to process polling update for fixture ${fixture.fixture?.id}: ${fixtureErrMsg}`);
+        logger.error('FootballPollScores', `Failed to process update for fixture ${event.id}`, fixtureErr);
       }
     }
 
-    logger.info('FootballPollScores', `Job completed: ${job.id}. Polled ${fixtureIds.length} matches, updated ${updatedCount} score lines.`);
+    logger.info('FootballPollScores', `Job completed: ${job.id}. Updated ${updatedCount} matches.`);
   } catch (err: unknown) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    logger.error('FootballPollScores', `Failed to poll active matches: ${errMsg}`);
+    logger.error('FootballPollScores', `Failed to poll active matches`, err);
   }
 }

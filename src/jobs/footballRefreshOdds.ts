@@ -41,9 +41,8 @@ export async function runFootballRefreshOdds(job: Job): Promise<void> {
 
   for (const match of matchesToRefresh) {
     try {
-      const oddsRes = await apiClient.getFixtureOdds(match.fixtureId, 0); // Force bypass API cache for fresh odds
+      const oddsRes = await apiClient.getFixtureOdds(match.fixtureId, match.leagueId, 0); // Force bypass API cache for fresh odds
       const resultOdds = parseOdds(oddsRes, 'result');
-      const scoreOdds = parseOdds(oddsRes, 'score');
 
       const updatedRows = await db
         .update(footballMatches)
@@ -51,7 +50,7 @@ export async function runFootballRefreshOdds(job: Job): Promise<void> {
           homeOdds: resultOdds.home || match.homeOdds,
           drawOdds: resultOdds.draw || match.drawOdds,
           awayOdds: resultOdds.away || match.awayOdds,
-          exactScoreOdds: scoreOdds.scoreMap || match.exactScoreOdds,
+          // exactScoreOdds update is handled by footballCrawlOdds job
           updatedAt: new Date(),
         })
         .where(eq(footballMatches.id, match.id))

@@ -123,7 +123,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         .values({
           guildId,
           channelId,
-          leagueId: 0,
+          leagueId: '0',
           enabled: true,
         })
         .onConflictDoUpdate({
@@ -156,7 +156,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         .values({
           guildId,
           channelId,
-          leagueId: 0,
+          leagueId: '0',
           enabled: false,
         })
         .onConflictDoUpdate({
@@ -184,7 +184,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     }
 
     if (action === 'league') {
-      const targetLeagueId = parseInt(leagueIdStr!, 10);
+      const targetLeagueId = leagueIdStr!;
       const leagueInfo = CURATED_LEAGUES.find((l) => l.id === targetLeagueId);
       if (!leagueInfo) {
         await interaction.editReply({
@@ -226,7 +226,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
             and(
               eq(predictionChannels.guildId, guildId),
               eq(predictionChannels.channelId, channelId),
-              eq(predictionChannels.leagueId, 0)
+              eq(predictionChannels.leagueId, '0')
             )
           )
           .limit(1)

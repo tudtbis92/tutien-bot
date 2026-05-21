@@ -22,7 +22,7 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
     .from(predictionChannels)
     .where(
       and(
-        eq(predictionChannels.leagueId, 0),
+        eq(predictionChannels.leagueId, '0'),
         eq(predictionChannels.enabled, true)
       )
     );

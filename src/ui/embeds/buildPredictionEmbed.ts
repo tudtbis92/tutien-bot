@@ -151,6 +151,7 @@ export function buildLiveScoreUpdate(
     '1H': translate(t, 'football:status.1h', 'First Half'),
     'HT': translate(t, 'football:status.ht', 'Half Time'),
     '2H': translate(t, 'football:status.2h', 'Second Half'),
+    'LIVE': translate(t, 'football:status.live', 'Live'),
     'ET': translate(t, 'football:status.et', 'Extra Time'),
     'P': translate(t, 'football:status.p', 'Penalty'),
     'FT': translate(t, 'football:status.ft', 'Finished'),

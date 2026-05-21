@@ -7,6 +7,27 @@ import { FootballApiClient } from '../services/football/apiClient.js';
 import { resolveMatchBets, updateLiveScoreEmbed } from '../services/football/matchLifecycleService.js';
 import { logger } from '../utils/logger.js';
 
+interface EspnCompetitor {
+  homeAway: 'home' | 'away';
+  team: {
+    id: string;
+    displayName: string;
+  };
+  score: string;
+}
+
+interface EspnEvent {
+  id: string;
+  competitions: {
+    competitors: EspnCompetitor[];
+    status: {
+      type: {
+        name: string;
+      };
+    };
+  }[];
+}
+
 export async function runFootballResolveMatches(job: Job): Promise<void> {
   logger.info('FootballResolveMatches', `Job started: ${job.id}`);
   
@@ -19,6 +40,7 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
     .select({
       id: footballMatches.id,
       fixtureId: footballMatches.fixtureId,
+      leagueId: footballMatches.leagueId,
       status: footballMatches.status,
       homeScore: footballMatches.homeScore,
       awayScore: footballMatches.awayScore,
@@ -66,25 +88,37 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
 
   for (const match of matchesToResolve) {
     try {
-      // Query direct result from API-Football
-      const resultObj = await apiClient.getFixtureResult(match.fixtureId, 0); // Bypass cache for resolving
+      // Query direct result from ESPN
+      const resultObj = (await apiClient.getFixtureResult(match.fixtureId, match.leagueId, 0)) as EspnEvent; // Bypass cache for resolving
       
       if (!resultObj) {
         logger.warn('FootballResolveMatches', `Could not fetch API result for match ID ${match.id} (Fixture: ${match.fixtureId})`);
         continue;
       }
 
-      const newStatus = resultObj.fixture.status.short || 'FT';
-      const homeScore = resultObj.goals.home;
-      const awayScore = resultObj.goals.away;
+      const competition = resultObj.competitions[0];
+      if (!competition) continue;
+
+      const espnStatus = competition.status.type.name;
+      let newStatus = 'FT';
+      if (espnStatus === 'STATUS_FINAL') newStatus = 'FT';
+      else if (espnStatus === 'STATUS_POSTPONED') newStatus = 'PST';
+      else if (espnStatus === 'STATUS_CANCELED') newStatus = 'CANC';
+
+      const homeCompetitor = competition.competitors.find((c) => c.homeAway === 'home');
+      const awayCompetitor = competition.competitors.find((c) => c.homeAway === 'away');
+      if (!homeCompetitor || !awayCompetitor) continue;
+
+      const homeScore = parseInt(homeCompetitor.score, 10) || 0;
+      const awayScore = parseInt(awayCompetitor.score, 10) || 0;
 
       // Update match row
       const updatedRows = await db
         .update(footballMatches)
         .set({
           status: newStatus,
-          homeScore: homeScore !== null ? Number(homeScore) : match.homeScore,
-          awayScore: awayScore !== null ? Number(awayScore) : match.awayScore,
+          homeScore,
+          awayScore,
           updatedAt: new Date(),
         })
         .where(eq(footballMatches.id, match.id))
