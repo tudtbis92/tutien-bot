@@ -22,7 +22,8 @@ export function collectCommandFilePaths(commandsPath: string): string[] {
   return folders.flatMap((folder) => {
     const folderPath = join(commandsPath, folder);
     return readdirSync(folderPath)
-      .filter((f) => f.endsWith('.js') || f.endsWith('.ts'))
+      // eslint-disable-next-line i18next/no-literal-string
+      .filter((f) => (f.endsWith('.js') || f.endsWith('.ts')) && !f.endsWith('.d.ts'))
       .map((f) => join(folderPath, f));
   });
 }

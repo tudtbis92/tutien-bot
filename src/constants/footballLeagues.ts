@@ -12,7 +12,7 @@ export const CURATED_LEAGUES: CuratedLeague[] = [
   { id: 'ita.1', name: 'Serie A', country: 'Italy' },
   { id: 'uefa.champions', name: 'Champions League', country: 'World' },
   { id: 'uefa.europa', name: 'Europa League', country: 'World' },
-  { id: 'uefa.conference', name: 'Conference League', country: 'World' },
+  { id: 'uefa.europa.conf', name: 'Conference League', country: 'World' },
   { id: 'fifa.world', name: 'World Cup', country: 'World' },
   { id: 'uefa.euro', name: 'Euro', country: 'World' },
 ];

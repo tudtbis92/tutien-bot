@@ -41,19 +41,19 @@ export function parseEspnOdds(event: any): { home?: string; draw?: string; away?
     const odds = oddsArray[0];
 
     // Extract Moneyline
-    if (odds.moneyline) {
+    if (odds && odds.moneyline) {
       if (odds.moneyline.home?.close?.odds) result.home = convertAmericanToDecimal(odds.moneyline.home.close.odds);
       if (odds.moneyline.away?.close?.odds) result.away = convertAmericanToDecimal(odds.moneyline.away.close.odds);
       if (odds.moneyline.draw?.close?.odds) result.draw = convertAmericanToDecimal(odds.moneyline.draw.close.odds);
     }
 
     // Fallback for Draw Odds if not in moneyline object
-    if (!result.draw && odds.drawOdds?.moneyLine) {
+    if (odds && !result.draw && odds.drawOdds?.moneyLine) {
       result.draw = convertAmericanToDecimal(odds.drawOdds.moneyLine);
     }
 
     // Extract DraftKings Event ID from link
-    if (odds.link?.href) {
+    if (odds && odds.link?.href) {
       const match = odds.link.href.match(/event%2F(\d+)/) || odds.link.href.match(/event\/(\d+)/);
       if (match) {
         result.dkEventId = match[1];
