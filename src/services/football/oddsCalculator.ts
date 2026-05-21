@@ -30,8 +30,30 @@ export function calculatePayout(betAmount: bigint, decimalOdds: string): bigint 
  * Extract Moneyline odds and DraftKings event ID from ESPN event data.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function parseEspnOdds(event: any): { home?: string; draw?: string; away?: string; dkEventId?: string } {
-  const result: { home?: string; draw?: string; away?: string; dkEventId?: string } = {};
+export function parseEspnOdds(event: any): { 
+  home?: string; 
+  draw?: string; 
+  away?: string;
+  overUnderLine?: string;
+  overOdds?: string;
+  underOdds?: string;
+  homeSpreadLine?: string;
+  homeSpreadOdds?: string;
+  awaySpreadLine?: string;
+  awaySpreadOdds?: string;
+} {
+  const result: { 
+    home?: string; 
+    draw?: string; 
+    away?: string;
+    overUnderLine?: string;
+    overOdds?: string;
+    underOdds?: string;
+    homeSpreadLine?: string;
+    homeSpreadOdds?: string;
+    awaySpreadLine?: string;
+    awaySpreadOdds?: string;
+  } = {};
 
   if (!event || !event.competitions || !event.competitions[0]) return result;
   const competition = event.competitions[0];
@@ -52,11 +74,32 @@ export function parseEspnOdds(event: any): { home?: string; draw?: string; away?
       result.draw = convertAmericanToDecimal(odds.drawOdds.moneyLine);
     }
 
-    // Extract DraftKings Event ID from link
-    if (odds && odds.link?.href) {
-      const match = odds.link.href.match(/event%2F(\d+)/) || odds.link.href.match(/event\/(\d+)/);
-      if (match) {
-        result.dkEventId = match[1];
+    // Extract Over/Under
+    if (odds && odds.total) {
+      const overClose = odds.total.over?.close;
+      const underClose = odds.total.under?.close;
+      
+      if (overClose) {
+        result.overUnderLine = overClose.line;
+        result.overOdds = convertAmericanToDecimal(overClose.odds);
+      }
+      if (underClose) {
+        result.underOdds = convertAmericanToDecimal(underClose.odds);
+      }
+    }
+
+    // Extract Point Spread
+    if (odds && odds.pointSpread) {
+      const homeClose = odds.pointSpread.home?.close;
+      const awayClose = odds.pointSpread.away?.close;
+
+      if (homeClose) {
+        result.homeSpreadLine = homeClose.line;
+        result.homeSpreadOdds = convertAmericanToDecimal(homeClose.odds);
+      }
+      if (awayClose) {
+        result.awaySpreadLine = awayClose.line;
+        result.awaySpreadOdds = convertAmericanToDecimal(awayClose.odds);
       }
     }
   }

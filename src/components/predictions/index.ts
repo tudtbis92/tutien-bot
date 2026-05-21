@@ -1,3 +1,3 @@
 export { handlePredictResult } from './predictResult.js';
-export { handlePredictScore } from './predictScore.js';
+export { handlePredictButtonMarket } from './predictButtonMarket.js';
 export { handlePredictModalSubmit } from './predictModal.js';

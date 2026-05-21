@@ -6,7 +6,7 @@ import { runFootballFetchFixtures } from '../jobs/footballFetchFixtures.js';
 import { runFootballRefreshOdds } from '../jobs/footballRefreshOdds.js';
 import { runFootballPollScores } from '../jobs/footballPollScores.js';
 import { runFootballResolveMatches } from '../jobs/footballResolveMatches.js';
-import { runFootballCrawlOdds } from '../jobs/footballCrawlOdds.js';
+import { runFootballAnnounceMatches } from '../jobs/footballAnnounceMatches.js';
 import { registerActivityWorker } from './activityWorker.js';
 import { registerVoiceMinuteWorker, clearOrphanedVoiceSessions } from './voiceWorker.js';
 import { logger } from '../utils/logger.js';
@@ -112,7 +112,7 @@ async function registerJobs(b: PgBoss): Promise<void> {
 
   // Register Football Fetch Fixtures
   await b.createQueue('football-fetch-fixtures');
-  await b.schedule('football-fetch-fixtures', '0 */6 * * *', {});
+  await b.schedule('football-fetch-fixtures', '0 * * * *', {}); // Every 1 hour
   await b.work('football-fetch-fixtures', { localConcurrency: 1 }, async (jobs: Job[]) => {
     for (const job of jobs) {
       try {
@@ -123,9 +123,22 @@ async function registerJobs(b: PgBoss): Promise<void> {
     }
   });
 
+  // Register Football Announce Matches
+  await b.createQueue('football-announce-matches');
+  await b.schedule('football-announce-matches', '*/30 * * * *', {}); // Every 30 minutes
+  await b.work('football-announce-matches', { localConcurrency: 1 }, async (jobs: Job[]) => {
+    for (const job of jobs) {
+      try {
+        await runFootballAnnounceMatches(job);
+      } catch (err) {
+        logger.error('pgBoss', `Job ${job.id} (football-announce-matches) failed`, err);
+      }
+    }
+  });
+
   // Register Football Refresh Odds
   await b.createQueue('football-refresh-odds');
-  await b.schedule('football-refresh-odds', '0 */2 * * *', {});
+  await b.schedule('football-refresh-odds', '0 * * * *', {}); // Every 1 hour
   await b.work('football-refresh-odds', { localConcurrency: 1 }, async (jobs: Job[]) => {
     for (const job of jobs) {
       try {
@@ -162,20 +175,7 @@ async function registerJobs(b: PgBoss): Promise<void> {
     }
   });
 
-  // Register Football Crawl Odds (Correct Score via Playwright)
-  await b.createQueue('football-crawl-odds');
-  await b.schedule('football-crawl-odds', '0 */12 * * *', {});
-  await b.work('football-crawl-odds', { localConcurrency: 1 }, async (jobs: Job[]) => {
-    for (const job of jobs) {
-      try {
-        await runFootballCrawlOdds(job);
-      } catch (err) {
-        logger.error('pgBoss', `Job ${job.id} (football-crawl-odds) failed`, err);
-      }
-    }
-  });
-
-  logger.info('pgBoss', 'Jobs registered: activity-queue, voice-minute-tick, vwap-recalc @ 0 * * * *, football-fetch-fixtures @ 0 */6 * * *, football-refresh-odds @ 0 */2 * * *, football-poll-scores @ */15 * * * *, football-resolve-matches @ 0 */2 * * *, football-crawl-odds @ 0 */12 * * *');
+  logger.info('pgBoss', 'Jobs registered: activity-queue, voice-minute-tick, vwap-recalc @ 0 * * * *, football-fetch-fixtures @ 0 * * * *, football-announce-matches @ */30 * * * *, football-refresh-odds @ 0 * * * *, football-poll-scores @ */15 * * * *, football-resolve-matches @ 0 */2 * * *');
 }
 
 /**

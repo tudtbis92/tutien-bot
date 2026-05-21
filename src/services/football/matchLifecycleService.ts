@@ -4,10 +4,12 @@ import { db } from '../../db/client.js';
 import { config } from '../../config.js';
 import { logger } from '../../utils/logger.js';
 import { users } from '../../db/schema/users.js';
-import { footballMatches, type FootballMatch } from '../../db/schema/footballMatches.js';
 import { footballBets } from '../../db/schema/footballBets.js';
+import { type FootballMatch } from '../../db/schema/footballMatches.js';
 import { predictionChannels } from '../../db/schema/predictionChannels.js';
+import { footballAnnouncements } from '../../db/schema/footballAnnouncements.js';
 import { buildPredictionEmbed, buildLiveScoreUpdate } from '../../ui/embeds/buildPredictionEmbed.js';
+import { getT, type SupportedLocale } from '../../i18n/index.js';
 
 const rest = new REST().setToken(config.DISCORD_TOKEN);
 
@@ -16,7 +18,15 @@ const rest = new REST().setToken(config.DISCORD_TOKEN);
  */
 
 export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
-  // Query globally enabled channels (league_id = 0, enabled = true)
+  // 1. Get already announced channel IDs for this match
+  const announced = await db
+    .select({ channelId: footballAnnouncements.channelId })
+    .from(footballAnnouncements)
+    .where(eq(footballAnnouncements.matchId, match.id));
+  
+  const announcedChannelIds = new Set(announced.map(a => a.channelId));
+
+  // 2. Query globally enabled channels (league_id = 0, enabled = true)
   const globalChannels = await db
     .select()
     .from(predictionChannels)
@@ -30,6 +40,8 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
   const channelsToPost = new Set<string>();
 
   for (const ch of globalChannels) {
+    if (announcedChannelIds.has(ch.channelId)) continue;
+
     // Check if there is an explicit disable record for this channel and this league
     const explicitRows = await db
       .select()
@@ -43,13 +55,12 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
       .limit(1);
 
     if (explicitRows.length > 0 && explicitRows[0].enabled === false) {
-      // Explicitly disabled for this league in this channel
       continue;
     }
     channelsToPost.add(ch.channelId);
   }
 
-  // Also query explicitly enabled channels for this specific league
+  // 3. Also query explicitly enabled channels for this specific league
   const explicitEnabled = await db
     .select()
     .from(predictionChannels)
@@ -61,18 +72,28 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
     );
 
   for (const ch of explicitEnabled) {
+    if (announcedChannelIds.has(ch.channelId)) continue;
     channelsToPost.add(ch.channelId);
   }
 
   if (channelsToPost.size === 0) {
-    logger.info('MatchLifecycleService', `No active prediction channels configured for match ${match.id} (League: ${match.leagueName})`);
     return;
   }
 
-  const result = buildPredictionEmbed(match);
-
   for (const channelId of channelsToPost) {
     try {
+      const channel = (await rest.get(Routes.channel(channelId))) as { guild_id?: string };
+      let locale: SupportedLocale = 'vi';
+
+      if (channel.guild_id) {
+        const guild = (await rest.get(Routes.guild(channel.guild_id))) as { preferred_locale: string };
+        locale = guild.preferred_locale.startsWith('vi') ? 'vi' : 
+                 guild.preferred_locale.startsWith('zh') ? 'zh-cn' : 'en';
+      }
+
+      const t = getT(locale);
+      const result = buildPredictionEmbed(match, undefined, t);
+
       const response: Record<string, unknown> = (await rest.post(Routes.channelMessages(channelId), {
         body: {
           embeds: result.embeds.map((e) => e.toJSON()),
@@ -82,14 +103,18 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
 
       const messageId = response?.id as string | undefined;
       if (messageId) {
-        // Save the last successful announcement message details to the match
         await db
-          .update(footballMatches)
-          .set({
-            announcementChannelId: channelId,
-            announcementMessageId: messageId,
+          .insert(footballAnnouncements)
+          .values({
+            matchId: match.id,
+            guildId: channel.guild_id,
+            channelId,
+            messageId,
           })
-          .where(eq(footballMatches.id, match.id));
+          .onConflictDoUpdate({
+            target: [footballAnnouncements.matchId, footballAnnouncements.channelId],
+            set: { messageId, updatedAt: new Date() }
+          });
       }
     } catch (err: unknown) {
       logger.warn('MatchLifecycleService', `Failed to post prediction embed in channel ${channelId}`, err);
@@ -98,28 +123,41 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
 }
 
 export async function updateLiveScoreEmbed(match: FootballMatch): Promise<void> {
-  if (!match.announcementChannelId || !match.announcementMessageId) {
-    return;
-  }
+  const announcements = await db
+    .select()
+    .from(footballAnnouncements)
+    .where(eq(footballAnnouncements.matchId, match.id));
 
-  const embed = buildLiveScoreUpdate(match);
+  if (announcements.length === 0) return;
 
-  try {
-    // For live/finished matches, clear the prediction dropdown and buttons
-    const isLiveOrFinished = match.status !== 'NS';
-    await rest.patch(Routes.channelMessage(match.announcementChannelId, match.announcementMessageId), {
-      body: {
-        embeds: [embed.toJSON()],
-        components: isLiveOrFinished ? [] : undefined,
-      },
-    });
-  } catch (err: unknown) {
-    logger.warn(
-      'MatchLifecycleService',
-      `Failed to update score embed for match ${match.id} (Channel: ${match.announcementChannelId}, Msg: ${match.announcementMessageId})`,
-      err
-    );
-  }
+  const isLiveOrFinished = match.status !== 'NS';
+
+  await Promise.allSettled(announcements.map(async (ann) => {
+    try {
+      let locale: SupportedLocale = 'vi';
+      if (ann.guildId) {
+        const guild = (await rest.get(Routes.guild(ann.guildId))) as { preferred_locale: string };
+        locale = guild.preferred_locale.startsWith('vi') ? 'vi' : 
+                 guild.preferred_locale.startsWith('zh') ? 'zh-cn' : 'en';
+      }
+
+      const t = getT(locale);
+      const embed = buildLiveScoreUpdate(match, undefined, t);
+
+      await rest.patch(Routes.channelMessage(ann.channelId, ann.messageId), {
+        body: {
+          embeds: [embed.toJSON()],
+          components: isLiveOrFinished ? [] : undefined,
+        },
+      });
+    } catch (err: unknown) {
+      logger.warn(
+        'MatchLifecycleService',
+        `Failed to update score embed for match ${match.id} (Channel: ${ann.channelId}, Msg: ${ann.messageId})`,
+        err
+      );
+    }
+  }));
 }
 
 /**
@@ -166,17 +204,64 @@ export async function resolveMatchBets(match: FootballMatch, txDb: typeof db = d
         } else {
           const homeScore = match.homeScore ?? 0;
           const awayScore = match.awayScore ?? 0;
-          const actualResult = homeScore > awayScore ? 'home' : homeScore < awayScore ? 'away' : 'draw';
-          const actualScore = `${homeScore}-${awayScore}`;
+          const totalGoals = homeScore + awayScore;
 
           let won = false;
-          if (bet.betType === 'result' && bet.prediction === actualResult) {
-            won = true;
-          } else if (bet.betType === 'score' && bet.prediction === actualScore) {
-            won = true;
+          let isPush = false;
+
+          if (bet.betType === 'result') {
+            const actualResult = homeScore > awayScore ? 'home' : homeScore < awayScore ? 'away' : 'draw';
+            won = (bet.prediction === actualResult);
+          } else if (bet.betType === 'over_under') {
+            const line = parseFloat(match.overUnderLine || '0');
+            if (totalGoals > line) {
+              won = (bet.prediction === 'over');
+            } else if (totalGoals < line) {
+              won = (bet.prediction === 'under');
+            } else {
+              isPush = true; // Refund if score exactly matches line
+            }
+          } else if (bet.betType === 'spread') {
+            if (bet.prediction === 'home_spread') {
+              const homeLine = parseFloat(match.homeSpreadLine || '0');
+              const adjustedHome = homeScore + homeLine;
+              if (adjustedHome > awayScore) {
+                won = true;
+              } else if (adjustedHome < awayScore) {
+                won = false;
+              } else {
+                isPush = true;
+              }
+            } else if (bet.prediction === 'away_spread') {
+              const awayLine = parseFloat(match.awaySpreadLine || '0');
+              const adjustedAway = awayScore + awayLine;
+              if (adjustedAway > homeScore) {
+                won = true;
+              } else if (adjustedAway < homeScore) {
+                won = false;
+              } else {
+                isPush = true;
+              }
+            }
           }
 
-          if (won) {
+          if (isPush) {
+            // Push (Draw on handicap/line) -> Refund wager
+            await tx
+              .update(users)
+              .set({ balance: sql`${users.balance} + ${bet.wagerAmount}` })
+              .where(eq(users.id, bet.userId));
+
+            await tx
+              .update(footballBets)
+              .set({
+                status: 'void',
+                resolvedAt: new Date(),
+              })
+              .where(eq(footballBets.id, bet.id));
+
+            logger.info('MatchLifecycleService', `Pushed bet ${bet.id} for user ${bet.userId} (Score matches line)`);
+          } else if (won) {
             const payout = bet.potentialPayout ?? 0n;
             await tx
               .update(users)

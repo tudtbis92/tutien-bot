@@ -38,6 +38,10 @@
     "home_win_label": "Home Win",
     "draw_label": "Draw",
     "away_win_label": "Away Win",
+    "over_under": "Over/Under",
+    "spread": "Spread",
+    "over_label": "Over",
+    "under_label": "Under",
     "odds_label": "Odds",
     "status": "Status",
     "live": "LIVE SCORE"

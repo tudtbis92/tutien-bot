@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, smallint, varchar, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, smallint, varchar, timestamp, index } from 'drizzle-orm/pg-core';
 
 export const footballMatches = pgTable(
   'football_matches',
@@ -19,10 +19,13 @@ export const footballMatches = pgTable(
     homeOdds: varchar('home_odds', { length: 20 }),
     drawOdds: varchar('draw_odds', { length: 20 }),
     awayOdds: varchar('away_odds', { length: 20 }),
-    exactScoreOdds: jsonb('exact_score_odds'), // stores Correct Score odds map
-    dkEventId: varchar('dk_event_id', { length: 20 }), // DraftKings event identifier for crawling
-    announcementChannelId: varchar('announcement_channel_id', { length: 20 }),
-    announcementMessageId: varchar('announcement_message_id', { length: 20 }),
+    overUnderLine: varchar('over_under_line', { length: 20 }),
+    overOdds: varchar('over_odds', { length: 20 }),
+    underOdds: varchar('under_odds', { length: 20 }),
+    homeSpreadLine: varchar('home_spread_line', { length: 20 }),
+    homeSpreadOdds: varchar('home_spread_odds', { length: 20 }),
+    awaySpreadLine: varchar('away_spread_line', { length: 20 }),
+    awaySpreadOdds: varchar('away_spread_odds', { length: 20 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

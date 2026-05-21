@@ -56,14 +56,27 @@ export function buildPredictionEmbed(
     `🏠 ${homeLabel} (${home}): ${homeOddsStr}`,
     `🤝 ${drawLabel}: ${drawOddsStr}`,
     `✈️ ${awayLabel} (${away}): ${awayOddsStr}`,
-    ``,
-    `🔮 *${translate(t, 'football:embed.instruction', 'Select a result below or click an exact score button to place your wager!')}*`
-  ].join('\n');
+  ];
+
+  if (match.overUnderLine) {
+    // eslint-disable-next-line i18next/no-literal-string
+    const ouLabel = translate(t, 'football:embed.over_under', 'Over/Under');
+    description.push(`📈 **${ouLabel} (${match.overUnderLine}):** O \`${match.overOdds}\` / U \`${match.underOdds}\``);
+  }
+
+  if (match.homeSpreadLine) {
+    const spreadLabel = translate(t, 'football:embed.spread', 'Spread');
+    description.push(`🎯 **${spreadLabel}:** ${home} \`${match.homeSpreadLine}\` (\`${match.homeSpreadOdds}\`) / ${away} \`${match.awaySpreadLine}\` (\`${match.awaySpreadOdds}\`)`);
+  }
+
+  description.push(``);
+  // eslint-disable-next-line i18next/no-literal-string
+  description.push(`🔮 *${translate(t, 'football:embed.instruction', 'Select a result below to place your wager!')}*`);
 
   const embed = new EmbedBuilder()
     .setColor(COLORS.PRIMARY)
     .setTitle(title)
-    .setDescription(description)
+    .setDescription(description.join('\n'))
     .setFooter(embedFooter(shardId))
     .setTimestamp(kickoff);
 
@@ -99,30 +112,42 @@ export function buildPredictionEmbed(
   const row1 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
   components.push(row1);
 
-  // Row 2-3: Exact Score Quick Picks (8 popular scores)
-  // 1-0, 2-0, 2-1, 1-1, 0-0, 0-1, 0-2, 1-2
-  const scoreGroup1 = ['1-0', '2-0', '2-1', '1-1'];
-  const scoreGroup2 = ['0-0', '0-1', '0-2', '1-2'];
+  // Row 2: Over/Under Buttons
+  if (match.overUnderLine) {
+    const row2 = new ActionRowBuilder<ButtonBuilder>();
+    const overLabel = translate(t, 'football:embed.over_label', 'Over');
+    const underLabel = translate(t, 'football:embed.under_label', 'Under');
 
-  const scoreOddsMap = (match.exactScoreOdds as Record<string, string>) || {};
+    row2.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`predict:over_under:${match.id}:over`)
+        .setLabel(`${overLabel} ${match.overUnderLine} (${match.overOdds})`)
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('📈'),
+      new ButtonBuilder()
+        .setCustomId(`predict:over_under:${match.id}:under`)
+        .setLabel(`${underLabel} ${match.overUnderLine} (${match.underOdds})`)
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('📉')
+    );
+    components.push(row2);
+  }
 
-  const makeScoreButtons = (scores: string[]) => {
-    const row = new ActionRowBuilder<ButtonBuilder>();
-    for (const score of scores) {
-      const odds = scoreOddsMap[score];
-      const label = odds ? `${score} (${odds})` : score;
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`predict:score:${match.id}:${score}`)
-          .setLabel(label)
-          .setStyle(ButtonStyle.Secondary)
-      );
-    }
-    return row;
-  };
-
-  components.push(makeScoreButtons(scoreGroup1));
-  components.push(makeScoreButtons(scoreGroup2));
+  // Row 3: Spread Buttons
+  if (match.homeSpreadLine && match.awaySpreadLine) {
+    const row3 = new ActionRowBuilder<ButtonBuilder>();
+    row3.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`predict:spread:${match.id}:home_spread`)
+        .setLabel(`${home} ${match.homeSpreadLine} (${match.homeSpreadOdds})`)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`predict:spread:${match.id}:away_spread`)
+        .setLabel(`${away} ${match.awaySpreadLine} (${match.awaySpreadOdds})`)
+        .setStyle(ButtonStyle.Secondary)
+    );
+    components.push(row3);
+  }
 
   return { embeds: [embed], components };
 }

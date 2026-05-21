@@ -51,9 +51,9 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
       homeOdds: footballMatches.homeOdds,
       drawOdds: footballMatches.drawOdds,
       awayOdds: footballMatches.awayOdds,
-      exactScoreOdds: footballMatches.exactScoreOdds,
-      announcementChannelId: footballMatches.announcementChannelId,
-      announcementMessageId: footballMatches.announcementMessageId,
+      overUnderLine: footballMatches.overUnderLine,
+      homeSpreadLine: footballMatches.homeSpreadLine,
+      awaySpreadLine: footballMatches.awaySpreadLine,
     })
     .from(footballMatches)
     .innerJoin(footballBets, eq(footballMatches.id, footballBets.fixtureId))

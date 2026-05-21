@@ -5,7 +5,6 @@ import { footballMatches } from '../db/schema/footballMatches.js';
 import { FootballApiClient } from '../services/football/apiClient.js';
 import { CURATED_LEAGUES } from '../constants/footballLeagues.js';
 import { parseEspnOdds } from '../services/football/oddsCalculator.js';
-import { postPredictionEmbed } from '../services/football/matchLifecycleService.js';
 import { logger } from '../utils/logger.js';
 
 interface EspnCompetitor {
@@ -99,16 +98,18 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
               homeOdds: oddsInfo.home || null,
               drawOdds: oddsInfo.draw || null,
               awayOdds: oddsInfo.away || null,
-              dkEventId: oddsInfo.dkEventId || null,
-              exactScoreOdds: null, // Will be filled by crawler job
+              overUnderLine: oddsInfo.overUnderLine || null,
+              overOdds: oddsInfo.overOdds || null,
+              underOdds: oddsInfo.underOdds || null,
+              homeSpreadLine: oddsInfo.homeSpreadLine || null,
+              homeSpreadOdds: oddsInfo.homeSpreadOdds || null,
+              awaySpreadLine: oddsInfo.awaySpreadLine || null,
+              awaySpreadOdds: oddsInfo.awaySpreadOdds || null,
             })
-            .onConflictDoNothing()
             .returning();
 
           if (insertedMatches.length > 0) {
             totalCreated++;
-            // Announce match immediately to configured channels
-            await postPredictionEmbed(insertedMatches[0]);
           }
         } catch (fixtureErr: unknown) {
           logger.error('FootballFetchFixtures', `Error inserting fixture ${event.id}`, fixtureErr);

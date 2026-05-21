@@ -49,7 +49,7 @@ export async function placeBet(
   db: any,
   userId: number,
   matchId: number,
-  betType: 'result' | 'score',
+  betType: 'result' | 'score' | 'over_under' | 'spread',
   prediction: string,
   wagerAmount: bigint
 ): Promise<{ bet: FootballBet; payout: bigint; isEdit: boolean }> {
@@ -90,9 +90,18 @@ export async function placeBet(
       } else if (prediction === 'away') {
         oddsUsed = match.awayOdds || '';
       }
-    } else if (betType === 'score') {
-      const scoreOdds = (match.exactScoreOdds as Record<string, string>) || {};
-      oddsUsed = scoreOdds[prediction] || '';
+    } else if (betType === 'over_under') {
+      if (prediction === 'over') {
+        oddsUsed = match.overOdds || '';
+      } else if (prediction === 'under') {
+        oddsUsed = match.underOdds || '';
+      }
+    } else if (betType === 'spread') {
+      if (prediction === 'home_spread') {
+        oddsUsed = match.homeSpreadOdds || '';
+      } else if (prediction === 'away_spread') {
+        oddsUsed = match.awaySpreadOdds || '';
+      }
     }
 
     if (!oddsUsed) {

@@ -14,7 +14,7 @@ import type { ProfessionKey } from '../types/professions.js';
 import { buildLeaderboardPage } from '../commands/game/leaderboard.js';
 import { buildRecipesPage } from '../ui/embeds/buildRecipesEmbed.js';
 import { buildBagPage } from '../commands/game/bag.js';
-import { handlePredictResult, handlePredictScore, handlePredictModalSubmit } from '../components/predictions/index.js';
+import { handlePredictResult, handlePredictButtonMarket, handlePredictModalSubmit } from '../components/predictions/index.js';
 import { buildHistoryPage } from '../commands/predictions/predictions.js';
 
 export const name = Events.InteractionCreate;
@@ -52,11 +52,15 @@ export async function execute(interaction: Interaction): Promise<void> {
   if (interaction.isButton()) {
     const customId = interaction.customId;
 
-    if (customId.startsWith('predict:score:')) {
+    if (
+      customId.startsWith('predict:score:') ||
+      customId.startsWith('predict:over_under:') ||
+      customId.startsWith('predict:spread:')
+    ) {
       try {
-        await handlePredictScore(interaction);
+        await handlePredictButtonMarket(interaction);
       } catch (err) {
-        logger.error('InteractionCreate', 'Error in handlePredictScore', err);
+        logger.error('InteractionCreate', 'Error in handlePredictButtonMarket', err);
       }
       return;
     }

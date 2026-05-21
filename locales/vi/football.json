@@ -38,6 +38,10 @@
     "home_win_label": "Chủ nhà thắng",
     "draw_label": "Hòa",
     "away_win_label": "Khách thắng",
+    "over_under": "Tài/Xỉu",
+    "spread": "Kèo chấp",
+    "over_label": "Tài",
+    "under_label": "Xỉu",
     "odds_label": "Tỷ lệ cược",
     "status": "Trạng thái",
     "live": "TỶ SỐ TRỰC TIẾP"

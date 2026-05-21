@@ -3,7 +3,7 @@ import { eq, and, between, or, isNull, lt } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { footballMatches } from '../db/schema/footballMatches.js';
 import { FootballApiClient } from '../services/football/apiClient.js';
-import { parseOdds } from '../services/football/oddsCalculator.js';
+import { parseEspnOdds } from '../services/football/oddsCalculator.js';
 import { updateLiveScoreEmbed } from '../services/football/matchLifecycleService.js';
 import { logger } from '../utils/logger.js';
 
@@ -13,9 +13,9 @@ export async function runFootballRefreshOdds(job: Job): Promise<void> {
   const apiClient = new FootballApiClient();
   const now = new Date();
   const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
 
-  // Matches starting in the next 24h that haven't been updated in the last 2 hours
+  // Matches starting in the next 24h that haven't been updated in the last 1 hour
   const matchesToRefresh = await db
     .select()
     .from(footballMatches)
@@ -25,7 +25,7 @@ export async function runFootballRefreshOdds(job: Job): Promise<void> {
         between(footballMatches.kickoffAt, now, next24h),
         or(
           isNull(footballMatches.updatedAt),
-          lt(footballMatches.updatedAt, twoHoursAgo)
+          lt(footballMatches.updatedAt, oneHourAgo)
         )
       )
     );
@@ -41,16 +41,22 @@ export async function runFootballRefreshOdds(job: Job): Promise<void> {
 
   for (const match of matchesToRefresh) {
     try {
-      const oddsRes = await apiClient.getFixtureOdds(match.fixtureId, match.leagueId, 0); // Force bypass API cache for fresh odds
-      const resultOdds = parseOdds(oddsRes, 'result');
+      const oddsRes = await apiClient.getFixtureResult(match.fixtureId, match.leagueId, 0); // Force bypass API cache for fresh odds
+      const oddsInfo = parseEspnOdds(oddsRes);
 
       const updatedRows = await db
         .update(footballMatches)
         .set({
-          homeOdds: resultOdds.home || match.homeOdds,
-          drawOdds: resultOdds.draw || match.drawOdds,
-          awayOdds: resultOdds.away || match.awayOdds,
-          // exactScoreOdds update is handled by footballCrawlOdds job
+          homeOdds: oddsInfo.home || match.homeOdds,
+          drawOdds: oddsInfo.draw || match.drawOdds,
+          awayOdds: oddsInfo.away || match.awayOdds,
+          overUnderLine: oddsInfo.overUnderLine || match.overUnderLine,
+          overOdds: oddsInfo.overOdds || match.overOdds,
+          underOdds: oddsInfo.underOdds || match.underOdds,
+          homeSpreadLine: oddsInfo.homeSpreadLine || match.homeSpreadLine,
+          homeSpreadOdds: oddsInfo.homeSpreadOdds || match.homeSpreadOdds,
+          awaySpreadLine: oddsInfo.awaySpreadLine || match.awaySpreadLine,
+          awaySpreadOdds: oddsInfo.awaySpreadOdds || match.awaySpreadOdds,
           updatedAt: new Date(),
         })
         .where(eq(footballMatches.id, match.id))
@@ -58,10 +64,8 @@ export async function runFootballRefreshOdds(job: Job): Promise<void> {
 
       if (updatedRows.length > 0) {
         refreshedCount++;
-        // If the match was already announced, update its embed with fresh odds
-        if (updatedRows[0].announcementMessageId) {
-          await updateLiveScoreEmbed(updatedRows[0]);
-        }
+        // Trigger live score update for all active announcement messages
+        await updateLiveScoreEmbed(updatedRows[0]);
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
