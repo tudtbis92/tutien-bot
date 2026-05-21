@@ -59,7 +59,8 @@ export async function placeBet(
     throw new InvalidWagerAmountError(wagerValidation.error || 'Invalid wager amount');
   }
 
-  return await db.transaction(async (tx) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return await db.transaction(async (tx: any) => {
     // 2. Fetch match and check kickoff / status
     const matchRows = await tx
       .select()
@@ -235,7 +236,8 @@ export async function getUserBets(
     .innerJoin(footballMatches, eq(footballBets.fixtureId, footballMatches.id))
     .where(and(...queryConditions));
 
-  return rows.map((r) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return rows.map((r: any) => ({
     ...r.bet,
     match: r.match,
   }));
