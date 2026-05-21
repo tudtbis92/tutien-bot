@@ -1,12 +1,13 @@
 import { ShardingManager } from 'discord.js';
 import { config } from './config.js';
-import { initPgBoss, stopPgBoss } from './workers/pgBoss.js';
+import { initPgBoss, stopPgBoss, boss } from './workers/pgBoss.js';
 import { startHealthServer } from './workers/health.js';
 import { registerCommands } from './utils/registerCommands.js';
 import { db, pool } from './db/client.js';
 import { redis } from './cache/redis.js';
 import { logger } from './utils/logger.js';
 import { sql } from 'drizzle-orm';
+import { footballMatches } from './db/schema/footballMatches.js';
 
 // eslint-disable-next-line i18next/no-literal-string -- deployment artifact path, not user-facing
 const manager = new ShardingManager('./dist/shard.js', {
@@ -47,6 +48,23 @@ async function main(): Promise<void> {
 
   // Step 3: pg-boss ONLY in ShardingManager — never in shards
   await initPgBoss();
+
+  // Step 3b: Startup check — if no upcoming fixtures in DB, trigger fetch immediately
+  {
+    const fromDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(footballMatches)
+      .where(sql`kickoff_at >= ${fromDate.toISOString()}`);
+
+    if ((row?.count ?? 0) === 0) {
+      logger.info('StartupCheck', 'No upcoming fixtures found. Triggering immediate fetch...');
+      void boss!.send('football-fetch-fixtures', {});
+    } else {
+      logger.info('StartupCheck', `${row!.count} upcoming fixtures already in DB. Skipping startup fetch.`);
+    }
+  }
 
   // Step 4: Health check HTTP server ONLY in ShardingManager
   await startHealthServer(manager);

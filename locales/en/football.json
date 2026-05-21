@@ -62,6 +62,7 @@
       "off": "DISABLED"
     },
     "admin_only": "Only server administrators can modify prediction settings.",
-    "league_required": "You must select a league when using the 'league' action."
+    "league_required": "You must select a league when using the 'league' action.",
+    "fetch_triggered": "Match data sync triggered. Please wait a few minutes for results."
   }
 }

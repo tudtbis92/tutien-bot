@@ -62,6 +62,7 @@
       "off": "ĐÃ TẮT"
     },
     "admin_only": "Chỉ admin server mới có thể thay đổi cài đặt dự đoán.",
-    "league_required": "Bạn cần chọn một giải đấu khi sử dụng hành động 'league'."
+    "league_required": "Bạn cần chọn một giải đấu khi sử dụng hành động 'league'.",
+    "fetch_triggered": "Đã kích hoạt đồng bộ dữ liệu trận đấu. Vui lòng chờ vài phút để có kết quả."
   }
 }

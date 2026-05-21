@@ -10,6 +10,7 @@ import { CURATED_LEAGUES } from '../../constants/footballLeagues.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { buildSuccessEmbed } from '../../ui/embeds/buildSuccessEmbed.js';
+import { boss } from '../../workers/pgBoss.js';
 
 /* eslint-disable i18next/no-literal-string -- slash commands name/description are static Discord API strings */
 export const data = new SlashCommandBuilder()
@@ -52,7 +53,8 @@ export const data = new SlashCommandBuilder()
           .addChoices(
             { name: 'on (Bật kênh cược)', value: 'on' },
             { name: 'off (Tắt kênh cược)', value: 'off' },
-            { name: 'league (Bật/Tắt giải đấu)', value: 'league' }
+            { name: 'league (Bật/Tắt giải đấu)', value: 'league' },
+            { name: 'fetch (Đồng bộ dữ liệu trận đấu ngay)', value: 'fetch' }
           )
       )
       .addStringOption((option) =>
@@ -216,7 +218,23 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
           })
           .where(eq(predictionChannels.id, existing.id));
       } else {
-        newStatus = false; // By default leagues are enabled for enabled prediction channels, so first toggle turns it off (false)
+        // Determine default league state based on global toggle
+        const globalToggle = await db
+          .select()
+          .from(predictionChannels)
+          .where(
+            and(
+              eq(predictionChannels.guildId, guildId),
+              eq(predictionChannels.channelId, channelId),
+              eq(predictionChannels.leagueId, 0)
+            )
+          )
+          .limit(1)
+          .then((rows) => rows[0]);
+
+        // global on → leagues are implicitly on, so first toggle = disable
+        // global off/missing → leagues are implicitly off, so first toggle = enable
+        newStatus = globalToggle?.enabled === true ? false : true;
         await db.insert(predictionChannels).values({
           guildId,
           channelId,
@@ -243,6 +261,21 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
           ),
         ],
       });
+    }
+
+    if (action === 'fetch') {
+      void boss!.send('football-fetch-fixtures', {});
+
+      await interaction.editReply({
+        embeds: [
+          buildSuccessEmbed(
+            t('football:predictions.title'),
+            t('football:config.fetch_triggered'),
+            shardId
+          ),
+        ],
+      });
+      return;
     }
   }
 }

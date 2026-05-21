@@ -62,6 +62,7 @@
       "off": "已禁用"
     },
     "admin_only": "只有服务器管理员可以修改预测设置。",
-    "league_required": "使用 'league' 操作时必须选择一个联赛。"
+    "league_required": "使用 'league' 操作时必须选择一个联赛。",
+    "fetch_triggered": "比赛数据同步已触发，请等待几分钟获取结果。"
   }
 }
