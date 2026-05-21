@@ -18,6 +18,9 @@ const EnvSchema = z.object({
   // App
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().min(1024).max(65535).default(3000),
+
+  // API Football keys (comma-separated for key rotation)
+  API_FOOTBALL_KEYS: z.string().default(''),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

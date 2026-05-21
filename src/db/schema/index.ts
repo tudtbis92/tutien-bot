@@ -15,3 +15,9 @@ export * from './guild_activity.js';
 
 // Phase 2.1 schemas
 export * from './gather_pool_items.js';
+
+// Phase 02.2 schemas
+export * from './footballMatches.js';
+export * from './footballBets.js';
+export * from './apiCache.js';
+export * from './predictionChannels.js';

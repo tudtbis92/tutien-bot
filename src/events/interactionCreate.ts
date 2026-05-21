@@ -14,15 +14,52 @@ import type { ProfessionKey } from '../types/professions.js';
 import { buildLeaderboardPage } from '../commands/game/leaderboard.js';
 import { buildRecipesPage } from '../ui/embeds/buildRecipesEmbed.js';
 import { buildBagPage } from '../commands/game/bag.js';
+import { handlePredictResult, handlePredictScore, handlePredictModalSubmit } from '../components/predictions/index.js';
+import { buildHistoryPage } from '../commands/predictions/predictions.js';
 
 export const name = Events.InteractionCreate;
 
 const RECIPES_PER_PAGE = 5;
 
 export async function execute(interaction: Interaction): Promise<void> {
+  // ── StringSelectMenu interaction routing ────────────────────────────────────
+  if (interaction.isStringSelectMenu()) {
+    const customId = interaction.customId;
+    if (customId.startsWith('predict:result:')) {
+      try {
+        await handlePredictResult(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handlePredictResult', err);
+      }
+      return;
+    }
+  }
+
+  // ── ModalSubmit interaction routing ──────────────────────────────────────────
+  if (interaction.isModalSubmit()) {
+    const customId = interaction.customId;
+    if (customId.startsWith('predict:modal:')) {
+      try {
+        await handlePredictModalSubmit(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handlePredictModalSubmit', err);
+      }
+      return;
+    }
+  }
+
   // ── Button interaction routing ──────────────────────────────────────────────
   if (interaction.isButton()) {
     const customId = interaction.customId;
+
+    if (customId.startsWith('predict:score:')) {
+      try {
+        await handlePredictScore(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handlePredictScore', err);
+      }
+      return;
+    }
 
     // /bxh pagination buttons: customId = 'bxh_prev_{page}_{scope}' or 'bxh_next_{page}_{scope}'
     if (customId.startsWith('bxh_prev_') || customId.startsWith('bxh_next_')) {
@@ -62,6 +99,49 @@ export async function execute(interaction: Interaction): Promise<void> {
       const shardId = interaction.client.shard?.ids[0];
 
       const { embed, row } = await buildLeaderboardPage(scope, newPage, t, shardId);
+      await interaction.editReply({ embeds: [embed], components: [row] });
+      return;
+    }
+
+    // /predictions history pagination buttons: customId = 'pred_hist_prev_{page}_{userId}' or 'pred_hist_next_{page}_{userId}'
+    if (customId.startsWith('pred_hist_prev_') || customId.startsWith('pred_hist_next_')) {
+      const parts = customId.split('_');
+      const direction = parts[2] as 'prev' | 'next';
+      const rawPage = parseInt(parts[3] ?? '', 10);
+      const targetUserId = parseInt(parts[4] ?? '', 10);
+
+      if (isNaN(rawPage) || isNaN(targetUserId)) {
+        await interaction.deferUpdate();
+        return;
+      }
+
+      const [currentUser] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.discordId, interaction.user.id));
+
+      if (!currentUser || currentUser.id !== targetUserId) {
+        await interaction.deferUpdate();
+        return;
+      }
+
+      const newPage = direction === 'prev' ? rawPage - 1 : rawPage + 1;
+      if (newPage < 0) {
+        await interaction.deferUpdate();
+        return;
+      }
+
+      await interaction.deferUpdate();
+
+      const [userRow] = await db
+        .select({ locale: users.locale })
+        .from(users)
+        .where(eq(users.discordId, interaction.user.id));
+      const locale = resolveLocale(userRow?.locale, null);
+      const t = getT(locale);
+      const shardId = interaction.client.shard?.ids[0];
+
+      const { embed, row } = await buildHistoryPage(targetUserId, newPage, t, shardId);
       await interaction.editReply({ embeds: [embed], components: [row] });
       return;
     }
