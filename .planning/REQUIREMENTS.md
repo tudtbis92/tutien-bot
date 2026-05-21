@@ -67,6 +67,22 @@
 - [ ] **SEASON-04**: Hall of fame: lưu trữ vĩnh viễn top players mỗi season
 - [ ] **SEASON-05**: Quy trình reset multi-phase: thông báo T-7 ngày → khóa marketplace → flush pending orders → reset → mở season mới
 
+### Football Prediction Event System
+
+- [ ] **PRED-01**: Bot fetches upcoming football fixtures from API-Football every 60 minutes
+- [ ] **PRED-02**: Bot polls live scores for in-progress fixtures every 15 minutes
+- [ ] **PRED-03**: Bot resolves matches 2 hours after kickoff, pays out winning bets
+- [ ] **PRED-04**: Odds refresh every 15 minutes for kickoff-removed future (current odds stay for live)
+- [ ] **PRED-05**: Register + rotate API-Football keys in Redis; handle rate limits
+- [ ] **PRED-06**: Odds engine uses BIGINT-safe arithmetic (lossless, no floating-point drift)
+- [ ] **PRED-07**: Prediction embed displays match info, pick buttons, confirm button, timer
+- [ ] **PRED-08**: Message component interaction (button clicks) drives the betting flow
+- [ ] **PRED-09**: 3 prediction types: home/draw/away result, correct score, and double chance
+- [ ] **PRED-10**: Per-channel prediction config (on/off toggle, per-league toggle)
+- [x] **PRED-11**: Full i18n coverage for all prediction strings (VI/EN/ZH-CN)
+- [x] **PRED-12**: /predictions command + /config predictions admin command
+- [x] **PRED-13**: API-Football keys documented in .env.example with ToS warning
+
 ### i18n & Admin
 
 - [ ] **I18N-01**: Bot phản hồi theo ngôn ngữ của user (VI mặc định): user override → Discord locale → default VI
@@ -138,6 +154,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROG-06 | Phase 2: Core Game Loop + Progression | Pending |
 | PROG-07 | Phase 2: Core Game Loop + Progression | Pending |
 | PROG-08 | Phase 2: Core Game Loop + Progression | Pending |
+| PRED-01 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-02 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-03 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-04 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-05 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-06 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-07 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-08 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-09 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-10 | Phase 02.2: Football Prediction Event System | Pending |
+| PRED-11 | Phase 02.2: Football Prediction Event System | Complete (2026-05-21) |
+| PRED-12 | Phase 02.2: Football Prediction Event System | Complete (2026-05-21) |
 | COMBAT-01 | Phase 3: Combat + Marketplace | Pending |
 | COMBAT-02 | Phase 3: Combat + Marketplace | Pending |
 | COMBAT-03 | Phase 3: Combat + Marketplace | Pending |
@@ -162,10 +190,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMIN-01 | Phase 4: Season System + Admin | Pending |
 
 **Coverage:**
-- v1 requirements: 48 total
-- Mapped to phases: 48
+- v1 requirements: 61 total
+- Mapped to phases: 61
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-11 after initial definition*
+*Last updated: 2026-05-21 — PRED-01..13 added for Phase 02.2; PRED-11/12 complete*

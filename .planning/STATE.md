@@ -2,16 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02.1
-current_plan: 0
 status: planning
-last_updated: "2026-04-12T14:45:00.000Z"
+last_updated: "2026-05-21T04:02:02.394Z"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 2
-  total_plans: 15
-  completed_plans: 8
-  percent: 40
+  total_plans: 14
+  completed_plans: 12
+  percent: 33
 ---
 
 # State: TuTien Bot
@@ -23,17 +21,20 @@ progress:
 
 ## Current Position
 
-Phase: 02 (core-game-loop-progression) — COMPLETE  
+Phase: 02.2 (add-football-prediction-event-system) — EXECUTING
+Plan: 2 of 5
 Phase: 02.1 (gather-craft-seed-data) — NEXT (INSERTED, urgent)
+Phase: 02.2 (add-football-prediction-event-system) — NEXT (INSERTED, urgent)
 
 ```
-Progress: [████░░░░░░] 40% (Phases 1–2 complete, 02.1 inserted)
+Progress: [█████████░] 86%
 
-Phase 1  [Foundation]               █████ COMPLETE (2026-04-11)
-Phase 2  [Core Game Loop]           █████ COMPLETE (2026-04-12, 7/7 plans)
-Phase 02.1 [Gather/Craft Seed Data] ░░░░░ NOT STARTED (INSERTED)
-Phase 3  [Combat + Marketplace]     ░░░░░ NOT STARTED
-Phase 4  [Season System + Admin]    ░░░░░ NOT STARTED
+Phase 1  [Foundation]                    █████ COMPLETE (2026-04-11)
+Phase 2  [Core Game Loop]                █████ COMPLETE (2026-04-12, 7/7 plans)
+Phase 02.1 [Gather/Craft Seed Data]      ░░░░░ NOT STARTED (INSERTED)
+Phase 02.2 [Football Prediction Event]   ░░░░░ IN PROGRESS (1/5 plans)
+Phase 3  [Combat + Marketplace]          ░░░░░ NOT STARTED
+Phase 4  [Season System + Admin]         ░░░░░ NOT STARTED
 ```
 
 ---
@@ -45,10 +46,11 @@ Phase 4  [Season System + Admin]    ░░░░░ NOT STARTED
 | 1 | Foundation | INFRA-01..07, I18N-01..03 (10) | ✅ Complete | 2026-04-11 |
 | 2 | Core Game Loop + Progression | CORE-01..08, PROG-01..08 (16) | ✅ Complete (7/7 plans, UAT 5/5 passed) | 2026-04-12 |
 | 02.1 | Gather & Craft — Seed Data + Cơ Chế Chi Tiết | PROG-06, PROG-07 (unblocked) | Pending (INSERTED) | - |
+| 02.2 | Football Prediction Event System | PRED-01..13 (13) | In progress (1/5 plans) | - |
 | 3 | Combat + Marketplace | COMBAT-01..04, MKT-01..12 (16) | Pending | - |
 | 4 | Season System + Admin | SEASON-01..05, ADMIN-01 (6) | Pending | - |
 
-**Total requirements:** 48/48 mapped ✓
+**Total requirements:** 61/61 mapped ✓
 
 ---
 
@@ -58,20 +60,23 @@ Phase 4  [Season System + Admin]    ░░░░░ NOT STARTED
 |--------|-------|
 | Phases total | 4 |
 | Phases complete | 2 |
-| Requirements total | 48 |
-| Requirements delivered | 26 |
-| Plans created | 8 (Phase 1: 1, Phase 2: 7) |
-| Plans complete | 8 |
+| Requirements total | 61 |
+| Requirements delivered | 28 |
+| Plans created | 9 (Phase 1: 1, Phase 2: 7, Phase 02.2: 1) |
+| Plans complete | 9 |
 
 ---
 | Phase 01 P01 | multi-session | 14 tasks | 55 files |
 | Phase 02 P01-07 | multi-session | 23+ tasks | 36+ files |
+| Phase 02.2 P05 | 12min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
 - Phase 02.1 inserted after Phase 2: Gather & Craft — Seed Data + Cơ Chế Chi Tiết (URGENT) — 2026-04-12
+- Phase 02.2 inserted after Phase 2: Add football prediction event system (URGENT)
+- Phase 02.2 context gathered: Football prediction event system decisions captured (19 decisions, API-Football integration, 5-key pool, 15-min polling)
 
 ### Key Decisions Made
 
@@ -92,6 +97,8 @@ Phase 4  [Season System + Admin]    ░░░░░ NOT STARTED
 | `characters.tu_vi` is cumulative-forever | Never reset on breakthrough; all threshold comparisons MUST use `entryThreshold + tuViRequired` (absolute), never `tuViRequired` alone (incremental) | Phase 2 UAT |
 | ActivityWorker Layer 1 removed | Redis re-verify in worker removed — event-handler Redis guard is sufficient; Layer 2 DB check covers restart recovery | Phase 2 UAT |
 | ActivityWorker uses `localConcurrency: 5` | Per-user `SELECT FOR UPDATE` makes parallel processing safe; `concurrency: 1` would be a bottleneck | Phase 2 UAT |
+| 53-key i18n structure for football predictions | Covers predictions.* (18), embed.* (14), status.* (8), config.* (9) in VI/EN/ZH-CN; all files share identical key structure | Phase 02.2 P05 |
+| /config predictions uses interaction.channelId | No separate channel parameter — uses the invocation channel directly; league_id=0 for global, league_id>0 per-league | Phase 02.2 P05 |
 
 ### Active Todos
 
@@ -118,9 +125,10 @@ None currently.
 
 ## Session Continuity
 
-**To resume work:** Run `/gsd-plan-phase 02.1` to plan Phase 02.1 (Gather & Craft — Seed Data + Cơ Chế Chi Tiết). This is urgent work blocking UAT of /gather and /craft.
+**To resume work:** Continue Phase 02.2 plan 3/5 (next PLAN.md without SUMMARY in `.planning/phases/02.2-add-football-prediction-event-system/`).
 
 **Phase 02 completion note:**  
+
 - 7/7 plans executed, 23/23 tests pass, tsc clean, lint clean.
 - Human UAT complete: 5/5 tests passed. 5 bugs found and fixed during UAT.
 - Minor issues (MI-01..08) from 02-REVIEW.md deferred to a future cleanup pass.
@@ -137,4 +145,4 @@ None currently.
 ---
 
 *State initialized: 2026-04-11*  
-*Last updated: 2026-04-12 — Phase 02.1 inserted (URGENT): Gather/Craft seed data + cơ chế chi tiết*
+*Last updated: 2026-05-21 — Phase 02.2 P05 complete: i18n + commands + .env.example*
