@@ -8,6 +8,7 @@ import { redis } from './cache/redis.js';
 import { logger } from './utils/logger.js';
 import { sql } from 'drizzle-orm';
 import { footballMatches } from './db/schema/footballMatches.js';
+import { initI18n } from './i18n/index.js';
 
 // eslint-disable-next-line i18next/no-literal-string -- deployment artifact path, not user-facing
 const manager = new ShardingManager('./dist/shard.js', {
@@ -45,6 +46,11 @@ async function main(): Promise<void> {
   // NEVER register in shard.ts/commandLoader — N shards × PUT /commands = race conditions
   // and wasted rate-limit budget. This call is idempotent; safe on every restart.
   await registerCommands();
+
+  // Step 2.5: Initialize i18next for the ShardingManager process
+  // Required because pg-boss workers run in this process and send translated embeds
+  logger.info('ShardingManager', 'Initializing i18n...');
+  await initI18n();
 
   // Step 3: pg-boss ONLY in ShardingManager — never in shards
   await initPgBoss();
