@@ -66,6 +66,10 @@ async function main(): Promise<void> {
     }
   }
 
+  // Step 3c: Announce scan — sweep prediction channels to ensure no active matches within 24h are missed
+  logger.info('StartupCheck', 'Triggering match announcements scan on startup...');
+  void boss!.send('football-announce-matches', {});
+
   // Step 4: Health check HTTP server ONLY in ShardingManager
   await startHealthServer(manager);
 
