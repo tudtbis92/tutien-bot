@@ -45,6 +45,72 @@ async function getGuildLocale(guildId: string, restClient: REST): Promise<Suppor
   }
 }
 
+interface DiscordErrorLike {
+  status?: number;
+  code?: number;
+  message?: string;
+}
+
+function isChannelNotFoundError(err: unknown): boolean {
+  if (typeof err === 'object' && err !== null) {
+    const e = err as DiscordErrorLike;
+    // 404: Not Found, 403: Forbidden (missing access)
+    // 10003: Unknown Channel, 50001: Missing Access
+    return e.status === 404 || e.status === 403 || e.code === 10003 || e.code === 50001;
+  }
+  return false;
+}
+
+function isMessageNotFoundError(err: unknown): boolean {
+  if (typeof err === 'object' && err !== null) {
+    const e = err as DiscordErrorLike;
+    // 404: Not Found
+    // 10008: Unknown Message
+    return e.status === 404 || e.code === 10008;
+  }
+  return false;
+}
+
+async function handleChannelFailure(channelId: string, err: unknown): Promise<void> {
+  if (isChannelNotFoundError(err)) {
+    const key = `prediction:failed:channel:${channelId}`;
+    try {
+      const count = await redis.incr(key);
+      await redis.expire(key, 86400); // 1 day expiry
+      logger.warn('MatchLifecycleService', `Recorded channel failure for ${channelId}. Count: ${count}/3. Error: ${err instanceof Error ? err.message : String(err)}`);
+
+      if (count >= 3) {
+        logger.error('MatchLifecycleService', `Channel ${channelId} not found or inaccessible 3 times. Deleting from predictionChannels.`);
+        await db.delete(predictionChannels).where(eq(predictionChannels.channelId, channelId));
+        await redis.del(key);
+      }
+    } catch (redisErr) {
+      logger.error('MatchLifecycleService', `Failed to handle channel failure for ${channelId}`, redisErr);
+    }
+  }
+}
+
+async function handleMessageFailure(ann: { id: number; channelId: string; messageId: string }, err: unknown): Promise<void> {
+  if (isChannelNotFoundError(err)) {
+    await handleChannelFailure(ann.channelId, err);
+  } else if (isMessageNotFoundError(err)) {
+    const key = `prediction:failed:message:${ann.messageId}`;
+    try {
+      const count = await redis.incr(key);
+      await redis.expire(key, 86400); // 1 day expiry
+      logger.warn('MatchLifecycleService', `Recorded message failure for ${ann.messageId} in channel ${ann.channelId}. Count: ${count}/3. Error: ${err instanceof Error ? err.message : String(err)}`);
+
+      if (count >= 3) {
+        logger.error('MatchLifecycleService', `Message ${ann.messageId} not found 3 times. Deleting announcement ID ${ann.id} from database.`);
+        await db.delete(footballAnnouncements).where(eq(footballAnnouncements.id, ann.id));
+        await redis.del(key);
+      }
+    } catch (redisErr) {
+      logger.error('MatchLifecycleService', `Failed to handle message failure for ${ann.messageId}`, redisErr);
+    }
+  }
+}
+
 /**
  * Announcement / Embed helpers
  */
@@ -158,6 +224,7 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
       }
     } catch (err: unknown) {
       logger.warn('MatchLifecycleService', `Failed to post prediction embed in channel ${channelId}`, err);
+      await handleChannelFailure(channelId, err);
     }
   }
 }
@@ -207,6 +274,7 @@ export async function updateLiveScoreEmbed(match: FootballMatch): Promise<void> 
         `Failed to update score embed for match ${match.id} (Channel: ${ann.channelId}, Msg: ${ann.messageId})`,
         err
       );
+      await handleMessageFailure(ann, err);
     }
   }));
 }
@@ -254,6 +322,7 @@ export async function updatePredictionEmbeds(match: FootballMatch): Promise<void
         `Failed to update prediction embed for match ${match.id} (Channel: ${ann.channelId}, Msg: ${ann.messageId})`,
         err
       );
+      await handleMessageFailure(ann, err);
     }
   }));
 }
