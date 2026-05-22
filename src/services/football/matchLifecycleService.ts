@@ -172,6 +172,15 @@ export async function updateLiveScoreEmbed(match: FootballMatch): Promise<void> 
 
   const isLiveOrFinished = match.status !== 'NS';
 
+  // OPTIMIZATION: Render the Canvas clash card ONCE for all channels to update!
+  let imageBuffer: Buffer | null = null;
+  try {
+    const imageService = PredictionImageService.getInstance();
+    imageBuffer = await imageService.getClashCardBuffer(match);
+  } catch (imgErr) {
+    logger.error('MatchLifecycleService', `Failed to render live score clash card for match ${match.id}`, imgErr);
+  }
+
   await Promise.allSettled(announcements.map(async (ann) => {
     try {
       let locale: SupportedLocale = 'vi';
@@ -187,6 +196,10 @@ export async function updateLiveScoreEmbed(match: FootballMatch): Promise<void> 
           embeds: [embed.toJSON()],
           components: isLiveOrFinished ? [] : undefined,
         },
+        files: imageBuffer ? [{
+          name: 'prediction.png',
+          data: imageBuffer,
+        }] : undefined,
       });
     } catch (err: unknown) {
       logger.warn(
@@ -379,4 +392,11 @@ export async function resolveMatchBets(match: FootballMatch, txDb: typeof db = d
       }
     }
   });
+
+  // Clear cache for this match after resolution completes successfully
+  try {
+    PredictionImageService.getInstance().clearMatchCache(match.id);
+  } catch (cacheErr) {
+    logger.error('MatchLifecycleService', `Failed to clear match cache after resolution for match ${match.id}`, cacheErr);
+  }
 }

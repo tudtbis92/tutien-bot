@@ -199,6 +199,7 @@ export function buildLiveScoreUpdate(
     .setColor(match.status === 'FT' || match.status === 'AET' || match.status === 'PEN' ? COLORS.SUCCESS : COLORS.GOLD)
     .setTitle(title)
     .setDescription(description)
+    .setImage('attachment://prediction.png')
     .setFooter(embedFooter(shardId))
     .setTimestamp(kickoff);
 }

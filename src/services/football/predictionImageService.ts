@@ -5,8 +5,8 @@ import { logger } from '../../utils/logger.js';
 
 export class PredictionImageService {
   private static instance: PredictionImageService;
-  private cache = new Map<number, Buffer>();
-  private activeGenerations = new Map<number, Promise<Buffer>>();
+  private cache = new Map<string, Buffer>();
+  private activeGenerations = new Map<string, Promise<Buffer>>();
 
   private constructor() {}
 
@@ -15,6 +15,13 @@ export class PredictionImageService {
       PredictionImageService.instance = new PredictionImageService();
     }
     return PredictionImageService.instance;
+  }
+
+  private getCacheKey(match: FootballMatch): string {
+    if (match.homeScore !== null && match.awayScore !== null) {
+      return `${match.id}-${match.homeScore}-${match.awayScore}`;
+    }
+    return `${match.id}-ns`;
   }
 
   /**
@@ -27,16 +34,35 @@ export class PredictionImageService {
   }
 
   /**
+   * Clears the cache specifically for a single match ID.
+   */
+  public clearMatchCache(matchId: number): void {
+    const prefix = `${matchId}-`;
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(prefix)) {
+        this.cache.delete(key);
+      }
+    }
+    for (const key of this.activeGenerations.keys()) {
+      if (key.startsWith(prefix)) {
+        this.activeGenerations.delete(key);
+      }
+    }
+    logger.info('PredictionImageService', `Cleared cache entries for match ${matchId}.`);
+  }
+
+  /**
    * Retrieves or generates a match clash card PNG buffer.
    * Utilizes Promise-Coalescing to avoid redundant canvas draw operations.
    */
   public async getClashCardBuffer(match: FootballMatch): Promise<Buffer> {
-    const cached = this.cache.get(match.id);
+    const key = this.getCacheKey(match);
+    const cached = this.cache.get(key);
     if (cached) {
       return cached;
     }
 
-    const active = this.activeGenerations.get(match.id);
+    const active = this.activeGenerations.get(key);
     if (active) {
       return active;
     }
@@ -44,17 +70,17 @@ export class PredictionImageService {
     // Spawn a coalesced promise to run the Canvas drawing
     const renderPromise = this.drawClashCard(match)
       .then((buf) => {
-        this.cache.set(match.id, buf);
-        this.activeGenerations.delete(match.id);
+        this.cache.set(key, buf);
+        this.activeGenerations.delete(key);
         return buf;
       })
       .catch((err) => {
-        this.activeGenerations.delete(match.id);
-        logger.error('PredictionImageService', `Failed to render clash card for match ${match.id}`, err);
+        this.activeGenerations.delete(key);
+        logger.error('PredictionImageService', `Failed to render clash card for match ${match.id} with key ${key}`, err);
         throw err;
       });
 
-    this.activeGenerations.set(match.id, renderPromise);
+    this.activeGenerations.set(key, renderPromise);
     return renderPromise;
   }
 
@@ -74,8 +100,12 @@ export class PredictionImageService {
     const leagueText = `—   ${match.leagueName.toUpperCase()}   —`;
     this.drawCenteredText(ctx, leagueText, width / 2, 45, width - 200, 20, '#F59E0B', true, 3); // Spacing simulation
 
-    // 3. Draw Versus Element in the Center
-    this.drawVS(ctx, width / 2, height / 2 - 20);
+    // 3. Draw Versus / Score Element in the Center
+    if (match.homeScore !== null && match.awayScore !== null) {
+      this.drawScore(ctx, width / 2, height / 2 - 20, match.homeScore, match.awayScore);
+    } else {
+      this.drawVS(ctx, width / 2, height / 2 - 20);
+    }
 
     // 4. Draw Home Team (Left Side)
     const homeX = 200;
@@ -273,6 +303,44 @@ export class PredictionImageService {
     // Colored gradient fill
     ctx.fillStyle = vsGrad;
     ctx.fillText('VS', centerX, centerY);
+    ctx.restore();
+  }
+
+  /**
+   * Draw the live score separator
+   */
+  private drawScore(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, homeScore: number, awayScore: number): void {
+    ctx.save();
+    // Ambient green back-glow for football live vibes
+    const radialGlow = ctx.createRadialGradient(centerX, centerY, 5, centerX, centerY, 55);
+    radialGlow.addColorStop(0, 'rgba(34, 197, 94, 0.25)'); // Green neon aura
+    radialGlow.addColorStop(1, 'rgba(34, 197, 94, 0)');
+    ctx.fillStyle = radialGlow;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Bold text draw
+    ctx.save();
+    const scoreText = `${homeScore} - ${awayScore}`;
+    const scoreGrad = ctx.createLinearGradient(centerX - 40, centerY - 25, centerX + 40, centerY + 25);
+    scoreGrad.addColorStop(0, '#22C55E'); // Green-500
+    scoreGrad.addColorStop(0.5, '#4ADE80'); // Green-400
+    scoreGrad.addColorStop(1, '#86EFAC'); // Green-300
+
+    ctx.font = 'italic 900 64px "Segoe UI", "Arial Black", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Black stroke shadow outline
+    ctx.strokeStyle = '#030712';
+    ctx.lineWidth = 8;
+    ctx.strokeText(scoreText, centerX, centerY);
+
+    // Colored gradient fill
+    ctx.fillStyle = scoreGrad;
+    ctx.fillText(scoreText, centerX, centerY);
     ctx.restore();
   }
 
