@@ -16,6 +16,7 @@
     "bet_lost": "很遗憾，你未中奖。损失了 {{wager}} 灵石。",
     "list_title": "当前开放预测的比赛",
     "no_active": "目前没有开放预测的比赛。",
+    "no_active_bets": "您当前没有待处理的投注。",
     "history_title": "你的投注历史",
     "no_history": "你还没有进行过任何预测。",
     "page": "第 {{current}}/{{total}} 页",

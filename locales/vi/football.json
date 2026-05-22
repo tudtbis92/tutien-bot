@@ -16,6 +16,7 @@
     "bet_lost": "Rất tiếc, cược của bạn không trúng. Thua {{wager}} linh thạch.",
     "list_title": "Các trận đang mở cược",
     "no_active": "Hiện không có trận nào đang mở cược.",
+    "no_active_bets": "Bạn không có cược nào đang chờ kết quả.",
     "history_title": "Lịch sử cược của bạn",
     "no_history": "Bạn chưa đặt cược trận nào.",
     "page": "Trang {{current}}/{{total}}",

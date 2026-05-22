@@ -208,7 +208,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       .setFooter(embedFooter(shardId));
 
     if (active.length === 0) {
-      embed.setDescription(t('football:predictions.no_active'));
+      embed.setDescription(t('football:predictions.no_active_bets'));
       await interaction.editReply({ embeds: [embed] });
       return;
     }

@@ -16,6 +16,7 @@
     "bet_lost": "Unfortunately, your bet did not win. Lost {{wager}} spirit stones.",
     "list_title": "Matches currently open for betting",
     "no_active": "There are no matches currently open for betting.",
+    "no_active_bets": "You have no active pending bets.",
     "history_title": "Your Betting History",
     "no_history": "You have not placed any bets.",
     "page": "Page {{current}}/{{total}}",
