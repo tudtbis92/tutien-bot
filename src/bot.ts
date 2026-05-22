@@ -165,6 +165,13 @@ async function shutdown(): Promise<void> {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
+process.on('error', (err) => {
+  if (err && typeof err === 'object' && 'code' in err && err.code === 'ERR_IPC_CHANNEL_CLOSED') {
+    return;
+  }
+  logger.error('ShardingManager', 'Uncaught process error', err);
+});
+
 main().catch((err) => {
   logger.error('ShardingManager', 'Fatal error during startup', err);
   process.exit(1);

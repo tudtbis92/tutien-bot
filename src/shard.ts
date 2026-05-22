@@ -44,3 +44,10 @@ main().catch((err) => {
   logger.error('Shard', 'Fatal error during startup', err);
   process.exit(1);
 });
+
+process.on('error', (err) => {
+  if (err && typeof err === 'object' && 'code' in err && err.code === 'ERR_IPC_CHANNEL_CLOSED') {
+    return;
+  }
+  logger.error('Shard', 'Uncaught process error', err);
+});

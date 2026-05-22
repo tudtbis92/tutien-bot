@@ -223,7 +223,7 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
           });
       }
     } catch (err: unknown) {
-      logger.warn('MatchLifecycleService', `Failed to post prediction embed in channel ${channelId}`, err);
+      logger.warn('MatchLifecycleService', `Failed to post prediction embed in channel ${channelId}: ${err instanceof Error ? err.message : String(err)}`);
       await handleChannelFailure(channelId, err);
     }
   }
@@ -271,8 +271,7 @@ export async function updateLiveScoreEmbed(match: FootballMatch): Promise<void> 
     } catch (err: unknown) {
       logger.warn(
         'MatchLifecycleService',
-        `Failed to update score embed for match ${match.id} (Channel: ${ann.channelId}, Msg: ${ann.messageId})`,
-        err
+        `Failed to update score embed for match ${match.id} (Channel: ${ann.channelId}, Msg: ${ann.messageId}): ${err instanceof Error ? err.message : String(err)}`
       );
       await handleMessageFailure(ann, err);
     }
@@ -319,8 +318,7 @@ export async function updatePredictionEmbeds(match: FootballMatch): Promise<void
     } catch (err: unknown) {
       logger.warn(
         'MatchLifecycleService',
-        `Failed to update prediction embed for match ${match.id} (Channel: ${ann.channelId}, Msg: ${ann.messageId})`,
-        err
+        `Failed to update prediction embed for match ${match.id} (Channel: ${ann.channelId}, Msg: ${ann.messageId}): ${err instanceof Error ? err.message : String(err)}`
       );
       await handleMessageFailure(ann, err);
     }
