@@ -33,8 +33,11 @@ export async function runFootballPollScores(job: Job): Promise<void> {
   const apiClient = new FootballApiClient();
   const now = new Date();
   const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  // ESPN scoreboard only returns matches for the current day/window.
+  // NS matches older than 6h won't appear in scoreboard response — resolveMatches handles those.
+  const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
 
-  // Poll active matches + matches marked 'NS' that should have started
+  // Poll active matches + NS matches that should have started within the last 6h
   const matchesToPoll = await db
     .select()
     .from(footballMatches)
@@ -46,7 +49,8 @@ export async function runFootballPollScores(job: Job): Promise<void> {
         ),
         and(
           eq(footballMatches.status, 'NS'),
-          lt(footballMatches.kickoffAt, now)
+          lt(footballMatches.kickoffAt, now),
+          gt(footballMatches.kickoffAt, sixHoursAgo)
         )
       )
     );

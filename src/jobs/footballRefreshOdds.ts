@@ -4,7 +4,6 @@ import { db } from '../db/client.js';
 import { footballMatches } from '../db/schema/footballMatches.js';
 import { FootballApiClient } from '../services/football/apiClient.js';
 import { parseEspnOdds } from '../services/football/oddsCalculator.js';
-import { updateLiveScoreEmbed } from '../services/football/matchLifecycleService.js';
 import { logger } from '../utils/logger.js';
 
 export async function runFootballRefreshOdds(job: Job): Promise<void> {
@@ -64,8 +63,6 @@ export async function runFootballRefreshOdds(job: Job): Promise<void> {
 
       if (updatedRows.length > 0) {
         refreshedCount++;
-        // Trigger live score update for all active announcement messages
-        await updateLiveScoreEmbed(updatedRows[0]);
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);

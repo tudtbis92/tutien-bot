@@ -1,5 +1,5 @@
 import type { Job } from 'pg-boss';
-import { eq } from 'drizzle-orm';
+import { eq, and, lt, gt, not, inArray } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { footballMatches } from '../db/schema/footballMatches.js';
 import { footballBets } from '../db/schema/footballBets.js';
@@ -34,8 +34,9 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
   const apiClient = new FootballApiClient();
   const now = new Date();
   const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  // 1. Fetch matches that have pending bets in the system
+  // 1a. Fetch matches that have pending bets in the system
   const matchesWithPendingBets = await db
     .select({
       id: footballMatches.id,
@@ -59,13 +60,27 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
     .innerJoin(footballBets, eq(footballMatches.id, footballBets.fixtureId))
     .where(eq(footballBets.status, 'pending'));
 
+  // 1b. Fetch stale matches (older than 2h, newer than 7d) that are not finished
+  const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'PST', 'CANC', 'ABD', 'INT', 'SUSP'];
+  const staleUnfinishedMatches = await db
+    .select()
+    .from(footballMatches)
+    .where(
+      and(
+        lt(footballMatches.kickoffAt, twoHoursAgo),
+        gt(footballMatches.kickoffAt, sevenDaysAgo),
+        not(inArray(footballMatches.status, FINISHED_STATUSES))
+      )
+    );
+
   // De-duplicate matches
-  const uniqueMatches = Array.from(
-    new Map(matchesWithPendingBets.map((m) => [m.id, m])).values()
-  );
+  const uniqueMatchesMap = new Map();
+  for (const m of matchesWithPendingBets) uniqueMatchesMap.set(m.id, m);
+  for (const m of staleUnfinishedMatches) uniqueMatchesMap.set(m.id, m);
+  const uniqueMatches = Array.from(uniqueMatchesMap.values());
 
   if (uniqueMatches.length === 0) {
-    logger.info('FootballResolveMatches', 'No matches with pending bets require resolution.');
+    logger.info('FootballResolveMatches', 'No matches require resolution at this time.');
     logger.info('FootballResolveMatches', `Job completed: ${job.id}`);
     return;
   }

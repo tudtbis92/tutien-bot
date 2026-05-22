@@ -1,5 +1,5 @@
 import type { Job } from 'pg-boss';
-import { eq, and, lt } from 'drizzle-orm';
+import { eq, and, lt, gt } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { footballMatches } from '../db/schema/footballMatches.js';
 import { postPredictionEmbed } from '../services/football/matchLifecycleService.js';
@@ -15,7 +15,7 @@ export async function runFootballAnnounceMatches(job: Job): Promise<void> {
   const now = new Date();
   const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  // Find matches starting within 24h that are still NS
+  // Find matches starting within 24h that are still NS and haven't started yet
   // Note: postPredictionEmbed internally checks for announced channels to avoid duplicates
   const matchesToAnnounce = await db
     .select()
@@ -23,7 +23,8 @@ export async function runFootballAnnounceMatches(job: Job): Promise<void> {
     .where(
       and(
         eq(footballMatches.status, 'NS'),
-        lt(footballMatches.kickoffAt, twentyFourHoursFromNow)
+        lt(footballMatches.kickoffAt, twentyFourHoursFromNow),
+        gt(footballMatches.kickoffAt, now)
       )
     );
 
