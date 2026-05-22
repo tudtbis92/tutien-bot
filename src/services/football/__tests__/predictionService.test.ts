@@ -126,16 +126,39 @@ describe('predictionService - placeBet', () => {
     expect(mockTx.insert).toHaveBeenCalledWith(footballBets);
   });
 
-  it('should place a new correct score bet successfully', async () => {
-    mockUpdatedOrInsertedRow.betType = 'score';
-    mockUpdatedOrInsertedRow.prediction = '1-0';
-    mockUpdatedOrInsertedRow.potentialPayout = 600n;
-    mockUpdatedOrInsertedRow.oddsUsed = '6.00';
+  it('should place a new over_under bet successfully', async () => {
+    mockMatch.overOdds = '1.90';
+    mockMatch.underOdds = '1.90';
+    mockMatch.overUnderLine = '2.5';
 
-    const result = await placeBet(mockDb, 100, 42, 'score', '1-0', 100n);
+    mockUpdatedOrInsertedRow.betType = 'over_under';
+    mockUpdatedOrInsertedRow.prediction = 'over';
+    mockUpdatedOrInsertedRow.potentialPayout = 190n;
+    mockUpdatedOrInsertedRow.oddsUsed = '1.90';
+
+    const result = await placeBet(mockDb, 100, 42, 'over_under', 'over', 100n);
     
     expect(result.bet.id).toBe(999);
-    expect(result.payout).toBe(600n);
+    expect(result.payout).toBe(190n);
+    expect(result.isEdit).toBe(false);
+    
+    expect(mockTx.insert).toHaveBeenCalledWith(footballBets);
+  });
+
+  it('should place a new spread bet successfully', async () => {
+    mockMatch.homeSpreadOdds = '1.90';
+    mockMatch.awaySpreadOdds = '1.90';
+    mockMatch.homeSpreadLine = '-0.5';
+
+    mockUpdatedOrInsertedRow.betType = 'spread';
+    mockUpdatedOrInsertedRow.prediction = 'home_spread';
+    mockUpdatedOrInsertedRow.potentialPayout = 190n;
+    mockUpdatedOrInsertedRow.oddsUsed = '1.90';
+
+    const result = await placeBet(mockDb, 100, 42, 'spread', 'home_spread', 100n);
+    
+    expect(result.bet.id).toBe(999);
+    expect(result.payout).toBe(190n);
     expect(result.isEdit).toBe(false);
     
     expect(mockTx.insert).toHaveBeenCalledWith(footballBets);

@@ -64,16 +64,31 @@ describe('parseEspnOdds', () => {
     ],
   };
 
-  it('should parse ESPN moneyline odds correctly', () => {
+  it('should parse ESPN moneyline odds correctly and fill default secondary markets', () => {
     const result = parseEspnOdds(mockEspnEvent);
-    expect(result.home).toBe('2.30');
-    expect(result.away).toBe('3.10');
-    expect(result.draw).toBe('3.40');
+    expect(result.home).toBe('1.95');
+    expect(result.away).toBe('3.40');
+    expect(result.draw).toBe('3.95');
+
+    // Default Over/Under filled by fillDefaultOdds
+    expect(result.overUnderLine).toBe('2.5');
+    expect(result.overOdds).toBe('1.90');
+    expect(result.underOdds).toBe('1.90');
+
+    // Default Spread filled by fillDefaultOdds
+    expect(result.homeSpreadLine).toBe('0');
+    expect(result.homeSpreadOdds).toBe('1.90');
+    expect(result.awaySpreadLine).toBe('0');
+    expect(result.awaySpreadOdds).toBe('1.90');
   });
 
   it('should handle missing odds gracefully', () => {
     const result = parseEspnOdds({});
     expect(result.home).toBeUndefined();
+    expect(result.away).toBeUndefined();
+    expect(result.draw).toBeUndefined();
+    expect(result.overUnderLine).toBe('2.5');
+    expect(result.homeSpreadLine).toBe('0');
   });
 });
 

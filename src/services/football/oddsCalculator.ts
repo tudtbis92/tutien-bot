@@ -55,7 +55,7 @@ export function parseEspnOdds(event: any): {
     awaySpreadOdds?: string;
   } = {};
 
-  if (!event || !event.competitions || !event.competitions[0]) return result;
+  if (!event || !event.competitions || !event.competitions[0]) return fillDefaultOdds(result);
   const competition = event.competitions[0];
   const oddsArray = competition.odds;
 
@@ -104,8 +104,82 @@ export function parseEspnOdds(event: any): {
     }
   }
 
-  return result;
+  return fillDefaultOdds(result);
 }
+
+/**
+ * Automatically populate missing betting markets (Over/Under and Spreads) with realistic defaults.
+ */
+/* eslint-disable i18next/no-literal-string */
+export function fillDefaultOdds(oddsInfo: {
+  home?: string;
+  draw?: string;
+  away?: string;
+  overUnderLine?: string;
+  overOdds?: string;
+  underOdds?: string;
+  homeSpreadLine?: string;
+  homeSpreadOdds?: string;
+  awaySpreadLine?: string;
+  awaySpreadOdds?: string;
+}) {
+  // 1. Fill Over/Under if missing
+  if (!oddsInfo.overUnderLine) {
+    oddsInfo.overUnderLine = '2.5';
+    oddsInfo.overOdds = '1.90';
+    oddsInfo.underOdds = '1.90';
+  }
+
+  // 2. Fill Point Spread if missing
+  if (!oddsInfo.homeSpreadLine) {
+    oddsInfo.homeSpreadOdds = '1.90';
+    oddsInfo.awaySpreadOdds = '1.90';
+
+    const homeVal = oddsInfo.home ? parseFloat(oddsInfo.home) : 2.0;
+    const awayVal = oddsInfo.away ? parseFloat(oddsInfo.away) : 2.0;
+
+    if (homeVal < awayVal) {
+      // Home is favored
+      if (homeVal >= 1.8) {
+        oddsInfo.homeSpreadLine = '0';
+        oddsInfo.awaySpreadLine = '0';
+      } else if (homeVal >= 1.5) {
+        oddsInfo.homeSpreadLine = '-0.5';
+        oddsInfo.awaySpreadLine = '+0.5';
+      } else if (homeVal >= 1.3) {
+        oddsInfo.homeSpreadLine = '-1.0';
+        oddsInfo.awaySpreadLine = '+1.0';
+      } else if (homeVal >= 1.15) {
+        oddsInfo.homeSpreadLine = '-1.5';
+        oddsInfo.awaySpreadLine = '+1.5';
+      } else {
+        oddsInfo.homeSpreadLine = '-2.0';
+        oddsInfo.awaySpreadLine = '+2.0';
+      }
+    } else {
+      // Away is favored (or equal)
+      if (awayVal >= 1.8) {
+        oddsInfo.homeSpreadLine = '0';
+        oddsInfo.awaySpreadLine = '0';
+      } else if (awayVal >= 1.5) {
+        oddsInfo.homeSpreadLine = '+0.5';
+        oddsInfo.awaySpreadLine = '-0.5';
+      } else if (awayVal >= 1.3) {
+        oddsInfo.homeSpreadLine = '+1.0';
+        oddsInfo.awaySpreadLine = '-1.0';
+      } else if (awayVal >= 1.15) {
+        oddsInfo.homeSpreadLine = '+1.5';
+        oddsInfo.awaySpreadLine = '-1.5';
+      } else {
+        oddsInfo.homeSpreadLine = '+2.0';
+        oddsInfo.awaySpreadLine = '-2.0';
+      }
+    }
+  }
+
+  return oddsInfo;
+}
+/* eslint-enable i18next/no-literal-string */
 
 /**
  * Legacy method mapping: parseOdds now supports both formats or we refactor callers.

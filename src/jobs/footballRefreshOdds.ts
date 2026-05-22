@@ -4,6 +4,7 @@ import { db } from '../db/client.js';
 import { footballMatches } from '../db/schema/footballMatches.js';
 import { FootballApiClient } from '../services/football/apiClient.js';
 import { parseEspnOdds } from '../services/football/oddsCalculator.js';
+import { updatePredictionEmbeds } from '../services/football/matchLifecycleService.js';
 import { logger } from '../utils/logger.js';
 
 export async function runFootballRefreshOdds(job: Job): Promise<void> {
@@ -85,6 +86,8 @@ export async function runFootballRefreshOdds(job: Job): Promise<void> {
 
           if (updatedRows.length > 0) {
             refreshedCount++;
+            // Đồng bộ prediction embed trên Discord
+            await updatePredictionEmbeds(updatedRows[0]);
           }
         } catch (matchErr: unknown) {
           const errMsg = matchErr instanceof Error ? matchErr.message : String(matchErr);

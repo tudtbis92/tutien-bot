@@ -184,6 +184,40 @@ export async function updateLiveScoreEmbed(match: FootballMatch): Promise<void> 
   }));
 }
 
+export async function updatePredictionEmbeds(match: FootballMatch): Promise<void> {
+  const announcements = await db
+    .select()
+    .from(footballAnnouncements)
+    .where(eq(footballAnnouncements.matchId, match.id));
+
+  if (announcements.length === 0) return;
+
+  await Promise.allSettled(announcements.map(async (ann) => {
+    try {
+      let locale: SupportedLocale = 'vi';
+      if (ann.guildId) {
+        locale = await getGuildLocale(ann.guildId, rest);
+      }
+
+      const t = getT(locale);
+      const result = buildPredictionEmbed(match, undefined, t);
+
+      await rest.patch(Routes.channelMessage(ann.channelId, ann.messageId), {
+        body: {
+          embeds: result.embeds.map((e) => e.toJSON()),
+          components: result.components.map((c) => c.toJSON()),
+        },
+      });
+    } catch (err: unknown) {
+      logger.warn(
+        'MatchLifecycleService',
+        `Failed to update prediction embed for match ${match.id} (Channel: ${ann.channelId}, Msg: ${ann.messageId})`,
+        err
+      );
+    }
+  }));
+}
+
 /**
  * Bets resolution core transaction
  */

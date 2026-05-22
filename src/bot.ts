@@ -6,9 +6,11 @@ import { registerCommands } from './utils/registerCommands.js';
 import { db, pool } from './db/client.js';
 import { redis } from './cache/redis.js';
 import { logger } from './utils/logger.js';
-import { sql } from 'drizzle-orm';
+import { sql, isNull, and, eq, or } from 'drizzle-orm';
 import { footballMatches } from './db/schema/footballMatches.js';
 import { initI18n } from './i18n/index.js';
+import { fillDefaultOdds } from './services/football/oddsCalculator.js';
+import { updatePredictionEmbeds } from './services/football/matchLifecycleService.js';
 
 // eslint-disable-next-line i18next/no-literal-string -- deployment artifact path, not user-facing
 const manager = new ShardingManager('./dist/shard.js', {
@@ -75,6 +77,72 @@ async function main(): Promise<void> {
   // Step 3c: Announce scan — sweep prediction channels to ensure no active matches within 24h are missed
   logger.info('StartupCheck', 'Triggering match announcements scan on startup...');
   void boss!.send('football-announce-matches', {});
+
+  // Step 3d: Fix historical matches with missing secondary markets (Over/Under or Spread is NULL)
+  try {
+    logger.info('StartupCheck', 'Scanning for matches with missing secondary markets...');
+    const brokenMatches = await db
+      .select()
+      .from(footballMatches)
+      .where(
+        and(
+          eq(footballMatches.status, 'NS'),
+          or(
+            isNull(footballMatches.overUnderLine),
+            isNull(footballMatches.homeSpreadLine)
+          )
+        )
+      );
+
+    if (brokenMatches.length > 0) {
+      logger.info('StartupCheck', `Found ${brokenMatches.length} matches missing secondary markets. Repairing...`);
+      let repairedCount = 0;
+      for (const match of brokenMatches) {
+        try {
+          const filled = fillDefaultOdds({
+            home: match.homeOdds ?? undefined,
+            draw: match.drawOdds ?? undefined,
+            away: match.awayOdds ?? undefined,
+            overUnderLine: match.overUnderLine ?? undefined,
+            overOdds: match.overOdds ?? undefined,
+            underOdds: match.underOdds ?? undefined,
+            homeSpreadLine: match.homeSpreadLine ?? undefined,
+            homeSpreadOdds: match.homeSpreadOdds ?? undefined,
+            awaySpreadLine: match.awaySpreadLine ?? undefined,
+            awaySpreadOdds: match.awaySpreadOdds ?? undefined,
+          });
+
+          const updatedRows = await db
+            .update(footballMatches)
+            .set({
+              overUnderLine: filled.overUnderLine,
+              overOdds: filled.overOdds,
+              underOdds: filled.underOdds,
+              homeSpreadLine: filled.homeSpreadLine,
+              homeSpreadOdds: filled.homeSpreadOdds,
+              awaySpreadLine: filled.awaySpreadLine,
+              awaySpreadOdds: filled.awaySpreadOdds,
+              updatedAt: new Date(),
+            })
+            .where(eq(footballMatches.id, match.id))
+            .returning();
+
+          if (updatedRows.length > 0) {
+            repairedCount++;
+            // Cập nhật lại tin nhắn prediction đã gửi trên Discord
+            await updatePredictionEmbeds(updatedRows[0]);
+          }
+        } catch (matchErr) {
+          logger.error('StartupCheck', `Failed to repair markets for match ID ${match.id}`, matchErr);
+        }
+      }
+      logger.info('StartupCheck', `Successfully repaired ${repairedCount}/${brokenMatches.length} matches.`);
+    } else {
+      logger.info('StartupCheck', 'No matches require secondary markets repair.');
+    }
+  } catch (repairErr) {
+    logger.error('StartupCheck', 'Failed to scan/repair historical matches', repairErr);
+  }
 
   // Step 4: Health check HTTP server ONLY in ShardingManager
   await startHealthServer(manager);
