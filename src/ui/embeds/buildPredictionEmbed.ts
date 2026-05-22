@@ -77,6 +77,7 @@ export function buildPredictionEmbed(
     .setColor(COLORS.PRIMARY)
     .setTitle(title)
     .setDescription(description.join('\n'))
+    .setImage('attachment://prediction.png')
     .setFooter(embedFooter(shardId))
     .setTimestamp(kickoff);
 

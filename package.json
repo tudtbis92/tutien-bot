@@ -33,6 +33,7 @@
   "homepage": "https://github.com/genZVN2021/tutien-bot#readme",
   "dependencies": {
     "@discordjs/rest": "2.6.1",
+    "@napi-rs/canvas": "^1.0.0",
     "discord.js": "14.26.2",
     "dotenv": "17.4.1",
     "drizzle-orm": "0.45.2",

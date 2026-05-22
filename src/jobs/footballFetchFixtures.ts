@@ -13,6 +13,9 @@ interface EspnCompetitor {
   team: {
     id: string;
     displayName: string;
+    logo?: string;
+    color?: string;
+    alternateColor?: string;
   };
   score: string;
 }
@@ -99,6 +102,10 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
               homeSpreadOdds: oddsInfo.homeSpreadOdds || null,
               awaySpreadLine: oddsInfo.awaySpreadLine || null,
               awaySpreadOdds: oddsInfo.awaySpreadOdds || null,
+              homeTeamLogo: homeCompetitor.team.logo || null,
+              awayTeamLogo: awayCompetitor.team.logo || null,
+              homeTeamColor: homeCompetitor.team.color || null,
+              awayTeamColor: awayCompetitor.team.color || null,
             })
             .onConflictDoUpdate({
               target: footballMatches.fixtureId,
@@ -120,6 +127,10 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
                 homeSpreadOdds: sql`COALESCE(excluded.home_spread_odds, football_matches.home_spread_odds)`,
                 awaySpreadLine: sql`COALESCE(excluded.away_spread_line, football_matches.away_spread_line)`,
                 awaySpreadOdds: sql`COALESCE(excluded.away_spread_odds, football_matches.away_spread_odds)`,
+                homeTeamLogo: sql`COALESCE(excluded.home_team_logo, football_matches.home_team_logo)`,
+                awayTeamLogo: sql`COALESCE(excluded.away_team_logo, football_matches.away_team_logo)`,
+                homeTeamColor: sql`COALESCE(excluded.home_team_color, football_matches.home_team_color)`,
+                awayTeamColor: sql`COALESCE(excluded.away_team_color, football_matches.away_team_color)`,
                 updatedAt: new Date(),
               },
             })

@@ -11,6 +11,9 @@ interface EspnCompetitor {
   team: {
     id: string;
     displayName: string;
+    logo?: string;
+    color?: string;
+    alternateColor?: string;
   };
   score: string;
 }
@@ -91,11 +94,15 @@ export async function runFootballPollScores(job: Job): Promise<void> {
         const dbMatch = matchesToPoll.find((m) => m.fixtureId === fixtureId);
         if (!dbMatch) continue;
 
-        // Skip updating if scores and status are identical
+        // Skip updating if scores, status, logos, and colors are identical
         if (
           dbMatch.status === newStatus &&
           dbMatch.homeScore === homeScore &&
-          dbMatch.awayScore === awayScore
+          dbMatch.awayScore === awayScore &&
+          dbMatch.homeTeamLogo === (homeCompetitor.team.logo || null) &&
+          dbMatch.awayTeamLogo === (awayCompetitor.team.logo || null) &&
+          dbMatch.homeTeamColor === (homeCompetitor.team.color || null) &&
+          dbMatch.awayTeamColor === (awayCompetitor.team.color || null)
         ) {
           continue;
         }
@@ -107,6 +114,10 @@ export async function runFootballPollScores(job: Job): Promise<void> {
             status: newStatus,
             homeScore,
             awayScore,
+            homeTeamLogo: homeCompetitor.team.logo || null,
+            awayTeamLogo: awayCompetitor.team.logo || null,
+            homeTeamColor: homeCompetitor.team.color || null,
+            awayTeamColor: awayCompetitor.team.color || null,
             updatedAt: new Date(),
           })
           .where(eq(footballMatches.fixtureId, fixtureId))

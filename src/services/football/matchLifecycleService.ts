@@ -11,6 +11,7 @@ import { footballAnnouncements } from '../../db/schema/footballAnnouncements.js'
 import { buildPredictionEmbed, buildLiveScoreUpdate } from '../../ui/embeds/buildPredictionEmbed.js';
 import { getT, type SupportedLocale } from '../../i18n/index.js';
 import { redis } from '../../cache/redis.js';
+import { PredictionImageService } from './predictionImageService.js';
 
 const rest = new REST().setToken(config.DISCORD_TOKEN);
 
@@ -108,6 +109,15 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
     return;
   }
 
+  // OPTIMIZATION: Render the Canvas clash card ONCE for all channels to post!
+  let imageBuffer: Buffer | null = null;
+  try {
+    const imageService = PredictionImageService.getInstance();
+    imageBuffer = await imageService.getClashCardBuffer(match);
+  } catch (imgErr) {
+    logger.error('MatchLifecycleService', `Failed to pre-render clash card for match ${match.id}`, imgErr);
+  }
+
   for (const channelId of channelsToPost) {
     try {
       const channel = (await rest.get(Routes.channel(channelId))) as { guild_id?: string };
@@ -125,6 +135,10 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
           embeds: result.embeds.map((e) => e.toJSON()),
           components: result.components.map((c) => c.toJSON()),
         },
+        files: imageBuffer ? [{
+          name: 'prediction.png',
+          data: imageBuffer,
+        }] : undefined,
       })) as Record<string, unknown>;
 
       const messageId = response?.id as string | undefined;
@@ -192,6 +206,15 @@ export async function updatePredictionEmbeds(match: FootballMatch): Promise<void
 
   if (announcements.length === 0) return;
 
+  // OPTIMIZATION: Render the Canvas clash card ONCE for all channels to update!
+  let imageBuffer: Buffer | null = null;
+  try {
+    const imageService = PredictionImageService.getInstance();
+    imageBuffer = await imageService.getClashCardBuffer(match);
+  } catch (imgErr) {
+    logger.error('MatchLifecycleService', `Failed to render updated clash card for match ${match.id}`, imgErr);
+  }
+
   await Promise.allSettled(announcements.map(async (ann) => {
     try {
       let locale: SupportedLocale = 'vi';
@@ -207,6 +230,10 @@ export async function updatePredictionEmbeds(match: FootballMatch): Promise<void
           embeds: result.embeds.map((e) => e.toJSON()),
           components: result.components.map((c) => c.toJSON()),
         },
+        files: imageBuffer ? [{
+          name: 'prediction.png',
+          data: imageBuffer,
+        }] : undefined,
       });
     } catch (err: unknown) {
       logger.warn(
