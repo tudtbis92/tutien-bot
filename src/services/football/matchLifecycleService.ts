@@ -10,8 +10,39 @@ import { predictionChannels } from '../../db/schema/predictionChannels.js';
 import { footballAnnouncements } from '../../db/schema/footballAnnouncements.js';
 import { buildPredictionEmbed, buildLiveScoreUpdate } from '../../ui/embeds/buildPredictionEmbed.js';
 import { getT, type SupportedLocale } from '../../i18n/index.js';
+import { redis } from '../../cache/redis.js';
 
 const rest = new REST().setToken(config.DISCORD_TOKEN);
+
+/**
+ * Fetch and cache Guild locale to avoid rate limits
+ */
+async function getGuildLocale(guildId: string, restClient: REST): Promise<SupportedLocale> {
+  const cacheKey = `guild:locale:${guildId}`;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) return cached as SupportedLocale;
+  } catch (cacheErr) {
+    logger.warn('MatchLifecycleService', `Failed to read guild locale cache for ${guildId}`, cacheErr);
+  }
+
+  try {
+    const guild = (await restClient.get(Routes.guild(guildId))) as { preferred_locale: string };
+    const locale: SupportedLocale = guild.preferred_locale.startsWith('vi') ? 'vi' : 
+                                    guild.preferred_locale.startsWith('zh') ? 'zh-cn' : 'en';
+
+    try {
+      await redis.set(cacheKey, locale, 'EX', 3600); // Cache 1 hour
+    } catch (cacheErr) {
+      logger.warn('MatchLifecycleService', `Failed to write guild locale cache for ${guildId}`, cacheErr);
+    }
+
+    return locale;
+  } catch (err) {
+    logger.warn('MatchLifecycleService', `Failed to fetch guild info for locale detection ${guildId}, falling back to 'vi'`, err);
+    return 'vi';
+  }
+}
 
 /**
  * Announcement / Embed helpers
@@ -37,26 +68,23 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
       )
     );
 
+  // Prefetch explicitly disabled channels for this specific league to avoid N+1 queries
+  const explicitDisabled = await db
+    .select({ channelId: predictionChannels.channelId })
+    .from(predictionChannels)
+    .where(
+      and(
+        eq(predictionChannels.leagueId, match.leagueId),
+        eq(predictionChannels.enabled, false)
+      )
+    );
+  const disabledChannelIds = new Set(explicitDisabled.map(r => r.channelId));
+
   const channelsToPost = new Set<string>();
 
   for (const ch of globalChannels) {
     if (announcedChannelIds.has(ch.channelId)) continue;
-
-    // Check if there is an explicit disable record for this channel and this league
-    const explicitRows = await db
-      .select()
-      .from(predictionChannels)
-      .where(
-        and(
-          eq(predictionChannels.channelId, ch.channelId),
-          eq(predictionChannels.leagueId, match.leagueId)
-        )
-      )
-      .limit(1);
-
-    if (explicitRows.length > 0 && explicitRows[0].enabled === false) {
-      continue;
-    }
+    if (disabledChannelIds.has(ch.channelId)) continue;
     channelsToPost.add(ch.channelId);
   }
 
@@ -86,9 +114,7 @@ export async function postPredictionEmbed(match: FootballMatch): Promise<void> {
       let locale: SupportedLocale = 'vi';
 
       if (channel.guild_id) {
-        const guild = (await rest.get(Routes.guild(channel.guild_id))) as { preferred_locale: string };
-        locale = guild.preferred_locale.startsWith('vi') ? 'vi' : 
-                 guild.preferred_locale.startsWith('zh') ? 'zh-cn' : 'en';
+        locale = await getGuildLocale(channel.guild_id, rest);
       }
 
       const t = getT(locale);
@@ -136,9 +162,7 @@ export async function updateLiveScoreEmbed(match: FootballMatch): Promise<void> 
     try {
       let locale: SupportedLocale = 'vi';
       if (ann.guildId) {
-        const guild = (await rest.get(Routes.guild(ann.guildId))) as { preferred_locale: string };
-        locale = guild.preferred_locale.startsWith('vi') ? 'vi' : 
-                 guild.preferred_locale.startsWith('zh') ? 'zh-cn' : 'en';
+        locale = await getGuildLocale(ann.guildId, rest);
       }
 
       const t = getT(locale);

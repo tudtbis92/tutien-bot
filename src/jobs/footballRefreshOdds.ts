@@ -38,35 +38,62 @@ export async function runFootballRefreshOdds(job: Job): Promise<void> {
   logger.info('FootballRefreshOdds', `Refreshing odds for ${matchesToRefresh.length} matches...`);
   let refreshedCount = 0;
 
-  for (const match of matchesToRefresh) {
+  // Group matches by league
+  const byLeague = matchesToRefresh.reduce((map, m) => {
+    const list = map.get(m.leagueId) ?? [];
+    list.push(m);
+    map.set(m.leagueId, list);
+    return map;
+  }, new Map<string, typeof matchesToRefresh>());
+
+  for (const [leagueId, matches] of byLeague) {
     try {
-      const oddsRes = await apiClient.getFixtureResult(match.fixtureId, match.leagueId, 0); // Force bypass API cache for fresh odds
-      const oddsInfo = parseEspnOdds(oddsRes);
+      // 1 ESPN call per league (bypass cache with ttl = 0)
+      const data = (await apiClient.getScoreboard(leagueId, 0)) as { events?: Record<string, unknown>[] };
+      const events = data.events || [];
+      const eventMap = new Map<string, Record<string, unknown>>(
+        events.map((e) => [String(e.id), e])
+      );
 
-      const updatedRows = await db
-        .update(footballMatches)
-        .set({
-          homeOdds: oddsInfo.home || match.homeOdds,
-          drawOdds: oddsInfo.draw || match.drawOdds,
-          awayOdds: oddsInfo.away || match.awayOdds,
-          overUnderLine: oddsInfo.overUnderLine || match.overUnderLine,
-          overOdds: oddsInfo.overOdds || match.overOdds,
-          underOdds: oddsInfo.underOdds || match.underOdds,
-          homeSpreadLine: oddsInfo.homeSpreadLine || match.homeSpreadLine,
-          homeSpreadOdds: oddsInfo.homeSpreadOdds || match.homeSpreadOdds,
-          awaySpreadLine: oddsInfo.awaySpreadLine || match.awaySpreadLine,
-          awaySpreadOdds: oddsInfo.awaySpreadOdds || match.awaySpreadOdds,
-          updatedAt: new Date(),
-        })
-        .where(eq(footballMatches.id, match.id))
-        .returning();
+      for (const match of matches) {
+        try {
+          const event = eventMap.get(match.fixtureId);
+          if (!event) {
+            logger.warn('FootballRefreshOdds', `Fixture ${match.fixtureId} not found in ESPN scoreboard for league ${leagueId}`);
+            continue;
+          }
 
-      if (updatedRows.length > 0) {
-        refreshedCount++;
+          const oddsInfo = parseEspnOdds(event);
+
+          const updatedRows = await db
+            .update(footballMatches)
+            .set({
+              homeOdds: oddsInfo.home || match.homeOdds,
+              drawOdds: oddsInfo.draw || match.drawOdds,
+              awayOdds: oddsInfo.away || match.awayOdds,
+              overUnderLine: oddsInfo.overUnderLine || match.overUnderLine,
+              overOdds: oddsInfo.overOdds || match.overOdds,
+              underOdds: oddsInfo.underOdds || match.underOdds,
+              homeSpreadLine: oddsInfo.homeSpreadLine || match.homeSpreadLine,
+              homeSpreadOdds: oddsInfo.homeSpreadOdds || match.homeSpreadOdds,
+              awaySpreadLine: oddsInfo.awaySpreadLine || match.awaySpreadLine,
+              awaySpreadOdds: oddsInfo.awaySpreadOdds || match.awaySpreadOdds,
+              updatedAt: new Date(),
+            })
+            .where(eq(footballMatches.id, match.id))
+            .returning();
+
+          if (updatedRows.length > 0) {
+            refreshedCount++;
+          }
+        } catch (matchErr: unknown) {
+          const errMsg = matchErr instanceof Error ? matchErr.message : String(matchErr);
+          logger.error('FootballRefreshOdds', `Failed to refresh odds for match ID ${match.id} (Fixture: ${match.fixtureId}): ${errMsg}`);
+        }
       }
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      logger.error('FootballRefreshOdds', `Failed to refresh odds for match ID ${match.id} (Fixture: ${match.fixtureId}): ${errMsg}`);
+    } catch (leagueErr: unknown) {
+      const errMsg = leagueErr instanceof Error ? leagueErr.message : String(leagueErr);
+      logger.error('FootballRefreshOdds', `Failed to fetch scoreboard for league ${leagueId}: ${errMsg}`);
     }
   }
 

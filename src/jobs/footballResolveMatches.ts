@@ -34,6 +34,7 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
   const apiClient = new FootballApiClient();
   const now = new Date();
   const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   // 1a. Fetch matches that have pending bets in the system
@@ -67,7 +68,7 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
     .from(footballMatches)
     .where(
       and(
-        lt(footballMatches.kickoffAt, twoHoursAgo),
+        lt(footballMatches.kickoffAt, sixHoursAgo),
         gt(footballMatches.kickoffAt, sevenDaysAgo),
         not(inArray(footballMatches.status, FINISHED_STATUSES))
       )

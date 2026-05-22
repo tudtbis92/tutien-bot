@@ -1,5 +1,6 @@
 import type { Job } from 'pg-boss';
-import { eq } from 'drizzle-orm';
+import { boss } from '../workers/pgBoss.js';
+import { sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { footballMatches } from '../db/schema/footballMatches.js';
 import { FootballApiClient } from '../services/football/apiClient.js';
@@ -36,6 +37,8 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
   
   let totalFetched = 0;
   let totalCreated = 0;
+  let totalUpdated = 0;
+  let newFixturesIn24h = 0;
 
   for (const league of CURATED_LEAGUES) {
     try {
@@ -55,17 +58,6 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
           const competition = event.competitions[0];
           if (!competition) continue;
 
-          // Check if fixture already exists in our database
-          const existing = await db
-            .select()
-            .from(footballMatches)
-            .where(eq(footballMatches.fixtureId, fixtureId))
-            .limit(1);
-
-          if (existing.length > 0) {
-            continue;
-          }
-
           const homeCompetitor = competition.competitors.find((c) => c.homeAway === 'home');
           const awayCompetitor = competition.competitors.find((c) => c.homeAway === 'away');
 
@@ -79,6 +71,8 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
           if (espnStatus === 'STATUS_FINAL') status = 'FT';
           else if (espnStatus === 'STATUS_IN_PROGRESS') status = 'LIVE';
           else if (espnStatus === 'STATUS_HALFTIME') status = 'HT';
+          else if (espnStatus === 'STATUS_POSTPONED') status = 'PST';
+          else if (espnStatus === 'STATUS_CANCELED') status = 'CANC';
 
           const insertedMatches = await db
             .insert(footballMatches)
@@ -106,10 +100,46 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
               awaySpreadLine: oddsInfo.awaySpreadLine || null,
               awaySpreadOdds: oddsInfo.awaySpreadOdds || null,
             })
+            .onConflictDoUpdate({
+              target: footballMatches.fixtureId,
+              setWhere: sql`football_matches.status IN ('NS', 'PST')`,
+              set: {
+                status: sql`CASE
+                  WHEN football_matches.status IN ('FT','AET','PEN','1H','HT','2H','LIVE')
+                  THEN football_matches.status
+                  ELSE excluded.status
+                END`,
+                kickoffAt: sql`excluded.kickoff_at`,
+                homeOdds: sql`COALESCE(excluded.home_odds, football_matches.home_odds)`,
+                drawOdds: sql`COALESCE(excluded.draw_odds, football_matches.draw_odds)`,
+                awayOdds: sql`COALESCE(excluded.away_odds, football_matches.away_odds)`,
+                overUnderLine: sql`COALESCE(excluded.over_under_line, football_matches.over_under_line)`,
+                overOdds: sql`COALESCE(excluded.over_odds, football_matches.over_odds)`,
+                underOdds: sql`COALESCE(excluded.under_odds, football_matches.under_odds)`,
+                homeSpreadLine: sql`COALESCE(excluded.home_spread_line, football_matches.home_spread_line)`,
+                homeSpreadOdds: sql`COALESCE(excluded.home_spread_odds, football_matches.home_spread_odds)`,
+                awaySpreadLine: sql`COALESCE(excluded.away_spread_line, football_matches.away_spread_line)`,
+                awaySpreadOdds: sql`COALESCE(excluded.away_spread_odds, football_matches.away_spread_odds)`,
+                updatedAt: new Date(),
+              },
+            })
             .returning();
 
           if (insertedMatches.length > 0) {
-            totalCreated++;
+            const insertedMatch = insertedMatches[0];
+            const isNew = Math.abs(insertedMatch.createdAt.getTime() - insertedMatch.updatedAt.getTime()) < 1000;
+            if (isNew) {
+              totalCreated++;
+              
+              // Check if kickoff is in the next 24 hours
+              const kickoff = new Date(insertedMatch.kickoffAt);
+              const limit24h = new Date(Date.now() + 24 * 60 * 60 * 1000);
+              if (kickoff > new Date() && kickoff <= limit24h) {
+                newFixturesIn24h++;
+              }
+            } else {
+              totalUpdated++;
+            }
           }
         } catch (fixtureErr: unknown) {
           logger.error('FootballFetchFixtures', `Error inserting fixture ${event.id}`, fixtureErr);
@@ -120,5 +150,12 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
     }
   }
 
-  logger.info('FootballFetchFixtures', `Job completed: ${job.id}. Fetched ${totalFetched} fixtures, created ${totalCreated} prediction events.`);
+  if (newFixturesIn24h > 0) {
+    logger.info('FootballFetchFixtures', `${newFixturesIn24h} new fixtures in 24h window — triggering announce scan.`);
+    if (boss) {
+      await boss.send('football-announce-matches', {});
+    }
+  }
+
+  logger.info('FootballFetchFixtures', `Job completed: ${job.id}. Fetched ${totalFetched} fixtures, created ${totalCreated} new events, updated ${totalUpdated} existing events.`);
 }
