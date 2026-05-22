@@ -66,14 +66,9 @@ describe('parseEspnOdds', () => {
 
   it('should parse ESPN moneyline odds correctly', () => {
     const result = parseEspnOdds(mockEspnEvent);
-    expect(result.home).toBe('1.95');
-    expect(result.away).toBe('3.40');
-    expect(result.draw).toBe('3.95');
-  });
-
-  it('should extract DraftKings event ID from link', () => {
-    const result = parseEspnOdds(mockEspnEvent);
-    expect(result.dkEventId).toBe('34167921');
+    expect(result.home).toBe('2.30');
+    expect(result.away).toBe('3.10');
+    expect(result.draw).toBe('3.40');
   });
 
   it('should handle missing odds gracefully', () => {

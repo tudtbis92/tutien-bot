@@ -21,7 +21,7 @@ const wagerSchema = z.string().regex(/^\d+$/, 'Wager must be a positive integer'
 export async function handlePredictModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
   const customId = interaction.customId; // predict:modal:{betType}:{matchId}:{prediction}
   const parts = customId.split(':');
-  const betType = parts[2] as 'result' | 'score';
+  const betType = parts[2] as 'result' | 'score' | 'over_under' | 'spread';
   const matchId = parseInt(parts[3] || '', 10);
   const prediction = parts[4] || '';
 
@@ -44,7 +44,7 @@ export async function handlePredictModalSubmit(interaction: ModalSubmitInteracti
     return;
   }
 
-  if (isNaN(matchId) || !prediction || (betType !== 'result' && betType !== 'score')) {
+  if (isNaN(matchId) || !prediction || !['result', 'score', 'over_under', 'spread'].includes(betType)) {
     await interaction.reply({
       embeds: [buildErrorEmbed(t('football:errors.invalid_prediction', 'Thông tin dự đoán không hợp lệ.'))],
       ephemeral: true,
@@ -86,6 +86,12 @@ export async function handlePredictModalSubmit(interaction: ModalSubmitInteracti
       if (prediction === 'home') displayPrediction = t('football:embed.home_win_label', 'Home Win');
       else if (prediction === 'draw') displayPrediction = t('football:embed.draw_label', 'Draw');
       else if (prediction === 'away') displayPrediction = t('football:embed.away_win_label', 'Away Win');
+    } else if (betType === 'over_under') {
+      if (prediction === 'over') displayPrediction = t('football:embed.over_label', 'Over');
+      else if (prediction === 'under') displayPrediction = t('football:embed.under_label', 'Under');
+    } else if (betType === 'spread') {
+      if (prediction === 'home_spread') displayPrediction = t('football:embed.home_spread', 'Home Spread');
+      else if (prediction === 'away_spread') displayPrediction = t('football:embed.away_spread', 'Away Spread');
     }
 
     if (isEdit) {
