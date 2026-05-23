@@ -18,7 +18,7 @@ export class PredictionImageService {
   }
 
   private getCacheKey(match: FootballMatch): string {
-    if (match.homeScore !== null && match.awayScore !== null) {
+    if (match.status !== 'NS' && match.homeScore !== null && match.awayScore !== null) {
       return `${match.id}-${match.homeScore}-${match.awayScore}`;
     }
     return `${match.id}-ns`;
@@ -101,7 +101,7 @@ export class PredictionImageService {
     this.drawCenteredText(ctx, leagueText, width / 2, 45, width - 200, 20, '#F59E0B', true, 3); // Spacing simulation
 
     // 3. Draw Versus / Score Element in the Center
-    if (match.homeScore !== null && match.awayScore !== null) {
+    if (match.status !== 'NS' && match.homeScore !== null && match.awayScore !== null) {
       this.drawScore(ctx, width / 2, height / 2 - 20, match.homeScore, match.awayScore);
     } else {
       this.drawVS(ctx, width / 2, height / 2 - 20);
