@@ -262,6 +262,7 @@ export async function updateLiveScoreEmbed(match: FootballMatch): Promise<void> 
         body: {
           embeds: [embed.toJSON()],
           components: isLiveOrFinished ? [] : undefined,
+          attachments: imageBuffer ? [] : undefined,
         },
         files: imageBuffer ? [{
           name: 'prediction.png',
@@ -309,6 +310,7 @@ export async function updatePredictionEmbeds(match: FootballMatch): Promise<void
         body: {
           embeds: result.embeds.map((e) => e.toJSON()),
           components: result.components.map((c) => c.toJSON()),
+          attachments: imageBuffer ? [] : undefined,
         },
         files: imageBuffer ? [{
           name: 'prediction.png',
