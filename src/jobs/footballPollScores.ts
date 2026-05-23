@@ -80,8 +80,14 @@ export async function runFootballPollScores(job: Job): Promise<void> {
 
         const espnStatus = competition.status.type.name;
         let newStatus = 'NS';
-        if (espnStatus === 'STATUS_FINAL') newStatus = 'FT';
-        else if (espnStatus === 'STATUS_IN_PROGRESS') newStatus = 'LIVE';
+        if (espnStatus === 'STATUS_FINAL' || espnStatus === 'STATUS_FULL_TIME') newStatus = 'FT';
+        else if (
+          espnStatus === 'STATUS_IN_PROGRESS' ||
+          espnStatus === 'STATUS_FIRST_HALF' ||
+          espnStatus === 'STATUS_SECOND_HALF'
+        ) {
+          newStatus = 'LIVE';
+        }
         else if (espnStatus === 'STATUS_HALFTIME') newStatus = 'HT';
 
         const homeCompetitor = competition.competitors.find((c) => c.homeAway === 'home');

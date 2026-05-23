@@ -117,7 +117,7 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
 
       const espnStatus = competition.status.type.name;
       let newStatus = 'FT';
-      if (espnStatus === 'STATUS_FINAL') newStatus = 'FT';
+      if (espnStatus === 'STATUS_FINAL' || espnStatus === 'STATUS_FULL_TIME') newStatus = 'FT';
       else if (espnStatus === 'STATUS_POSTPONED') newStatus = 'PST';
       else if (espnStatus === 'STATUS_CANCELED') newStatus = 'CANC';
 

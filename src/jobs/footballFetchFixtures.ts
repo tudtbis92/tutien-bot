@@ -71,8 +71,14 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
 
           const espnStatus = competition.status.type.name;
           let status = 'NS';
-          if (espnStatus === 'STATUS_FINAL') status = 'FT';
-          else if (espnStatus === 'STATUS_IN_PROGRESS') status = 'LIVE';
+          if (espnStatus === 'STATUS_FINAL' || espnStatus === 'STATUS_FULL_TIME') status = 'FT';
+          else if (
+            espnStatus === 'STATUS_IN_PROGRESS' ||
+            espnStatus === 'STATUS_FIRST_HALF' ||
+            espnStatus === 'STATUS_SECOND_HALF'
+          ) {
+            status = 'LIVE';
+          }
           else if (espnStatus === 'STATUS_HALFTIME') status = 'HT';
           else if (espnStatus === 'STATUS_POSTPONED') status = 'PST';
           else if (espnStatus === 'STATUS_CANCELED') status = 'CANC';
