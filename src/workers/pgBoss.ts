@@ -151,7 +151,7 @@ async function registerJobs(b: PgBoss): Promise<void> {
 
   // Register Football Poll Scores
   await b.createQueue('football-poll-scores');
-  await b.schedule('football-poll-scores', '*/15 * * * *', {});
+  await b.schedule('football-poll-scores', '*/1 * * * *', {});
   await b.work('football-poll-scores', { localConcurrency: 1 }, async (jobs: Job[]) => {
     for (const job of jobs) {
       try {
@@ -175,7 +175,7 @@ async function registerJobs(b: PgBoss): Promise<void> {
     }
   });
 
-  logger.info('pgBoss', 'Jobs registered: activity-queue, voice-minute-tick, vwap-recalc @ 0 * * * *, football-fetch-fixtures @ 0 * * * *, football-announce-matches @ */30 * * * *, football-refresh-odds @ 0 * * * *, football-poll-scores @ */15 * * * *, football-resolve-matches @ 0 */2 * * *');
+  logger.info('pgBoss', 'Jobs registered: activity-queue, voice-minute-tick, vwap-recalc @ 0 * * * *, football-fetch-fixtures @ 0 * * * *, football-announce-matches @ */30 * * * *, football-refresh-odds @ 0 * * * *, football-poll-scores @ */1 * * * *, football-resolve-matches @ 0 */2 * * *');
 }
 
 /**
