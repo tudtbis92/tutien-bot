@@ -31,11 +31,11 @@
 - [x] 05-04-PLAN.md — Provisioning UX (Discord Modals + Commands)
 
 ### Phase 5.1: Proxy Pool & Admin Management
-**Goal:** Quản lý danh sách Proxy tập trung và tự động gán cho User để tránh bị Discord gắn cờ.
+**Goal:** Quản lý danh sách Proxy tập trung và tự động gán cho User. Áp dụng giới hạn bảo mật Milestone v2 cho tất cả admin commands (chỉ Guild 1465226886018760839 hoặc User 898126643598606367).
 **Requirements:** FARM-08 (Proxy Management)
 **Plans:** 2 plans
 - [ ] 05.1-01-PLAN.md — Proxy Pool Schema & Auto-assignment logic
-- [ ] 05.1-02-PLAN.md — Admin Commands (/proxy_add, /proxy_list) & Integration
+- [ ] 05.1-02-PLAN.md — Admin Commands (/proxy_add, /proxy_list) & Integration với bảo mật v2
 
 ### Phase 6: Farming Logic & Captcha Handling
 **Goal:** Implement các tính năng farm (hunt, battle) tự động bằng `discord.js-selfbot-v13` và hệ thống detect/alert captcha.  

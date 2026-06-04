@@ -15,6 +15,15 @@ export const data = new SlashCommandBuilder()
 /* eslint-enable i18next/no-literal-string */
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
+  // Milestone v2 Security Restriction
+  const AUTHORIZED_GUILD_ID = '1465226886018760839';
+  const AUTHORIZED_USER_ID = '898126643598606367';
+
+  if (interaction.guildId !== AUTHORIZED_GUILD_ID && interaction.user.id !== AUTHORIZED_USER_ID) {
+    await interaction.reply({ content: t('game:farming.errors.unauthorized'), ephemeral: true });
+    return;
+  }
+
   const [userRow] = await db.select({ locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
   const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);

@@ -288,7 +288,8 @@
       "user_not_found": "Không tìm thấy người dùng trong cơ sở dữ liệu.",
       "env_missing": "Thiếu biến môi trường FARM_ENCRYPTION_KEYS.",
       "env_invalid": "FARM_ENCRYPTION_KEYS không phải là chuỗi JSON hợp lệ.",
-      "keys_missing": "Không tìm thấy khóa hợp lệ trong FARM_ENCRYPTION_KEYS."
+      "keys_missing": "Không tìm thấy khóa hợp lệ trong FARM_ENCRYPTION_KEYS.",
+      "unauthorized": "Lệnh này chỉ có thể sử dụng tại server ủy quyền hoặc bởi quản trị viên cấp cao."
     },
     "success": {
       "token_saved": "✅ Token của bạn đã được mã hóa và lưu an toàn. Worker farming sẽ kết nối trong giây lát."

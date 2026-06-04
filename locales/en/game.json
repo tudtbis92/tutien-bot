@@ -288,7 +288,8 @@
       "user_not_found": "User not found in DB.",
       "env_missing": "FARM_ENCRYPTION_KEYS environment variable is missing.",
       "env_invalid": "FARM_ENCRYPTION_KEYS is not a valid JSON string.",
-      "keys_missing": "No valid keys found in FARM_ENCRYPTION_KEYS."
+      "keys_missing": "No valid keys found in FARM_ENCRYPTION_KEYS.",
+      "unauthorized": "This command can only be used in authorized servers or by senior administrators."
     },
     "success": {
       "token_saved": "✅ Your token has been securely encrypted and saved. The farming worker will connect shortly."
