@@ -21,13 +21,14 @@ progress:
 
 ## Current Position
 
-Phase: Phase 05 [Self-bot Infrastructure & Core Loop] — COMPLETED
-Status: Infrastructure implemented. Ready for Phase 06 (Farming Logic).
+Phase: Phase 05.1 [Proxy Pool & Admin Management] — NOT STARTED
+Status: Infrastructure complete. Adding proxy isolation before implementing farming logic.
 
 ```
 Progress: [█████░░░░░] 50%
 
 Phase 05 [Self-bot Infra]                █████ COMPLETED
+Phase 05.1 [Proxy Pool]                  ░░░░░ NOT STARTED
 Phase 06 [Farming & Captcha]             ░░░░░ NOT STARTED
 Phase 07 [Monetization & Commands]       ░░░░░ NOT STARTED
 ```
@@ -39,10 +40,11 @@ Phase 07 [Monetization & Commands]       ░░░░░ NOT STARTED
 | # | Phase | Requirements | Status | Completed |
 |---|-------|-------------|--------|-----------|
 | 05 | Self-bot Infrastructure & Core Loop | FARM-01, FARM-06 | ██ Done | 2026-06-04 |
+| 05.1 | Proxy Pool & Admin Management | FARM-08 | ░░ Pending | - |
 | 06 | Farming Logic & Captcha Handling | FARM-03, FARM-04, FARM-07 | ░░ Pending | - |
 | 07 | Monetization & Subscription Commands | FARM-02, FARM-05, MONET-01, MONET-04 | ░░ Pending | - |
 
-**Total v2 requirements:** 11/11 mapped ✓
+**Total v2 requirements:** 12/12 mapped ✓
 
 ---
 
@@ -50,11 +52,11 @@ Phase 07 [Monetization & Commands]       ░░░░░ NOT STARTED
 
 | Metric | Value |
 |--------|-------|
-| Phases total | 3 |
+| Phases total | 4 |
 | Phases complete | 1 |
-| Requirements total | 11 |
+| Requirements total | 12 |
 | Requirements delivered | 2 |
-| Plans created | 4 |
+| Plans created | 6 |
 | Plans complete | 4 |
 
 ---

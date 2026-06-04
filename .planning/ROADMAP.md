@@ -30,6 +30,13 @@
 - [x] 05-03-PLAN.md — Master Pool Manager (DB polling + IPC)
 - [x] 05-04-PLAN.md — Provisioning UX (Discord Modals + Commands)
 
+### Phase 5.1: Proxy Pool & Admin Management
+**Goal:** Quản lý danh sách Proxy tập trung và tự động gán cho User để tránh bị Discord gắn cờ.
+**Requirements:** FARM-08 (Proxy Management)
+**Plans:** 2 plans
+- [ ] 05.1-01-PLAN.md — Proxy Pool Schema & Auto-assignment logic
+- [ ] 05.1-02-PLAN.md — Admin Commands (/proxy_add, /proxy_list) & Integration
+
 ### Phase 6: Farming Logic & Captcha Handling
 **Goal:** Implement các tính năng farm (hunt, battle) tự động bằng `discord.js-selfbot-v13` và hệ thống detect/alert captcha.  
 **Requirements:** FARM-03, FARM-04, FARM-07

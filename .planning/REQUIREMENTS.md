@@ -203,6 +203,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 - [ ] **FARM-05**: User có slash commands để kiểm tra trạng thái bot (đang chạy, lỗi, chờ captcha, hạn gói).
 - [ ] **FARM-06**: Hệ thống Batched Worker Pool (Master - Worker) để quản lý hàng trăm process tự động một cách tối ưu trên server 4 CPU/24GB RAM. Mở rộng tự động khi lượng user tăng.
 - [ ] **FARM-07**: Hỗ trợ config chiến thuật riêng: tự động chuyển tiền về account chính, cấu hình delay, hoặc chỉ auto một số lệnh nhất định.
+- [ ] **FARM-08**: Hệ thống quản lý Proxy Pool (Admin commands & Auto-assignment) để tránh Discord gắn cờ.
 
 ### Monetization
 
@@ -223,5 +224,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 - [ ] **ADMIN-03**: Web dashboard (v3+)
 
 ---
+
+## Traceability (v2)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| FARM-01 | Phase 5: Self-bot Infrastructure | ✅ Complete |
+| FARM-06 | Phase 5: Self-bot Infrastructure | ✅ Complete |
+| FARM-08 | Phase 5.1: Proxy Pool & Admin Management | ░░ Pending |
+| FARM-03 | Phase 6: Farming Logic & Captcha Handling | ░░ Pending |
+| FARM-04 | Phase 6: Farming Logic & Captcha Handling | ░░ Pending |
+| FARM-07 | Phase 6: Farming Logic & Captcha Handling | ░░ Pending |
+| FARM-02 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
+| FARM-05 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
+| MONET-01 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
+| MONET-04 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
+
+---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-05-21 — PRED-01..13 added for Phase 02.2; PRED-11/12 complete*
+*Last updated: 2026-06-04 — Milestone v2 traceability and FARM-08 added*
