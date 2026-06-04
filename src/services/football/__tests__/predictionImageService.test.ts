@@ -33,6 +33,8 @@ describe('PredictionImageService', () => {
     awayTeamLogo: 'https://a.espncdn.com/i/teamlogos/soccer/500/2.png',
     homeTeamColor: 'ef4444',
     awayTeamColor: '06b6d4',
+    homePenaltyScore: null,
+    awayPenaltyScore: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

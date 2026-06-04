@@ -16,6 +16,7 @@ interface EspnCompetitor {
     alternateColor?: string;
   };
   score: string;
+  shootoutScore?: number;
 }
 
 interface EspnEvent {
@@ -81,6 +82,8 @@ export async function runFootballPollScores(job: Job): Promise<void> {
         const espnStatus = competition.status.type.name;
         let newStatus = 'NS';
         if (espnStatus === 'STATUS_FINAL' || espnStatus === 'STATUS_FULL_TIME') newStatus = 'FT';
+        else if (espnStatus === 'STATUS_FINAL_PEN') newStatus = 'PEN';
+        else if (espnStatus === 'STATUS_FINAL_AET') newStatus = 'AET';
         else if (
           espnStatus === 'STATUS_IN_PROGRESS' ||
           espnStatus === 'STATUS_FIRST_HALF' ||
@@ -97,10 +100,13 @@ export async function runFootballPollScores(job: Job): Promise<void> {
         const homeScore = parseInt(homeCompetitor.score, 10) || 0;
         const awayScore = parseInt(awayCompetitor.score, 10) || 0;
 
+        const homePenaltyScore = homeCompetitor.shootoutScore !== undefined ? parseInt(String(homeCompetitor.shootoutScore), 10) : null;
+        const awayPenaltyScore = awayCompetitor.shootoutScore !== undefined ? parseInt(String(awayCompetitor.shootoutScore), 10) : null;
+
         const dbMatch = matchesToPoll.find((m) => m.fixtureId === fixtureId);
         if (!dbMatch) continue;
 
-        // Skip updating if scores, status, logos, and colors are identical
+        // Skip updating if scores, status, logos, colors, and penalty scores are identical
         if (
           dbMatch.status === newStatus &&
           dbMatch.homeScore === homeScore &&
@@ -108,7 +114,9 @@ export async function runFootballPollScores(job: Job): Promise<void> {
           dbMatch.homeTeamLogo === (homeCompetitor.team.logo || null) &&
           dbMatch.awayTeamLogo === (awayCompetitor.team.logo || null) &&
           dbMatch.homeTeamColor === (homeCompetitor.team.color || null) &&
-          dbMatch.awayTeamColor === (awayCompetitor.team.color || null)
+          dbMatch.awayTeamColor === (awayCompetitor.team.color || null) &&
+          dbMatch.homePenaltyScore === homePenaltyScore &&
+          dbMatch.awayPenaltyScore === awayPenaltyScore
         ) {
           continue;
         }
@@ -124,6 +132,8 @@ export async function runFootballPollScores(job: Job): Promise<void> {
             awayTeamLogo: awayCompetitor.team.logo || null,
             homeTeamColor: homeCompetitor.team.color || null,
             awayTeamColor: awayCompetitor.team.color || null,
+            homePenaltyScore,
+            awayPenaltyScore,
             updatedAt: new Date(),
           })
           .where(eq(footballMatches.fixtureId, fixtureId))
@@ -136,9 +146,9 @@ export async function runFootballPollScores(job: Job): Promise<void> {
           // Update the announcement embed
           await updateLiveScoreEmbed(updatedMatch);
 
-          // Resolve bets if finished
-          if (newStatus === 'FT') {
-            logger.info('FootballPollScores', `Match ${updatedMatch.id} finished. Triggering resolution...`);
+          // Resolve wagers if finished
+          if (['FT', 'AET', 'PEN'].includes(newStatus)) {
+            logger.info('FootballPollScores', `Match ${updatedMatch.id} finished with status ${newStatus}. Triggering resolution...`);
             await resolveMatchBets(updatedMatch);
           }
         }

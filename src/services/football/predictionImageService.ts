@@ -102,7 +102,7 @@ export class PredictionImageService {
 
     // 3. Draw Versus / Score Element in the Center
     if (match.status !== 'NS' && match.homeScore !== null && match.awayScore !== null) {
-      this.drawScore(ctx, width / 2, height / 2 - 20, match.homeScore, match.awayScore);
+      this.drawScore(ctx, width / 2, height / 2 - 20, match);
     } else {
       this.drawVS(ctx, width / 2, height / 2 - 20);
     }
@@ -309,7 +309,48 @@ export class PredictionImageService {
   /**
    * Draw the live score separator
    */
-  private drawScore(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, homeScore: number, awayScore: number): void {
+  private drawScore(
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    match: FootballMatch
+  ): void {
+    // 1. Draw status text (e.g. LIVE, FINISHED)
+    const statusMap: Record<string, string> = {
+      '1H': 'LIVE (1ST HALF)',
+      'HT': 'HALF TIME',
+      '2H': 'LIVE (2ND HALF)',
+      'LIVE': 'LIVE',
+      'ET': 'EXTRA TIME',
+      'P': 'PENALTIES',
+      'FT': 'FINISHED',
+      'AET': 'FINISHED (AET)',
+      'PEN': 'FINISHED (PENS)',
+      'PST': 'POSTPONED',
+      'CANC': 'CANCELLED',
+      'ABD': 'ABANDONED',
+    };
+    
+    const displayStatus = statusMap[match.status] || match.status;
+
+    ctx.save();
+    // Add gold/red glow for status
+    const statusColor = ['1H', '2H', 'ET', 'P', 'LIVE'].includes(match.status) ? '#EF4444' : '#F59E0B';
+    ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = statusColor;
+    
+    // Simulate letter spacing for status
+    const formattedStatus = displayStatus.split('').join('\u200A'.repeat(2));
+    ctx.fillText(formattedStatus, centerX, centerY - 80);
+    ctx.restore();
+
+    // 2. Draw match score
+    const homeScoreVal = match.homeScore ?? 0;
+    const awayScoreVal = match.awayScore ?? 0;
+    const scoreText = `${homeScoreVal} - ${awayScoreVal}`;
+
     ctx.save();
     // Ambient green back-glow for football live vibes
     const radialGlow = ctx.createRadialGradient(centerX, centerY, 5, centerX, centerY, 55);
@@ -323,7 +364,6 @@ export class PredictionImageService {
 
     // Bold text draw
     ctx.save();
-    const scoreText = `${homeScore} - ${awayScore}`;
     const scoreGrad = ctx.createLinearGradient(centerX - 40, centerY - 25, centerX + 40, centerY + 25);
     scoreGrad.addColorStop(0, '#22C55E'); // Green-500
     scoreGrad.addColorStop(0.5, '#4ADE80'); // Green-400
@@ -342,6 +382,28 @@ export class PredictionImageService {
     ctx.fillStyle = scoreGrad;
     ctx.fillText(scoreText, centerX, centerY);
     ctx.restore();
+
+    // 3. Draw penalty shootout score if available
+    const hasPenalties =
+      match.status === 'PEN' ||
+      (match.homePenaltyScore !== null && match.awayPenaltyScore !== null && match.homePenaltyScore !== undefined && match.awayPenaltyScore !== undefined);
+
+    if (hasPenalties) {
+      const penHome = match.homePenaltyScore ?? 0;
+      const penAway = match.awayPenaltyScore ?? 0;
+      const penText = `(${penHome} - ${penAway} P)`;
+
+      ctx.save();
+      ctx.font = 'bold 24px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#030712';
+      ctx.lineWidth = 4;
+      ctx.strokeText(penText, centerX, centerY + 55);
+      ctx.fillStyle = '#10B981'; // Green emerald for shootout score
+      ctx.fillText(penText, centerX, centerY + 55);
+      ctx.restore();
+    }
   }
 
   /**

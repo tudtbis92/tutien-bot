@@ -30,6 +30,8 @@ export const footballMatches = pgTable(
     awayTeamLogo: varchar('away_team_logo', { length: 500 }),
     homeTeamColor: varchar('home_team_color', { length: 20 }),
     awayTeamColor: varchar('away_team_color', { length: 20 }),
+    homePenaltyScore: smallint('home_penalty_score'),
+    awayPenaltyScore: smallint('away_penalty_score'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

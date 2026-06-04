@@ -18,6 +18,7 @@ interface EspnCompetitor {
     alternateColor?: string;
   };
   score: string;
+  shootoutScore?: number;
 }
 
 interface EspnEvent {
@@ -72,6 +73,8 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
           const espnStatus = competition.status.type.name;
           let status = 'NS';
           if (espnStatus === 'STATUS_FINAL' || espnStatus === 'STATUS_FULL_TIME') status = 'FT';
+          else if (espnStatus === 'STATUS_FINAL_PEN') status = 'PEN';
+          else if (espnStatus === 'STATUS_FINAL_AET') status = 'AET';
           else if (
             espnStatus === 'STATUS_IN_PROGRESS' ||
             espnStatus === 'STATUS_FIRST_HALF' ||
@@ -82,6 +85,9 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
           else if (espnStatus === 'STATUS_HALFTIME') status = 'HT';
           else if (espnStatus === 'STATUS_POSTPONED') status = 'PST';
           else if (espnStatus === 'STATUS_CANCELED') status = 'CANC';
+
+          const homePenaltyScore = homeCompetitor.shootoutScore !== undefined ? parseInt(String(homeCompetitor.shootoutScore), 10) : null;
+          const awayPenaltyScore = awayCompetitor.shootoutScore !== undefined ? parseInt(String(awayCompetitor.shootoutScore), 10) : null;
 
           const insertedMatches = await db
             .insert(footballMatches)
@@ -112,6 +118,8 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
               awayTeamLogo: awayCompetitor.team.logo || null,
               homeTeamColor: homeCompetitor.team.color || null,
               awayTeamColor: awayCompetitor.team.color || null,
+              homePenaltyScore,
+              awayPenaltyScore,
             })
             .onConflictDoUpdate({
               target: footballMatches.fixtureId,
@@ -137,6 +145,8 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
                 awayTeamLogo: sql`COALESCE(excluded.away_team_logo, football_matches.away_team_logo)`,
                 homeTeamColor: sql`COALESCE(excluded.home_team_color, football_matches.home_team_color)`,
                 awayTeamColor: sql`COALESCE(excluded.away_team_color, football_matches.away_team_color)`,
+                homePenaltyScore: sql`COALESCE(excluded.home_penalty_score, football_matches.home_penalty_score)`,
+                awayPenaltyScore: sql`COALESCE(excluded.away_penalty_score, football_matches.away_penalty_score)`,
                 updatedAt: new Date(),
               },
             })

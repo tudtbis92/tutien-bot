@@ -14,6 +14,7 @@ interface EspnCompetitor {
     displayName: string;
   };
   score: string;
+  shootoutScore?: number;
 }
 
 interface EspnEvent {
@@ -118,6 +119,8 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
       const espnStatus = competition.status.type.name;
       let newStatus = 'FT';
       if (espnStatus === 'STATUS_FINAL' || espnStatus === 'STATUS_FULL_TIME') newStatus = 'FT';
+      else if (espnStatus === 'STATUS_FINAL_PEN') newStatus = 'PEN';
+      else if (espnStatus === 'STATUS_FINAL_AET') newStatus = 'AET';
       else if (espnStatus === 'STATUS_POSTPONED') newStatus = 'PST';
       else if (espnStatus === 'STATUS_CANCELED') newStatus = 'CANC';
 
@@ -128,6 +131,9 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
       const homeScore = parseInt(homeCompetitor.score, 10) || 0;
       const awayScore = parseInt(awayCompetitor.score, 10) || 0;
 
+      const homePenaltyScore = homeCompetitor.shootoutScore !== undefined ? parseInt(String(homeCompetitor.shootoutScore), 10) : null;
+      const awayPenaltyScore = awayCompetitor.shootoutScore !== undefined ? parseInt(String(awayCompetitor.shootoutScore), 10) : null;
+
       // Update match row
       const updatedRows = await db
         .update(footballMatches)
@@ -135,6 +141,8 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
           status: newStatus,
           homeScore,
           awayScore,
+          homePenaltyScore,
+          awayPenaltyScore,
           updatedAt: new Date(),
         })
         .where(eq(footballMatches.id, match.id))
