@@ -22,3 +22,4 @@ export * from './footballBets.js';
 export * from './footballAnnouncements.js';
 export * from './apiCache.js';
 export * from './predictionChannels.js';
+export * from './farming.js';

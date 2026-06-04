@@ -271,5 +271,27 @@
       "thien_menh_thu": "Mystery Heaven Scroll"
     },
     "unknown": "Unknown Item"
+  },
+  "farming": {
+    "setup": {
+      "title": "🌱 TuTien Auto-Farming Service",
+      "description": "Provide your Discord Token to enable 24/7 background tu vi accumulation.\n\n⚠️ **WARNING**: This requires your Discord Token. We encrypt it securely, but you should understand the risks. Discord TOS technically forbids self-botting. Use at your own risk.\n\nClick the button below to start or update your token.",
+      "button_label": "Start / Update Token",
+      "modal_title": "Enter Discord Token",
+      "token_label": "Your Discord Token",
+      "token_placeholder": "OT... (paste your token here)"
+    },
+    "errors": {
+      "not_registered": "You must be registered in the game to use this service.",
+      "invalid_token": "Invalid token format.",
+      "encryption_failed": "Internal error while processing your token.",
+      "user_not_found": "User not found in DB.",
+      "env_missing": "FARM_ENCRYPTION_KEYS environment variable is missing.",
+      "env_invalid": "FARM_ENCRYPTION_KEYS is not a valid JSON string.",
+      "keys_missing": "No valid keys found in FARM_ENCRYPTION_KEYS."
+    },
+    "success": {
+      "token_saved": "✅ Your token has been securely encrypted and saved. The farming worker will connect shortly."
+    }
   }
 }

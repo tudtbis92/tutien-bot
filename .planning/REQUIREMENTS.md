@@ -128,71 +128,99 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1: Foundation | Pending |
-| INFRA-02 | Phase 1: Foundation | Pending |
-| INFRA-03 | Phase 1: Foundation | Pending |
-| INFRA-04 | Phase 1: Foundation | Pending |
-| INFRA-05 | Phase 1: Foundation | Pending |
-| INFRA-06 | Phase 1: Foundation | Pending |
-| INFRA-07 | Phase 1: Foundation | Pending |
-| I18N-01 | Phase 1: Foundation | Pending |
-| I18N-02 | Phase 1: Foundation | Pending |
-| I18N-03 | Phase 1: Foundation | Pending |
-| CORE-01 | Phase 2: Core Game Loop + Progression | Pending |
-| CORE-02 | Phase 2: Core Game Loop + Progression | Pending |
-| CORE-03 | Phase 2: Core Game Loop + Progression | Pending |
-| CORE-04 | Phase 2: Core Game Loop + Progression | Pending |
-| CORE-05 | Phase 2: Core Game Loop + Progression | Pending |
-| CORE-06 | Phase 2: Core Game Loop + Progression | Pending |
-| CORE-07 | Phase 2: Core Game Loop + Progression | Pending |
-| CORE-08 | Phase 2: Core Game Loop + Progression | Pending |
-| PROG-01 | Phase 2: Core Game Loop + Progression | Pending |
-| PROG-02 | Phase 2: Core Game Loop + Progression | Pending |
-| PROG-03 | Phase 2: Core Game Loop + Progression | Pending |
-| PROG-04 | Phase 2: Core Game Loop + Progression | Pending |
-| PROG-05 | Phase 2: Core Game Loop + Progression | Pending |
-| PROG-06 | Phase 2: Core Game Loop + Progression | Pending |
-| PROG-07 | Phase 2: Core Game Loop + Progression | Pending |
-| PROG-08 | Phase 2: Core Game Loop + Progression | Pending |
-| PRED-01 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-02 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-03 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-04 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-05 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-06 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-07 | Phase 02.2: Football Prediction Event System | Complete |
-| PRED-08 | Phase 02.2: Football Prediction Event System | Pending |
-| PRED-09 | Phase 02.2: Football Prediction Event System | Complete |
-| PRED-10 | Phase 02.2: Football Prediction Event System | Complete |
-| PRED-11 | Phase 02.2: Football Prediction Event System | Complete (2026-05-21) |
-| PRED-12 | Phase 02.2: Football Prediction Event System | Complete (2026-05-21) |
-| COMBAT-01 | Phase 3: Combat + Marketplace | Pending |
-| COMBAT-02 | Phase 3: Combat + Marketplace | Pending |
-| COMBAT-03 | Phase 3: Combat + Marketplace | Pending |
-| COMBAT-04 | Phase 3: Combat + Marketplace | Pending |
-| MKT-01 | Phase 3: Combat + Marketplace | Pending |
-| MKT-02 | Phase 3: Combat + Marketplace | Pending |
-| MKT-03 | Phase 3: Combat + Marketplace | Pending |
-| MKT-04 | Phase 3: Combat + Marketplace | Pending |
-| MKT-05 | Phase 3: Combat + Marketplace | Pending |
-| MKT-06 | Phase 3: Combat + Marketplace | Pending |
-| MKT-07 | Phase 3: Combat + Marketplace | Pending |
-| MKT-08 | Phase 3: Combat + Marketplace | Pending |
-| MKT-09 | Phase 3: Combat + Marketplace | Pending |
-| MKT-10 | Phase 3: Combat + Marketplace | Pending |
-| MKT-11 | Phase 3: Combat + Marketplace | Pending |
-| MKT-12 | Phase 3: Combat + Marketplace | Pending |
-| SEASON-01 | Phase 4: Season System + Admin | Pending |
-| SEASON-02 | Phase 4: Season System + Admin | Pending |
-| SEASON-03 | Phase 4: Season System + Admin | Pending |
-| SEASON-04 | Phase 4: Season System + Admin | Pending |
-| SEASON-05 | Phase 4: Season System + Admin | Pending |
-| ADMIN-01 | Phase 4: Season System + Admin | Pending |
+| INFRA-01 | Phase 1: Foundation | ✅ Complete |
+| INFRA-02 | Phase 1: Foundation | ✅ Complete |
+| INFRA-03 | Phase 1: Foundation | ✅ Complete |
+| INFRA-04 | Phase 1: Foundation | ✅ Complete |
+| INFRA-05 | Phase 1: Foundation | ✅ Complete |
+| INFRA-06 | Phase 1: Foundation | ✅ Complete |
+| INFRA-07 | Phase 1: Foundation | ✅ Complete |
+| I18N-01 | Phase 1: Foundation | ✅ Complete |
+| I18N-02 | Phase 1: Foundation | ✅ Complete |
+| I18N-03 | Phase 1: Foundation | ✅ Complete |
+| CORE-01 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| CORE-02 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| CORE-03 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| CORE-04 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| CORE-05 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| CORE-06 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| CORE-07 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| CORE-08 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| PROG-01 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| PROG-02 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| PROG-03 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| PROG-04 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| PROG-05 | Phase 2: Core Game Loop + Progression | ✅ Complete |
+| PROG-06 | Phase 2: Core Game Loop + Progression | ⏸️ Pending (v1) |
+| PROG-07 | Phase 2: Core Game Loop + Progression | ⏸️ Pending (v1) |
+| PROG-08 | Phase 2: Core Game Loop + Progression | ⏸️ Pending (v1) |
+| PRED-01 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-02 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-03 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-04 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-05 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-06 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-07 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-08 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-09 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-10 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-11 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-12 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| PRED-13 | Phase 02.2: Football Prediction Event System | ✅ Complete |
+| COMBAT-01 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| COMBAT-02 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| COMBAT-03 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| COMBAT-04 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-01 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-02 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-03 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-04 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-05 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-06 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-07 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-08 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-09 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-10 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-11 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| MKT-12 | Phase 3: Combat + Marketplace | ⏸️ Pending (v1) |
+| SEASON-01 | Phase 4: Season System + Admin | ⏸️ Pending (v1) |
+| SEASON-02 | Phase 4: Season System + Admin | ⏸️ Pending (v1) |
+| SEASON-03 | Phase 4: Season System + Admin | ⏸️ Pending (v1) |
+| SEASON-04 | Phase 4: Season System + Admin | ⏸️ Pending (v1) |
+| SEASON-05 | Phase 4: Season System + Admin | ⏸️ Pending (v1) |
+| ADMIN-01 | Phase 4: Season System + Admin | ⏸️ Pending (v1) |
 
-**Coverage:**
-- v1 requirements: 61 total
-- Mapped to phases: 61
-- Unmapped: 0 ✓
+## v2 Requirements (OwO Farming Service)
+
+**Current focus:** Xây dựng kênh sử dụng Linh Thạch thông qua dịch vụ cung cấp Self-bot tự động farm OwO.
+
+### Farming Service (OwO)
+
+- [ ] **FARM-01**: User có thể cung cấp Discord Token để sử dụng dịch vụ self-bot. Token phải được mã hóa an toàn khi lưu trữ.
+- [ ] **FARM-02**: Mua các gói dịch vụ (tuần/tháng) bằng Linh Thạch. Gói tự động hết hạn và ngừng bot.
+- [ ] **FARM-03**: Hệ thống tự động farm tiền OwO (auto-hunt, auto-battle, auto-cf, auto-pray/curse) bằng thư viện `discord.js-selfbot-v13`.
+- [ ] **FARM-04**: Hệ thống tự động phát hiện captcha từ bot OwO, tạm dừng farm và DM/Ping user để giải quyết.
+- [ ] **FARM-05**: User có slash commands để kiểm tra trạng thái bot (đang chạy, lỗi, chờ captcha, hạn gói).
+- [ ] **FARM-06**: Hệ thống Batched Worker Pool (Master - Worker) để quản lý hàng trăm process tự động một cách tối ưu trên server 4 CPU/24GB RAM. Mở rộng tự động khi lượng user tăng.
+- [ ] **FARM-07**: Hỗ trợ config chiến thuật riêng: tự động chuyển tiền về account chính, cấu hình delay, hoặc chỉ auto một số lệnh nhất định.
+
+### Monetization
+
+- [ ] **MONET-01**: Nạp linh thạch qua chuyển khoản ngân hàng (manual hoặc auto API) / Discord native SKU.
+- [ ] **MONET-02**: Phân biệt linh thạch kiếm được vs. linh thạch mua (hai tier) - [Deferred].
+- [ ] **MONET-03**: Bảo vệ giao dịch thanh toán trong quá trình season reset.
+- [ ] **MONET-04**: Lịch sử nạp và số dư hiển thị trong `/profile`.
+
+### Social
+
+- [ ] **SOCIAL-01**: Hệ thống môn phái/guild
+- [ ] **SOCIAL-02**: Thành tích broadcast (achievement lên cảnh giới mới thông báo server)
+- [ ] **SOCIAL-03**: Leaderboard server-specific (optional per-guild toggle)
+
+### Admin
+
+- [ ] **ADMIN-02**: Admin slash commands per-guild: config language, toggle features, set bonus channels
+- [ ] **ADMIN-03**: Web dashboard (v3+)
 
 ---
 *Requirements defined: 2026-04-11*

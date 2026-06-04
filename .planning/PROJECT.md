@@ -18,6 +18,9 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 
 ### Active
 
+- [ ] Hệ thống thuê dịch vụ cày cấp OwO tự động (self-bot) trả phí bằng Linh Thạch
+- [ ] Quản lý Worker Pool process cho hàng ngàn user tokens
+- [ ] Tích hợp hệ thống alert khi có captcha
 - [ ] Tích lũy tu vi tự động qua hoạt động Discord (chat, voice, react)
 - [ ] Hệ thống cảnh giới theo season với hard reset
 - [ ] Hệ thống nghề nghiệp (gathering + crafting) với skill point tree

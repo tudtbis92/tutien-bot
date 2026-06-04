@@ -11,6 +11,7 @@ import { footballMatches } from './db/schema/footballMatches.js';
 import { initI18n } from './i18n/index.js';
 import { fillDefaultOdds } from './services/football/oddsCalculator.js';
 import { updatePredictionEmbeds } from './services/football/matchLifecycleService.js';
+import { SelfBotMaster } from './workers/selfBotMaster.js';
 
 // eslint-disable-next-line i18next/no-literal-string -- deployment artifact path, not user-facing
 const manager = new ShardingManager('./dist/shard.js', {
@@ -27,6 +28,14 @@ manager.on('shardCreate', (shard) => {
   shard.on('death', (proc) => {
     const exitCode = 'exitCode' in proc ? proc.exitCode : 'unknown';
     logger.error('ShardingManager', `Shard ${shard.id} died (exit code: ${exitCode})`);
+  });
+  
+  shard.on('message', (message: { type: string, userId?: string }) => {
+    if (message && message.type === 'FARMING_ACCOUNT_UPDATED' && message.userId) {
+      SelfBotMaster.getInstance().loadOrUpdateAccount(message.userId).catch(err => {
+        logger.error('ShardingManager', `Failed to load or update account for user ${message.userId}`, err);
+      });
+    }
   });
 });
 
@@ -147,6 +156,10 @@ async function main(): Promise<void> {
   // Step 4: Health check HTTP server ONLY in ShardingManager
   await startHealthServer(manager);
 
+  // Step 4.5: Start SelfBotMaster
+  logger.info('ShardingManager', 'Starting SelfBotMaster...');
+  await SelfBotMaster.getInstance().start();
+
   // Step 5: Spawn all shards — manager queries Discord for optimal shard count
   await manager.spawn();
 
@@ -156,6 +169,7 @@ async function main(): Promise<void> {
 // Graceful shutdown — close all connections cleanly before exit
 async function shutdown(): Promise<void> {
   logger.info('ShardingManager', 'Shutting down...');
+  SelfBotMaster.getInstance().stop();
   await stopPgBoss();
   await pool.end();
   await redis.quit();

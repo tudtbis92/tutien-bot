@@ -271,5 +271,27 @@
       "thien_menh_thu": "Thiên Cơ Thư Bí Ẩn"
     },
     "unknown": "Vật Phẩm Không Rõ"
+  },
+  "farming": {
+    "setup": {
+      "title": "🌱 Dịch Vụ Tu Tiên Tự Động",
+      "description": "Cung cấp Discord Token của bạn để kích hoạt tích lũy tu vi 24/7 trong nền.\n\n⚠️ **CẢNH BÁO**: Việc này yêu cầu Discord Token của bạn. Chúng tôi mã hóa nó an toàn, nhưng bạn nên hiểu rõ rủi ro. Điều khoản Discord về mặt kỹ thuật cấm tự động hóa (self-botting). Bạn hoàn toàn chịu trách nhiệm khi sử dụng.\n\nNhấn nút bên dưới để bắt đầu hoặc cập nhật token.",
+      "button_label": "Bắt đầu / Cập nhật Token",
+      "modal_title": "Nhập Discord Token",
+      "token_label": "Discord Token của bạn",
+      "token_placeholder": "OT... (dán token của bạn vào đây)"
+    },
+    "errors": {
+      "not_registered": "Bạn phải đăng ký tham gia game để sử dụng dịch vụ này.",
+      "invalid_token": "Định dạng token không hợp lệ.",
+      "encryption_failed": "Lỗi nội bộ khi xử lý token của bạn.",
+      "user_not_found": "Không tìm thấy người dùng trong cơ sở dữ liệu.",
+      "env_missing": "Thiếu biến môi trường FARM_ENCRYPTION_KEYS.",
+      "env_invalid": "FARM_ENCRYPTION_KEYS không phải là chuỗi JSON hợp lệ.",
+      "keys_missing": "Không tìm thấy khóa hợp lệ trong FARM_ENCRYPTION_KEYS."
+    },
+    "success": {
+      "token_saved": "✅ Token của bạn đã được mã hóa và lưu an toàn. Worker farming sẽ kết nối trong giây lát."
+    }
   }
 }

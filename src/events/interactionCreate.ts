@@ -16,6 +16,7 @@ import { buildRecipesPage } from '../ui/embeds/buildRecipesEmbed.js';
 import { buildBagPage } from '../commands/game/bag.js';
 import { handlePredictResult, handlePredictButtonMarket, handlePredictModalSubmit } from '../components/predictions/index.js';
 import { buildHistoryPage } from '../commands/predictions/predictions.js';
+import { handleFarmingStartButton, handleFarmingTokenModal } from '../commands/game/farming.js';
 
 export const name = Events.InteractionCreate;
 
@@ -46,6 +47,15 @@ export async function execute(interaction: Interaction): Promise<void> {
       }
       return;
     }
+
+    if (customId === 'farming:token_modal') {
+      try {
+        await handleFarmingTokenModal(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleFarmingTokenModal', err);
+      }
+      return;
+    }
   }
 
   // ── Button interaction routing ──────────────────────────────────────────────
@@ -61,6 +71,15 @@ export async function execute(interaction: Interaction): Promise<void> {
         await handlePredictButtonMarket(interaction);
       } catch (err) {
         logger.error('InteractionCreate', 'Error in handlePredictButtonMarket', err);
+      }
+      return;
+    }
+
+    if (customId === 'farming:start') {
+      try {
+        await handleFarmingStartButton(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleFarmingStartButton', err);
       }
       return;
     }
