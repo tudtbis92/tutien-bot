@@ -4,16 +4,20 @@ import * as child_process from 'node:child_process';
 import { EncryptionService } from '../../services/encryptionService.js';
 import { EventEmitter } from 'node:events';
 
-vi.mock('node:child_process');
+const mockFork = vi.hoisted(() => vi.fn());
+vi.mock('node:child_process', () => ({
+  fork: mockFork,
+}));
 
 const mocks = vi.hoisted(() => {
   const mockWhere = vi.fn();
-  const mockFrom = vi.fn(() => ({ where: mockWhere }));
+  const mockLeftJoin = vi.fn(() => ({ where: mockWhere }));
+  const mockFrom = vi.fn(() => ({ leftJoin: mockLeftJoin, where: mockWhere }));
   const mockSelect = vi.fn(() => ({ from: mockFrom }));
   const mockSet = vi.fn(() => ({ where: mockWhere }));
   const mockUpdate = vi.fn(() => ({ set: mockSet }));
   
-  return { mockWhere, mockFrom, mockSelect, mockSet, mockUpdate };
+  return { mockWhere, mockFrom, mockSelect, mockSet, mockUpdate, mockLeftJoin };
 });
 
 vi.mock('../../db/client.js', () => ({
@@ -34,8 +38,12 @@ vi.mock('../../utils/logger.js', () => ({
 vi.mock('../../db/schema/farming.js', () => ({
   farmingAccounts: {
     status: 'status',
-    userId: 'userId'
-  }
+    userId: 'userId',
+    proxyId: 'proxyId',
+  },
+  proxies: {
+    id: 'id',
+  },
 }));
 
 describe('SelfBotMaster', () => {
@@ -44,7 +52,8 @@ describe('SelfBotMaster', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mockSelect.mockImplementation(() => ({ from: mocks.mockFrom }));
-    mocks.mockFrom.mockImplementation(() => ({ where: mocks.mockWhere }));
+    mocks.mockFrom.mockImplementation(() => ({ leftJoin: mocks.mockLeftJoin, where: mocks.mockWhere }));
+    mocks.mockLeftJoin.mockImplementation(() => ({ where: mocks.mockWhere }));
     mocks.mockUpdate.mockImplementation(() => ({ set: mocks.mockSet }));
     mocks.mockSet.mockImplementation(() => ({ where: mocks.mockWhere }));
     
@@ -60,13 +69,18 @@ describe('SelfBotMaster', () => {
 
   it('can spawn a worker process when needed', async () => {
     const mockAccounts = Array(10).fill(0).map((_, i) => ({
-      userId: i + 1,
-      encryptedToken: 'enc',
-      iv: 'iv',
-      tag: 'tag',
-      keyVersion: 'v1',
-      proxyUrl: null,
-      workerId: null
+      account: {
+        userId: i + 1,
+        encryptedToken: 'enc',
+        iv: 'iv',
+        tag: 'tag',
+        keyVersion: 'v1',
+        proxyUrl: null,
+        workerId: null,
+        channelId: null,
+        settings: null
+      },
+      proxy: null
     }));
 
     mocks.mockWhere.mockResolvedValueOnce(mockAccounts);
@@ -75,24 +89,29 @@ describe('SelfBotMaster', () => {
     const mockChild = new EventEmitter() as unknown as child_process.ChildProcess;
     mockChild.send = vi.fn();
     mockChild.kill = vi.fn();
-    vi.mocked(child_process.fork).mockReturnValue(mockChild);
+    mockFork.mockReturnValue(mockChild);
 
     await master.rebalance();
 
-    expect(child_process.fork).toHaveBeenCalled();
+    expect(mockFork).toHaveBeenCalled();
     expect(master.getWorkerCount()).toBe(1);
     expect(master.getActiveBotCount()).toBe(10);
   });
 
   it('correctly calculates worker assignment for a list of bots (100 per worker)', async () => {
     const mockAccounts = Array(250).fill(0).map((_, i) => ({
-      userId: i + 1,
-      encryptedToken: 'enc',
-      iv: 'iv',
-      tag: 'tag',
-      keyVersion: 'v1',
-      proxyUrl: null,
-      workerId: null
+      account: {
+        userId: i + 1,
+        encryptedToken: 'enc',
+        iv: 'iv',
+        tag: 'tag',
+        keyVersion: 'v1',
+        proxyUrl: null,
+        workerId: null,
+        channelId: null,
+        settings: null
+      },
+      proxy: null
     }));
 
     mocks.mockWhere.mockResolvedValueOnce(mockAccounts);
@@ -105,25 +124,30 @@ describe('SelfBotMaster', () => {
       return mockChild;
     };
 
-    vi.mocked(child_process.fork).mockImplementation(createMockChild as unknown as typeof child_process.fork);
+    mockFork.mockImplementation(createMockChild);
 
     await master.rebalance();
 
     // 250 bots / 100 bots per worker = 3 workers
-    expect(child_process.fork).toHaveBeenCalledTimes(3);
+    expect(mockFork).toHaveBeenCalledTimes(3);
     expect(master.getWorkerCount()).toBe(3);
     expect(master.getActiveBotCount()).toBe(250);
   });
 
   it('sends START_BOTS command to workers with correct data', async () => {
     const mockAccounts = [{
-      userId: 1,
-      encryptedToken: 'enc',
-      iv: 'iv',
-      tag: 'tag',
-      keyVersion: 'v1',
-      proxyUrl: 'http://proxy',
-      workerId: null
+      account: {
+        userId: 1,
+        encryptedToken: 'enc',
+        iv: 'iv',
+        tag: 'tag',
+        keyVersion: 'v1',
+        proxyUrl: 'http://proxy',
+        workerId: null,
+        channelId: null,
+        settings: null
+      },
+      proxy: null
     }];
 
     mocks.mockWhere.mockResolvedValueOnce(mockAccounts);
@@ -132,7 +156,7 @@ describe('SelfBotMaster', () => {
     const mockChild = new EventEmitter() as unknown as child_process.ChildProcess;
     mockChild.send = vi.fn();
     mockChild.kill = vi.fn();
-    vi.mocked(child_process.fork).mockReturnValue(mockChild);
+    mockFork.mockReturnValue(mockChild);
 
     await master.rebalance();
 
@@ -142,20 +166,27 @@ describe('SelfBotMaster', () => {
         id: '1',
         token: 'dec_token',
         proxy: 'http://proxy',
-        workerId: null
+        workerId: null,
+        channelId: null,
+        settings: null
       }]
     });
   });
 
   it('restarts a worker if it crashes unexpectedly', async () => {
     const mockAccounts = [{
-      userId: 1,
-      encryptedToken: 'enc',
-      iv: 'iv',
-      tag: 'tag',
-      keyVersion: 'v1',
-      proxyUrl: null,
-      workerId: null
+      account: {
+        userId: 1,
+        encryptedToken: 'enc',
+        iv: 'iv',
+        tag: 'tag',
+        keyVersion: 'v1',
+        proxyUrl: null,
+        workerId: null,
+        channelId: null,
+        settings: null
+      },
+      proxy: null
     }];
 
     mocks.mockWhere.mockResolvedValue(mockAccounts);
@@ -169,7 +200,7 @@ describe('SelfBotMaster', () => {
     mockChild2.send = vi.fn();
     mockChild2.kill = vi.fn();
 
-    vi.mocked(child_process.fork)
+    mockFork
       .mockReturnValueOnce(mockChild1)
       .mockReturnValueOnce(mockChild2);
 
@@ -185,7 +216,7 @@ describe('SelfBotMaster', () => {
     // Allow promises to resolve
     await new Promise(process.nextTick);
 
-    expect(child_process.fork).toHaveBeenCalledTimes(2);
+    expect(mockFork).toHaveBeenCalledTimes(2);
     expect(master.getWorkerCount()).toBe(1);
   });
 });

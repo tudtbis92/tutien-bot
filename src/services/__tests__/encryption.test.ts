@@ -1,11 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import crypto from 'node:crypto';
 import { EncryptionService } from '../encryptionService.js';
+import { initI18n } from '../../i18n/index.js';
 
 describe('EncryptionService', () => {
   const mockKey1 = crypto.randomBytes(32).toString('hex');
   const mockKey2 = crypto.randomBytes(32).toString('hex');
   const originalEnv = process.env;
+
+  beforeAll(async () => {
+    await initI18n();
+  });
 
   beforeEach(() => {
     process.env = { ...originalEnv };
@@ -86,10 +91,10 @@ describe('EncryptionService', () => {
 
   it('should handle missing keys or invalid JSON gracefully', () => {
     process.env.FARM_ENCRYPTION_KEYS = '';
-    expect(() => EncryptionService.encrypt('text', '1')).toThrow(/missing/i);
+    expect(() => EncryptionService.encrypt('text', '1')).toThrow(/missing|Thiếu/i);
 
     process.env.FARM_ENCRYPTION_KEYS = 'invalid-json';
-    expect(() => EncryptionService.encrypt('text', '1')).toThrow(/not a valid JSON/i);
+    expect(() => EncryptionService.encrypt('text', '1')).toThrow(/not a valid JSON|không phải/i);
 
     process.env.FARM_ENCRYPTION_KEYS = JSON.stringify({ '1': 'not-32-bytes' });
     expect(() => EncryptionService.encrypt('text', '1')).toThrow(/exactly 32 bytes/i);

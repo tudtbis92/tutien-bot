@@ -17,7 +17,7 @@ interface WorkerMessage {
   payload?: BotConfig[] | string[];
 }
 
-class FarmingLoop {
+export class FarmingLoop {
   private client: Client;
   private settings: FarmingSettings;
   private channelId: string | null;
@@ -296,6 +296,22 @@ class FarmingLoop {
     // After captcha check, ignore if not in configured channel
     if (message.channel.id !== this.channelId) return;
     
+    // Cowoncy balance parsing for money transfer
+    const cashRegex = /you(?: currently)? have (?:__)?\*\*?([\d,]+)\*\*?(?:__)? cowoncy/i;
+    const cashMatch = message.content.match(cashRegex);
+    if (cashMatch) {
+      const balance = parseInt(cashMatch[1].replace(/,/g, ''), 10);
+      const mt = this.settings.moneyTransfer;
+      if (mt?.enabled && mt.mainAccountId && balance >= mt.threshold) {
+        const reserve = 1000;
+        const amountToGive = balance - reserve;
+        if (amountToGive >= 1000) {
+          console.log(`[${this.client.user?.id}] Transferring ${amountToGive} cowoncy to main account ${mt.mainAccountId}`);
+          await this.executeCommand(`owo give <@${mt.mainAccountId}> ${amountToGive}`);
+        }
+      }
+    }
+
     if (content.includes('gem') && content.includes('broke')) {
       console.log(`[${this.client.user?.id}] Gem broken detected, checking inventory`);
       await this.executeCommand('owo inv');
@@ -327,7 +343,7 @@ class FarmingLoop {
   }
 }
 
-class WorkerManager {
+export class WorkerManager {
   private clients: Map<string, Client> = new Map();
   private loops: Map<string, FarmingLoop> = new Map();
   private runningConfigs: Map<string, BotConfig> = new Map();
@@ -448,7 +464,7 @@ class WorkerManager {
 const manager = new WorkerManager();
 
 process.on('message', async (message: WorkerMessage) => {
-  if (!message || typeof message !== 'object') return;
+  if (!message || typeof message !== 'object' || !('type' in message)) return;
 
   switch (message.type) {
     case 'START_BOTS':
@@ -461,8 +477,6 @@ process.on('message', async (message: WorkerMessage) => {
         manager.stopBots(message.payload as string[]);
       }
       break;
-    default:
-      console.warn(`Unknown message type: ${message.type}`);
   }
 });
 

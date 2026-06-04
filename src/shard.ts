@@ -1,10 +1,13 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import { config } from './config.js';
-import { initI18n } from './i18n/index.js';
+import { initI18n, resolveLocale, getT } from './i18n/index.js';
 import { loadCommands } from './utils/commandLoader.js';
 import { loadEvents } from './utils/eventLoader.js';
 import { logger } from './utils/logger.js';
 import { initPgBossForShard } from './workers/pgBoss.js';
+import { db } from './db/client.js';
+import { users } from './db/schema/users.js';
+import { eq } from 'drizzle-orm';
 
 const client = new Client({
   intents: [
@@ -42,7 +45,15 @@ async function main(): Promise<void> {
       try {
         const user = await client.users.fetch(message.userId);
         if (user) {
-          await user.send('🚨 **CAPTCHA DETECTED** 🚨\nYour farming bot has encountered a Captcha and stopped automatically to protect your account.\nPlease log in to Discord, solve the Captcha, and then use `/farming resume` in this bot to restart farming.');
+          // Resolve user locale from DB
+          const [userRow] = await db
+            .select({ locale: users.locale })
+            .from(users)
+            .where(eq(users.discordId, message.userId));
+          const locale = resolveLocale(userRow?.locale, null);
+          const t = getT(locale);
+
+          await user.send(t('game:farming.setup.captcha_alert'));
           logger.warn('Shard', `Sent Captcha notification to user ${message.userId}`);
         }
       } catch (err) {

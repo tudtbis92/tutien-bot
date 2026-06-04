@@ -280,6 +280,7 @@
       "button_buy_weekly": "Buy Weekly",
       "button_buy_monthly": "Buy Monthly",
       "buy_under_development": "⚠️ The package purchase feature using Spirit Stones is currently under development (coming soon in Phase 7: Monetization).",
+      "captcha_alert": "🚨 **CAPTCHA DETECTED** 🚨\nYour farming bot has encountered a Captcha and stopped automatically to protect your account.\nPlease log in to Discord, solve the Captcha, and then use `/farming resume` to restart farming.",
       "modal_title": "Enter Discord Token",
       "token_label": "Your Discord Token",
       "token_placeholder": "OT... (paste your token here)"

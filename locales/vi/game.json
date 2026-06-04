@@ -280,6 +280,7 @@
       "button_buy_weekly": "Mua Gói Tuần",
       "button_buy_monthly": "Mua Gói Tháng",
       "buy_under_development": "⚠️ Chức năng mua gói bằng Linh Thạch đang được phát triển (sẽ ra mắt trong Phase 7 của lộ trình Monetization).",
+      "captcha_alert": "🚨 **PHÁT HIỆN CAPTCHA** 🚨\nBot treo game của bạn đã phát hiện Captcha từ OwO và tự động dừng lại để bảo vệ tài khoản.\nVui lòng đăng nhập Discord, tự giải quyết Captcha, sau đó sử dụng lệnh `/farming resume` để tiếp tục.",
       "modal_title": "Nhập Discord Token",
       "token_label": "Discord Token của bạn",
       "token_placeholder": "OT... (dán token của bạn vào đây)"

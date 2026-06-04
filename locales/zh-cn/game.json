@@ -280,6 +280,7 @@
       "button_buy_weekly": "购买周卡",
       "button_buy_monthly": "购买月卡",
       "buy_under_development": "⚠️ 灵石购买礼包功能正在开发中 (即将在 Phase 7 充值更新中推出)。",
+      "captcha_alert": "🚨 **检测到验证码** 🚨\n您的挂机机器人遇到了验证码，已自动停止以保护您的账号。\n请登录 Discord 解决验证码，然后使用 `/farming resume` 命令重新开始挂机。",
       "modal_title": "输入 Discord Token",
       "token_label": "您的 Discord Token",
       "token_placeholder": "OT... (在此粘贴您的 Token)"
