@@ -1,0 +1,1 @@
+ALTER TABLE "farming_accounts" ADD COLUMN "channel_id" text;

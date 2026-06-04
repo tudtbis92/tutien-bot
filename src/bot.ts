@@ -158,7 +158,7 @@ async function main(): Promise<void> {
 
   // Step 4.5: Start SelfBotMaster
   logger.info('ShardingManager', 'Starting SelfBotMaster...');
-  await SelfBotMaster.getInstance().start();
+  await SelfBotMaster.getInstance().start(manager);
 
   // Step 5: Spawn all shards — manager queries Discord for optimal shard count
   await manager.spawn();

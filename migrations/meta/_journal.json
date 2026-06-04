@@ -78,6 +78,20 @@
       "when": 1780553198936,
       "tag": "0010_outstanding_madame_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780558785553,
+      "tag": "0011_exotic_excalibur",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780561908559,
+      "tag": "0012_overjoyed_silvermane",
+      "breakpoints": true
     }
   ]
 }

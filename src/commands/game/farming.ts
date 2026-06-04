@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, type ButtonInteraction, type ModalSubmitInteraction } from 'discord.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, type ButtonInteraction, type ModalSubmitInteraction } from 'discord.js';
 import { resolveLocale, getT } from '../../i18n/index.js';
 import { db } from '../../db/client.js';
 import { users } from '../../db/schema/users.js';
@@ -8,39 +8,161 @@ import { eq } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 import { isAuthorizedAdmin } from '../../utils/adminGuard.js';
 import { ProxyService } from '../../services/farming/proxyService.js';
+import { createFarmingChannel, deleteFarmingChannel } from '../../services/farming/channelService.js';
 
 /* eslint-disable i18next/no-literal-string */
 export const data = new SlashCommandBuilder()
-  .setName('farming_setup')
-  .setDescription('Setup the token provisioning service (Admin only)')
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setName('farming')
+  .setDescription('Manage your farming bot')
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('setup')
+      .setDescription('Setup the token provisioning service (Admin only)')
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('status')
+      .setDescription('Check your farming bot status')
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('stop')
+      .setDescription('Stop farming and delete your private farming channel')
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('resume')
+      .setDescription('Resume farming after solving a captcha')
+  );
 /* eslint-enable i18next/no-literal-string */
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
-  if (!isAuthorizedAdmin(interaction)) {
-    const t = getT(resolveLocale(undefined, interaction.locale));
-    await interaction.reply({ content: t('game:farming.errors.unauthorized'), ephemeral: true });
-    return;
+  const subcommand = interaction.options.getSubcommand();
+  
+  if (subcommand === 'setup') {
+    if (!isAuthorizedAdmin(interaction)) {
+      const t = getT(resolveLocale(undefined, interaction.locale));
+      await interaction.reply({ content: t('game:farming.errors.unauthorized'), ephemeral: true });
+      return;
+    }
+
+    const [userRow] = await db.select({ locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+    const locale = resolveLocale(userRow?.locale, interaction.locale);
+    const t = getT(locale);
+
+    const embed = new EmbedBuilder()
+      .setTitle(t('game:farming.setup.title'))
+      .setDescription(t('game:farming.setup.description'))
+      .setColor(0x00FF00);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('farming:start')
+        .setLabel(t('game:farming.setup.button_label'))
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('🌱')
+    );
+
+    await interaction.reply({ embeds: [embed], components: [row] });
+  } else if (subcommand === 'status') {
+    const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+    const locale = resolveLocale(userRow?.locale, interaction.locale);
+    const t = getT(locale);
+    
+    if (!userRow) {
+      await interaction.reply({ content: t('game:farming.errors.not_registered'), ephemeral: true });
+      return;
+    }
+    
+    const account = await db.query.farmingAccounts.findFirst({
+      where: eq(farmingAccounts.userId, userRow.id),
+      with: {
+        proxy: true,
+      }
+    });
+    
+    if (!account) {
+      await interaction.reply({ content: t('game:farming.errors.no_account'), ephemeral: true });
+      return;
+    }
+    
+    const embed = new EmbedBuilder()
+      .setTitle(t('game:farming.status.title'))
+      .addFields(
+        { name: t('game:farming.status.state'), value: String(account.status), inline: true },
+        { name: t('game:farming.status.proxy'), value: account.proxy ? account.proxy.url : 'None', inline: true },
+        { name: t('game:farming.status.worker'), value: String(account.workerId || 'Unassigned'), inline: true }
+      )
+      .setColor(account.status === 'active' ? 0x00FF00 : (account.status === 'captcha_waiting' ? 0xFF0000 : 0xFFFF00));
+      
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+  } else if (subcommand === 'resume') {
+    const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+    const locale = resolveLocale(userRow?.locale, interaction.locale);
+    const t = getT(locale);
+    
+    if (!userRow) {
+      await interaction.reply({ content: t('game:farming.errors.not_registered'), ephemeral: true });
+      return;
+    }
+    
+    const account = await db.query.farmingAccounts.findFirst({
+      where: eq(farmingAccounts.userId, userRow.id),
+    });
+    
+    if (!account) {
+      await interaction.reply({ content: t('game:farming.errors.no_account'), ephemeral: true });
+      return;
+    }
+    
+    if (account.status !== 'captcha_waiting' && account.status !== 'stopped') {
+      await interaction.reply({ content: t('game:farming.resume.already_active'), ephemeral: true });
+      return;
+    }
+    
+    await db.update(farmingAccounts)
+      .set({ status: 'active', updatedAt: new Date() })
+      .where(eq(farmingAccounts.userId, userRow.id));
+      
+    if (process.send) {
+      process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
+    }
+    
+    await interaction.reply({ content: t('game:farming.resume.success'), ephemeral: true });
+  } else if (subcommand === 'stop') {
+    const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+    const locale = resolveLocale(userRow?.locale, interaction.locale);
+    const t = getT(locale);
+    
+    if (!userRow) {
+      await interaction.reply({ content: t('game:farming.errors.not_registered'), ephemeral: true });
+      return;
+    }
+    
+    const account = await db.query.farmingAccounts.findFirst({
+      where: eq(farmingAccounts.userId, userRow.id),
+    });
+    
+    if (!account) {
+      await interaction.reply({ content: t('game:farming.errors.no_account'), ephemeral: true });
+      return;
+    }
+    
+    if (account.channelId) {
+      await deleteFarmingChannel(interaction.client, account.channelId);
+    }
+    
+    await db.update(farmingAccounts)
+      .set({ status: 'stopped', channelId: null, updatedAt: new Date() })
+      .where(eq(farmingAccounts.userId, userRow.id));
+      
+    if (process.send) {
+      process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
+    }
+    
+    // eslint-disable-next-line i18next/no-literal-string
+    await interaction.reply({ content: t('game:farming.status.state') + ': stopped', ephemeral: true });
   }
-
-  const [userRow] = await db.select({ locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
-
-  const embed = new EmbedBuilder()
-    .setTitle(t('game:farming.setup.title'))
-    .setDescription(t('game:farming.setup.description'))
-    .setColor(0x00FF00);
-
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('farming:start')
-      .setLabel(t('game:farming.setup.button_label'))
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('🌱')
-  );
-
-  await interaction.reply({ embeds: [embed], components: [row] });
 }
 
 export async function handleFarmingStartButton(interaction: ButtonInteraction): Promise<void> {
@@ -103,6 +225,16 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
     return;
   }
 
+  const account = await db.query.farmingAccounts.findFirst({
+    where: eq(farmingAccounts.userId, userRow.id),
+  });
+
+  if (account?.channelId) {
+    await deleteFarmingChannel(interaction.client, account.channelId);
+  }
+
+  const newChannelId = await createFarmingChannel(interaction.client, interaction.user.id);
+
   // Upsert into farming_accounts
   await db.insert(farmingAccounts)
     .values({
@@ -111,6 +243,7 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
       iv: iv,
       tag: tag,
       keyVersion: keyVersion,
+      channelId: newChannelId,
       status: 'active',
       updatedAt: new Date()
     })
@@ -121,14 +254,11 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
         iv: iv,
         tag: tag,
         keyVersion: keyVersion,
+        channelId: newChannelId,
         status: 'active',
         updatedAt: new Date()
       }
     });
-
-  const account = await db.query.farmingAccounts.findFirst({
-    where: eq(farmingAccounts.userId, userRow.id),
-  });
 
   if (!account?.proxyId) {
     const proxyUrl = await ProxyService.assignProxy(userRow.id);

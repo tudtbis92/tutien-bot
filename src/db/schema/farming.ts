@@ -1,5 +1,7 @@
-import { pgTable, serial, integer, text, timestamp, pgEnum, bigint } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, text, timestamp, pgEnum, bigint, jsonb } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 import { users } from './users.js';
+import type { FarmingSettings } from '../../types/farming.js';
 
 export const farmingStatusEnum = pgEnum('farming_status', ['active', 'invalid', 'captcha_waiting', 'stopped']);
 export const farmingPlanEnum = pgEnum('farming_plan', ['free', 'basic', 'premium']);
@@ -25,8 +27,10 @@ export const farmingAccounts = pgTable('farming_accounts', {
   keyVersion: text('key_version').notNull(),
   proxyUrl: text('proxy_url'),
   proxyId: integer('proxy_id').references(() => proxies.id),
+  channelId: text('channel_id'),
   status: farmingStatusEnum('status').notNull().default('stopped'),
   workerId: integer('worker_id'),
+  settings: jsonb('settings').$type<FarmingSettings>(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
@@ -36,6 +40,13 @@ export const farmingSubscriptions = pgTable('farming_subscriptions', {
   planType: farmingPlanEnum('plan_type').notNull().default('free'),
   expiresAt: timestamp('expires_at'),
 });
+
+export const farmingAccountsRelations = relations(farmingAccounts, ({ one }) => ({
+  proxy: one(proxies, {
+    fields: [farmingAccounts.proxyId],
+    references: [proxies.id],
+  }),
+}));
 
 export type FarmingAccount = typeof farmingAccounts.$inferSelect;
 export type NewFarmingAccount = typeof farmingAccounts.$inferInsert;

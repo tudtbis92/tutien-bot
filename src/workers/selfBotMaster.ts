@@ -1,5 +1,7 @@
 import { fork, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { ShardingManager } from 'discord.js';
+import type { FarmingSettings } from '../types/farming.js';
 import { db } from '../db/client.js';
 import { farmingAccounts, proxies } from '../db/schema/farming.js';
 import { eq } from 'drizzle-orm';
@@ -17,6 +19,7 @@ export class SelfBotMaster {
   private pollingInterval: NodeJS.Timeout | null = null;
   private nextWorkerId = 1;
   private readonly BATCH_SIZE = 100;
+  private manager: ShardingManager | null = null;
 
   private constructor() {}
 
@@ -27,7 +30,8 @@ export class SelfBotMaster {
     return SelfBotMaster.instance;
   }
 
-  public async start(pollIntervalMs = 5 * 60 * 1000) {
+  public async start(manager: ShardingManager, pollIntervalMs = 5 * 60 * 1000) {
+    this.manager = manager;
     logger.info('SelfBotMaster', 'Starting SelfBotMaster');
     await this.rebalance();
 
@@ -91,17 +95,19 @@ export class SelfBotMaster {
             id: String(account.userId),
             token: decryptedToken,
             proxy: proxy?.url || account.proxyUrl || undefined,
-            workerId: account.workerId
+            workerId: account.workerId,
+            channelId: account.channelId,
+            settings: account.settings as FarmingSettings | null,
           };
         } catch (error) {
           logger.error('SelfBotMaster', `Failed to decrypt token for user ${account.userId}`, error);
           return null;
         }
-      }).filter((bot): bot is { id: string, token: string, proxy: string | undefined, workerId: number | null } => bot !== null);
+      }).filter((bot): bot is { id: string, token: string, proxy: string | undefined, workerId: number | null, channelId: string | null, settings: FarmingSettings | null } => bot !== null);
 
       // In a more robust system, we would assign smartly.
       // For now, distribute bots into batches of BATCH_SIZE.
-      const batches: { id: string, token: string, proxy: string | undefined, workerId: number | null }[][] = [];
+      const batches: { id: string, token: string, proxy: string | undefined, workerId: number | null, channelId: string | null, settings: FarmingSettings | null }[][] = [];
       for (let i = 0; i < botsToStart.length; i += this.BATCH_SIZE) {
         batches.push(botsToStart.slice(i, i + this.BATCH_SIZE));
       }
@@ -187,7 +193,20 @@ export class SelfBotMaster {
   private async handleWorkerStatus(message: { botId: string, status: string, error?: string }) {
     const { botId, status, error } = message;
     
-    if (status === 'ERROR' || status === 'DISCONNECTED') {
+    if (status === 'CAPTCHA_DETECTED') {
+      logger.warn('SelfBotMaster', `Bot ${botId} detected CAPTCHA!`);
+      try {
+        await db.update(farmingAccounts)
+          .set({ status: 'captcha_waiting' })
+          .where(eq(farmingAccounts.userId, parseInt(botId, 10)));
+          
+        if (this.manager) {
+          this.manager.broadcast({ type: 'NOTIFY_CAPTCHA', userId: botId });
+        }
+      } catch (dbErr) {
+        logger.error('SelfBotMaster', `Failed to update bot ${botId} status to captcha_waiting`, dbErr);
+      }
+    } else if (status === 'ERROR' || status === 'DISCONNECTED') {
       logger.warn('SelfBotMaster', `Bot ${botId} status: ${status}. Error: ${error}`);
       try {
         await db.update(farmingAccounts)

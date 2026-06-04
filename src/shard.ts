@@ -37,6 +37,20 @@ async function main(): Promise<void> {
   // Load all event handlers from dist/events/*.js
   await loadEvents(client);
 
+  process.on('message', async (message: any) => {
+    if (message && message.type === 'NOTIFY_CAPTCHA' && message.userId) {
+      try {
+        const user = await client.users.fetch(message.userId);
+        if (user) {
+          await user.send('🚨 **CAPTCHA DETECTED** 🚨\nYour farming bot has encountered a Captcha and stopped automatically to protect your account.\nPlease log in to Discord, solve the Captcha, and then use `/farming resume` in this bot to restart farming.');
+          logger.warn('Shard', `Sent Captcha notification to user ${message.userId}`);
+        }
+      } catch (err) {
+        logger.error('Shard', `Failed to send Captcha notification to user ${message.userId}`, err);
+      }
+    }
+  });
+
   await client.login(config.DISCORD_TOKEN);
 }
 

@@ -15,6 +15,10 @@ const EnvSchema = z.object({
   // Redis
   REDIS_URL: z.string().url('REDIS_URL must be a valid redis:// URL'),
 
+  // Farming Configuration
+  AUTH_SERVER_ID: z.string().min(1, 'AUTH_SERVER_ID is required for farming channels'),
+  FARMING_CATEGORY_ID: z.string().min(1, 'FARMING_CATEGORY_ID is required for farming channels'),
+
   // App
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().min(1024).max(65535).default(3000),

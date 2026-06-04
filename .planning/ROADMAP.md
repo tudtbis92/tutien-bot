@@ -40,6 +40,17 @@
 ### Phase 6: Farming Logic & Captcha Handling
 **Goal:** Implement các tính năng farm (hunt, battle) tự động bằng `discord.js-selfbot-v13` và hệ thống detect/alert captcha.  
 **Requirements:** FARM-03, FARM-04, FARM-07
+**Plans:** 4 plans
+- [ ] 06-01-PLAN.md — Database, Types & Master Infrastructure
+- [ ] 06-02-PLAN.md — Core Farming Loop & Full Command Set
+- [ ] 06-03-PLAN.md — Smart Logic & Response Parsing
+- [ ] 06-04-PLAN.md — Captcha Detection, Control Commands & Validation
+
+### Phase 6.1: Farming Channel Management
+**Goal:** Quản lý group channel farming: Tự động gán user vào channel riêng trong `auth_server` sau khi nhập token thành công. Lưu thông tin gán vào DB để self-bot farm đúng channel chỉ định. Các channel này thuộc server bảo mật đã thiết lập.
+**Requirements:** FARM-09
+**Plans:** 1 plan
+- [ ] 06.1-01-PLAN.md — Channel assignment logic & DB integration
 
 ### Phase 7: Monetization & Subscription Commands
 **Goal:** User flow cho việc mua/thuê gói dịch vụ bằng Linh Thạch, nạp VIP và các slash commands để quản lý self-bot cá nhân.  

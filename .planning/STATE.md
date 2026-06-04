@@ -5,11 +5,11 @@ milestone_name: OwO Farming Service
 status: IN_PROGRESS
 last_updated: "2026-06-04T13:00:00.000Z"
 progress:
-  total_phases: 3
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 5
+  completed_phases: 2
+  total_plans: 6
+  completed_plans: 4
+  percent: 40
 ---
 
 # State: TuTien Bot
@@ -41,10 +41,11 @@ Phase 07 [Monetization & Commands]       ░░░░░ NOT STARTED
 |---|-------|-------------|--------|-----------|
 | 05 | Self-bot Infrastructure & Core Loop | FARM-01, FARM-06 | ██ Done | 2026-06-04 |
 | 05.1 | Proxy Pool & Admin Management | FARM-08 | ██ Done | 2026-06-04 |
-| 06 | Farming Logic & Captcha Handling | FARM-03, FARM-04, FARM-07 | ░░ Pending | - |
+| 06 | Farming Logic & Captcha Handling | FARM-03, FARM-04, FARM-07 | ░░ Ready | - |
+| 06.1 | Farming Channel Management | FARM-09 | ░░ Discussed | - |
 | 07 | Monetization & Subscription Commands | FARM-02, FARM-05, MONET-01, MONET-04 | ░░ Pending | - |
 
-**Total v2 requirements:** 12/12 mapped ✓
+**Total v2 requirements:** 13/13 mapped ✓
 
 ---
 
@@ -52,10 +53,10 @@ Phase 07 [Monetization & Commands]       ░░░░░ NOT STARTED
 
 | Metric | Value |
 |--------|-------|
-| Phases total | 4 |
-| Phases complete | 1 |
-| Requirements total | 12 |
-| Requirements delivered | 2 |
+| Phases total | 5 |
+| Phases complete | 2 |
+| Requirements total | 13 |
+| Requirements delivered | 3 |
 | Plans created | 6 |
 | Plans complete | 4 |
 
