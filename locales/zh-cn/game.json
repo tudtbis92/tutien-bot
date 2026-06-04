@@ -271,5 +271,31 @@
       "thien_menh_thu": "神秘天机书"
     },
     "unknown": "未知物品"
+  },
+  "farming": {
+    "setup": {
+      "title": "🤖 OwO 自动挂机服务",
+      "description": "本系统提供 self-bot 租用服务，用于自动执行 OwO 机器人的操作（如 hunt, battle, pray/curse 等），帮助您高效积累 OwO 资金和道具。\n\n该服务独立于修仙主游戏运行。唯一的关联是您需要消耗 **灵石** 来购买/续费该服务。\n\n💰 **服务价格**:\n• 7天礼包 (周): **10,000 灵石**\n• 30天礼包 (月): **35,000 灵石**\n\n⚠️ **警告**: 使用此服务需要您提供 Discord Token 以进行自动化操作。所有数据均使用 AES-256-GCM 安全加密，但 self-bot 违反了 Discord 的服务条款 (TOS)。您将独自承担账号的任何风险。\n\n点击下方相应按钮配置 Token 或购买服务包。",
+      "button_label": "配置 Token",
+      "button_buy_weekly": "购买周卡",
+      "button_buy_monthly": "购买月卡",
+      "buy_under_development": "⚠️ 灵石购买礼包功能正在开发中 (即将在 Phase 7 充值更新中推出)。",
+      "modal_title": "输入 Discord Token",
+      "token_label": "您的 Discord Token",
+      "token_placeholder": "OT... (在此粘贴您的 Token)"
+    },
+    "errors": {
+      "not_registered": "您必须注册游戏才能使用此服务。",
+      "invalid_token": "Token 格式无效。",
+      "encryption_failed": "处理您的 Token 时发生内部错误。",
+      "user_not_found": "在数据库中找不到该用户。",
+      "env_missing": "缺少 FARM_ENCRYPTION_KEYS 环境变量。",
+      "env_invalid": "FARM_ENCRYPTION_KEYS 不是有效的 JSON 字符串。",
+      "keys_missing": "在 FARM_ENCRYPTION_KEYS 中找不到有效的密钥。",
+      "unauthorized": "此命令只能在授权服务器中或由高级管理员使用。"
+    },
+    "success": {
+      "token_saved": "✅ 您的 Token 已安全加密并保存。挂机 Worker 将在片刻后连接。"
+    }
   }
 }

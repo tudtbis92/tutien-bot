@@ -60,7 +60,17 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         .setCustomId('farming:start')
         .setLabel(t('game:farming.setup.button_label'))
         .setStyle(ButtonStyle.Success)
-        .setEmoji('🌱')
+        .setEmoji('🌱'),
+      new ButtonBuilder()
+        .setCustomId('farming:buy_weekly')
+        .setLabel(t('game:farming.setup.button_buy_weekly'))
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🎫'),
+      new ButtonBuilder()
+        .setCustomId('farming:buy_monthly')
+        .setLabel(t('game:farming.setup.button_buy_monthly'))
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('👑')
     );
 
     await interaction.reply({ embeds: [embed], components: [row] });
@@ -191,6 +201,22 @@ export async function handleFarmingStartButton(interaction: ButtonInteraction): 
   modal.addComponents(actionRow);
 
   await interaction.showModal(modal);
+}
+
+export async function handleFarmingBuyWeeklyButton(interaction: ButtonInteraction): Promise<void> {
+  const [userRow] = await db.select({ locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
+
+  await interaction.reply({ content: t('game:farming.setup.buy_under_development'), ephemeral: true });
+}
+
+export async function handleFarmingBuyMonthlyButton(interaction: ButtonInteraction): Promise<void> {
+  const [userRow] = await db.select({ locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
+
+  await interaction.reply({ content: t('game:farming.setup.buy_under_development'), ephemeral: true });
 }
 
 export async function handleFarmingTokenModal(interaction: ModalSubmitInteraction): Promise<void> {

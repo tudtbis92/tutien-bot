@@ -274,9 +274,12 @@
   },
   "farming": {
     "setup": {
-      "title": "🌱 TuTien Auto-Farming Service",
-      "description": "Provide your Discord Token to enable 24/7 background tu vi accumulation.\n\n⚠️ **WARNING**: This requires your Discord Token. We encrypt it securely, but you should understand the risks. Discord TOS technically forbids self-botting. Use at your own risk.\n\nClick the button below to start or update your token.",
-      "button_label": "Start / Update Token",
+      "title": "🤖 OwO Self-Bot Farming Service",
+      "description": "This system provides a self-bot rental service to automate OwO bot actions (such as hunt, battle, pray/curse, etc.), helping you accumulate OwO cash and items efficiently.\n\nThis service runs independently from the main TuTien game. The only connection is that you spend **Spirit Stones** to rent the service.\n\n💰 **PRICING PLAN**:\n• 7-Day Package (Weekly): **10,000 Spirit Stones**\n• 30-Day Package (Monthly): **35,000 Spirit Stones**\n\n⚠️ **WARNING**: Using this service requires your Discord Token to automate actions. All data is securely encrypted using AES-256-GCM, but self-botting violates Discord's Terms of Service. You are solely responsible for any risks to your account.\n\nClick the corresponding buttons below to set up your token or purchase a package.",
+      "button_label": "Configure Token",
+      "button_buy_weekly": "Buy Weekly",
+      "button_buy_monthly": "Buy Monthly",
+      "buy_under_development": "⚠️ The package purchase feature using Spirit Stones is currently under development (coming soon in Phase 7: Monetization).",
       "modal_title": "Enter Discord Token",
       "token_label": "Your Discord Token",
       "token_placeholder": "OT... (paste your token here)"

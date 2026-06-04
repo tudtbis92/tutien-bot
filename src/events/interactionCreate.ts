@@ -16,7 +16,7 @@ import { buildRecipesPage } from '../ui/embeds/buildRecipesEmbed.js';
 import { buildBagPage } from '../commands/game/bag.js';
 import { handlePredictResult, handlePredictButtonMarket, handlePredictModalSubmit } from '../components/predictions/index.js';
 import { buildHistoryPage } from '../commands/predictions/predictions.js';
-import { handleFarmingStartButton, handleFarmingTokenModal } from '../commands/game/farming.js';
+import { handleFarmingStartButton, handleFarmingTokenModal, handleFarmingBuyWeeklyButton, handleFarmingBuyMonthlyButton } from '../commands/game/farming.js';
 
 export const name = Events.InteractionCreate;
 
@@ -80,6 +80,24 @@ export async function execute(interaction: Interaction): Promise<void> {
         await handleFarmingStartButton(interaction);
       } catch (err) {
         logger.error('InteractionCreate', 'Error in handleFarmingStartButton', err);
+      }
+      return;
+    }
+
+    if (customId === 'farming:buy_weekly') {
+      try {
+        await handleFarmingBuyWeeklyButton(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleFarmingBuyWeeklyButton', err);
+      }
+      return;
+    }
+
+    if (customId === 'farming:buy_monthly') {
+      try {
+        await handleFarmingBuyMonthlyButton(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleFarmingBuyMonthlyButton', err);
       }
       return;
     }
