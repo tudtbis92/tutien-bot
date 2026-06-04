@@ -6,6 +6,8 @@ import { farmingAccounts } from '../../db/schema/farming.js';
 import { EncryptionService } from '../../services/encryptionService.js';
 import { eq } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
+import { isAuthorizedAdmin } from '../../utils/adminGuard.js';
+import { ProxyService } from '../../services/farming/proxyService.js';
 
 /* eslint-disable i18next/no-literal-string */
 export const data = new SlashCommandBuilder()
@@ -15,11 +17,8 @@ export const data = new SlashCommandBuilder()
 /* eslint-enable i18next/no-literal-string */
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
-  // Milestone v2 Security Restriction
-  const AUTHORIZED_GUILD_ID = '1465226886018760839';
-  const AUTHORIZED_USER_ID = '898126643598606367';
-
-  if (interaction.guildId !== AUTHORIZED_GUILD_ID && interaction.user.id !== AUTHORIZED_USER_ID) {
+  if (!isAuthorizedAdmin(interaction)) {
+    const t = getT(resolveLocale(undefined, interaction.locale));
     await interaction.reply({ content: t('game:farming.errors.unauthorized'), ephemeral: true });
     return;
   }
@@ -126,6 +125,17 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
         updatedAt: new Date()
       }
     });
+
+  const account = await db.query.farmingAccounts.findFirst({
+    where: eq(farmingAccounts.userId, userRow.id),
+  });
+
+  if (!account?.proxyId) {
+    const proxyUrl = await ProxyService.assignProxy(userRow.id);
+    if (!proxyUrl) {
+      logger.warn('Farming', `No proxy available for user ${userRow.id}`);
+    }
+  }
 
   // Trigger immediate worker loading/updating via IPC
   if (process.send) {

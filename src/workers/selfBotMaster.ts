@@ -1,7 +1,7 @@
 import { fork, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { db } from '../db/client.js';
-import { farmingAccounts } from '../db/schema/farming.js';
+import { farmingAccounts, proxies } from '../db/schema/farming.js';
 import { eq } from 'drizzle-orm';
 import { EncryptionService } from '../services/encryptionService.js';
 import { logger } from '../utils/logger.js';
@@ -70,9 +70,16 @@ export class SelfBotMaster {
 
   public async rebalance() {
     try {
-      const activeAccounts = await db.select().from(farmingAccounts).where(eq(farmingAccounts.status, 'active'));
+      const activeAccounts = await db
+        .select({
+          account: farmingAccounts,
+          proxy: proxies,
+        })
+        .from(farmingAccounts)
+        .leftJoin(proxies, eq(farmingAccounts.proxyId, proxies.id))
+        .where(eq(farmingAccounts.status, 'active'));
       
-      const botsToStart = activeAccounts.map(account => {
+      const botsToStart = activeAccounts.map(({ account, proxy }) => {
         try {
           const decryptedToken = EncryptionService.decrypt(
             account.encryptedToken,
@@ -83,18 +90,18 @@ export class SelfBotMaster {
           return {
             id: String(account.userId),
             token: decryptedToken,
-            proxy: account.proxyUrl || undefined,
+            proxy: proxy?.url || account.proxyUrl || undefined,
             workerId: account.workerId
           };
         } catch (error) {
           logger.error('SelfBotMaster', `Failed to decrypt token for user ${account.userId}`, error);
           return null;
         }
-      }).filter((bot): bot is { id: string, token: string, proxy?: string, workerId: number | null } => bot !== null);
+      }).filter((bot): bot is { id: string, token: string, proxy: string | undefined, workerId: number | null } => bot !== null);
 
       // In a more robust system, we would assign smartly.
       // For now, distribute bots into batches of BATCH_SIZE.
-      const batches: { id: string, token: string, proxy?: string }[][] = [];
+      const batches: { id: string, token: string, proxy: string | undefined, workerId: number | null }[][] = [];
       for (let i = 0; i < botsToStart.length; i += this.BATCH_SIZE) {
         batches.push(botsToStart.slice(i, i + this.BATCH_SIZE));
       }

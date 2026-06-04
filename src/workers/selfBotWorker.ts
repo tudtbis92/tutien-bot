@@ -1,5 +1,4 @@
 import { Client, Options, ClientOptions } from 'discord.js-selfbot-v13';
-// @ts-expect-error -- ProxyAgent is not typed correctly for our version
 import { ProxyAgent } from 'proxy-agent';
 
 interface BotConfig {
@@ -38,7 +37,7 @@ class WorkerManager {
         };
 
         if (bot.proxy) {
-          const proxyAgent = new ProxyAgent(bot.proxy);
+          const proxyAgent = new ProxyAgent({ getProxyForUrl: () => bot.proxy! });
           // ws.agent uses the ProxyAgent instance
           clientOptions.ws = { agent: proxyAgent };
           // http.agent uses the proxy URL string per instructions
