@@ -233,10 +233,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FARM-01 | Phase 5: Self-bot Infrastructure | ✅ Complete |
 | FARM-06 | Phase 5: Self-bot Infrastructure | ✅ Complete |
 | FARM-08 | Phase 5.1: Proxy Pool & Admin Management | ✅ Complete |
-| FARM-09 | Phase 6.1: Farming Channel Management | ░░ Pending |
-| FARM-03 | Phase 6: Farming Logic & Captcha Handling | ░░ Pending |
-| FARM-04 | Phase 6: Farming Logic & Captcha Handling | ░░ Pending |
-| FARM-07 | Phase 6: Farming Logic & Captcha Handling | ░░ Pending |
+| FARM-09 | Phase 6.1: Farming Channel Management | ✅ Complete |
+| FARM-03 | Phase 6: Farming Logic & Captcha Handling | ✅ Complete |
+| FARM-04 | Phase 6: Farming Logic & Captcha Handling | ✅ Complete |
+| FARM-07 | Phase 6: Farming Logic & Captcha Handling | ✅ Complete |
 | FARM-02 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
 | FARM-05 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
 | MONET-01 | Phase 7: Monetization & Subscription Commands | ░░ Pending |

@@ -48,9 +48,12 @@ describe('ChannelService', () => {
         }
       } as unknown as Client;
 
-      const result = await createFarmingChannel(mockClient, '898126643598606367');
+      const result = await createFarmingChannel(mockClient, '898126643598606367', '999999999999999999');
       expect(result).toBe('55555');
       expect(mockClient.shard!.broadcastEval).toHaveBeenCalled();
+      const [_evalFn, options] = vi.mocked(mockClient.shard!.broadcastEval).mock.calls[0] as unknown as [unknown, { context: Record<string, unknown> }];
+      expect(options.context.ownerId).toBe('898126643598606367');
+      expect(options.context.selfBotId).toBe('999999999999999999');
     });
 
     it('should create channel locally when not sharded', async () => {
@@ -69,6 +72,7 @@ describe('ChannelService', () => {
       };
 
       const mockClient = {
+        user: { id: 'main-bot-id' },
         guilds: {
           cache: {
             get: vi.fn().mockReturnValue(mockGuild),
@@ -76,16 +80,18 @@ describe('ChannelService', () => {
         }
       } as unknown as Client;
 
-      const result = await createFarmingChannel(mockClient, '898126643598606367');
+      const result = await createFarmingChannel(mockClient, '898126643598606367', '999999999999999999');
       expect(result).toBe('99999');
       expect(mockGuild.channels.create).toHaveBeenCalledWith({
         name: 'farm-898126643598606367',
         type: expect.anything(),
         parent: '876543210987654321',
-        permissionOverwrites: [
+        permissionOverwrites: expect.arrayContaining([
           { id: 'everyone-role-id', deny: expect.any(Array) },
-          { id: '898126643598606367', allow: expect.any(Array) }
-        ]
+          { id: '898126643598606367', allow: expect.any(Array) },
+          { id: '999999999999999999', allow: expect.any(Array) },
+          { id: 'main-bot-id', allow: expect.any(Array) }
+        ])
       });
     });
 

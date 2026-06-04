@@ -50,7 +50,7 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 
 ## Current State
 
-Phase 01 (Foundation) complete — full infrastructure backbone deployed: ShardingManager, PostgreSQL/Drizzle, Redis, pg-boss, i18n, CI/CD, health check. Bot can launch and pass CI. Ready for Phase 02 (Core Game Loop + Progression).
+Phase 6.1 (Farming Channel Management) complete — Milestone v2 infrastructure and core features are fully operational. Self-bot worker pool, proxy management, automated farming logic with captcha detection, and isolated private channels are implemented and verified. Ready for Phase 07 (Monetization & Subscription Commands).
 
 
 
@@ -111,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-11 after Phase 01 (Foundation) complete*
+*Last updated: 2026-06-04 after Phase 06.1 (Farming Channel Management) complete*

@@ -251,6 +251,12 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
     return;
   }
 
+  const selfBotId = getUserIdFromToken(token);
+  if (!selfBotId) {
+    await interaction.reply({ content: t('game:farming.errors.invalid_token'), ephemeral: true });
+    return;
+  }
+
   const account = await db.query.farmingAccounts.findFirst({
     where: eq(farmingAccounts.userId, userRow.id),
   });
@@ -259,7 +265,7 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
     await deleteFarmingChannel(interaction.client, account.channelId);
   }
 
-  const newChannelId = await createFarmingChannel(interaction.client, interaction.user.id);
+  const newChannelId = await createFarmingChannel(interaction.client, interaction.user.id, selfBotId);
 
   // Upsert into farming_accounts
   await db.insert(farmingAccounts)
