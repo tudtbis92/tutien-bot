@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client, GatewayIntentBits } from 'discord.js';
 import { config } from './config.js';
 import { initI18n, resolveLocale, getT } from './i18n/index.js';
@@ -76,3 +77,15 @@ process.on('error', (err) => {
   }
   logger.error('Shard', 'Uncaught process error', err);
 });
+
+if (process.env.NODE_ENV !== 'test') {
+  process.on('disconnect', () => {
+    logger.warn('Shard', 'IPC channel disconnected (parent process exited). Exiting shard process...');
+    try {
+      client.destroy();
+    } catch {
+      // Ignore error on destroy
+    }
+    process.exit(0);
+  });
+}

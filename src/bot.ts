@@ -169,6 +169,17 @@ async function main(): Promise<void> {
 // Graceful shutdown — close all connections cleanly before exit
 async function shutdown(): Promise<void> {
   logger.info('ShardingManager', 'Shutting down...');
+  
+  // Explicitly terminate all spawned shard child processes
+  logger.info('ShardingManager', 'Terminating shards...');
+  manager.shards.forEach((shard) => {
+    try {
+      shard.kill();
+    } catch (err) {
+      logger.error('ShardingManager', `Failed to kill shard ${shard.id}`, err);
+    }
+  });
+
   SelfBotMaster.getInstance().stop();
   await stopPgBoss();
   await pool.end();

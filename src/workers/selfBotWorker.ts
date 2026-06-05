@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string, @typescript-eslint/no-explicit-any */
 import { Client, Options, ClientOptions, TextChannel } from 'discord.js-selfbot-v13';
 import { ProxyAgent } from 'proxy-agent';
 import type { FarmingSettings } from '../types/farming.js';
@@ -489,3 +490,15 @@ process.on('SIGINT', () => {
   manager.stopAll();
   process.exit(0);
 });
+
+if (process.env.NODE_ENV !== 'test') {
+  process.on('disconnect', () => {
+    console.log('[Worker] IPC channel disconnected (parent process exited). Exiting worker process...');
+    try {
+      manager.stopAll();
+    } catch {
+      // Ignore error
+    }
+    process.exit(0);
+  });
+}
