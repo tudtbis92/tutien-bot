@@ -537,6 +537,8 @@ export async function handleConfirmBuyWeekly(interaction: ButtonInteraction): Pr
   } catch (error) {
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
       await interaction.editReply({ content: t('game:farming.subscription.insufficient_balance', { required: '10000', current: '?' }), embeds: [], components: [] });
+    } else if (error instanceof Error && error.message === 'TRANSACTION_IN_PROGRESS') {
+      await interaction.editReply({ content: t('game:farming.subscription.transaction_in_progress'), embeds: [], components: [] });
     } else {
       logger.error('Farming', 'Failed to purchase weekly plan', error);
       // eslint-disable-next-line i18next/no-literal-string
@@ -563,6 +565,8 @@ export async function handleConfirmBuyMonthly(interaction: ButtonInteraction): P
   } catch (error) {
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
       await interaction.editReply({ content: t('game:farming.subscription.insufficient_balance', { required: '35000', current: '?' }), embeds: [], components: [] });
+    } else if (error instanceof Error && error.message === 'TRANSACTION_IN_PROGRESS') {
+      await interaction.editReply({ content: t('game:farming.subscription.transaction_in_progress'), embeds: [], components: [] });
     } else {
       logger.error('Farming', 'Failed to purchase monthly plan', error);
       // eslint-disable-next-line i18next/no-literal-string
@@ -589,6 +593,8 @@ export async function handleConfirmBuyVipMonthly(interaction: ButtonInteraction)
   } catch (error) {
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
       await interaction.editReply({ content: t('game:farming.subscription.insufficient_balance', { required: '50000', current: '?' }), embeds: [], components: [] });
+    } else if (error instanceof Error && error.message === 'TRANSACTION_IN_PROGRESS') {
+      await interaction.editReply({ content: t('game:farming.subscription.transaction_in_progress'), embeds: [], components: [] });
     } else {
       logger.error('Farming', 'Failed to purchase VIP monthly plan', error);
       // eslint-disable-next-line i18next/no-literal-string
@@ -615,6 +621,8 @@ export async function handleConfirmUpgradeVIP(interaction: ButtonInteraction): P
   } catch (error) {
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
       await interaction.editReply({ content: t('game:farming.subscription.insufficient_balance', { required: '?', current: '?' }), embeds: [], components: [] });
+    } else if (error instanceof Error && error.message === 'TRANSACTION_IN_PROGRESS') {
+      await interaction.editReply({ content: t('game:farming.subscription.transaction_in_progress'), embeds: [], components: [] });
     } else {
       logger.error('Farming', 'Failed to upgrade VIP plan', error);
       // eslint-disable-next-line i18next/no-literal-string

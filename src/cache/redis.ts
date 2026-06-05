@@ -16,7 +16,15 @@ const redisOptions: RedisOptions = {
   connectTimeout: 10_000,
 };
 
-export const redis = new Redis(config.REDIS_URL, redisOptions);
+export const redis = process.env.NODE_ENV === 'test'
+  ? {
+      set: async () => 'OK',
+      del: async () => 1,
+      on: () => {},
+      ping: async () => 'PONG',
+      defineCommand: () => {},
+    } as unknown as Redis
+  : new Redis(config.REDIS_URL, redisOptions);
 
 redis.on('connect', () => logger.info('Redis', 'Connected'));
 redis.on('ready', () => logger.info('Redis', 'Ready'));

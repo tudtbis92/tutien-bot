@@ -147,6 +147,9 @@ function makeButtonInteraction() {
     locale: 'vi',
     reply: vi.fn().mockResolvedValue(undefined),
     update: vi.fn().mockResolvedValue(undefined),
+    deferUpdate: vi.fn().mockResolvedValue(undefined),
+    deferReply: vi.fn().mockResolvedValue(undefined),
+    editReply: vi.fn().mockResolvedValue(undefined),
   } as any;
 }
 
@@ -177,7 +180,7 @@ describe('farming command — confirm buy handlers', () => {
     await handleConfirmBuyWeekly(interaction);
 
     expect(FarmingSubscriptionService.purchasePlan).toHaveBeenCalledWith(1, 'basic', 7);
-    expect(interaction.update).toHaveBeenCalledWith(
+    expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({ embeds: [], components: [] }),
     );
   });
@@ -189,9 +192,23 @@ describe('farming command — confirm buy handlers', () => {
     const interaction = makeButtonInteraction();
     await handleConfirmBuyWeekly(interaction);
 
-    expect(interaction.update).toHaveBeenCalledWith(
+    expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining('game:farming.subscription.insufficient_balance'),
+      }),
+    );
+  });
+
+  it('handleConfirmBuyWeekly: shows transaction_in_progress on double submit', async () => {
+    (db as any).where.mockResolvedValue([{ id: 1, locale: 'vi' }]);
+    (FarmingSubscriptionService.purchasePlan as any).mockRejectedValue(new Error('TRANSACTION_IN_PROGRESS'));
+
+    const interaction = makeButtonInteraction();
+    await handleConfirmBuyWeekly(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('game:farming.subscription.transaction_in_progress'),
       }),
     );
   });
@@ -206,7 +223,7 @@ describe('farming command — confirm buy handlers', () => {
     await handleConfirmBuyMonthly(interaction);
 
     expect(FarmingSubscriptionService.purchasePlan).toHaveBeenCalledWith(2, 'basic', 30);
-    expect(interaction.update).toHaveBeenCalledWith(
+    expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({ embeds: [], components: [] }),
     );
   });
@@ -218,7 +235,7 @@ describe('farming command — confirm buy handlers', () => {
     const interaction = makeButtonInteraction();
     await handleConfirmBuyMonthly(interaction);
 
-    expect(interaction.update).toHaveBeenCalledWith(
+    expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining('game:farming.subscription.insufficient_balance'),
       }),
@@ -235,7 +252,7 @@ describe('farming command — confirm buy handlers', () => {
     await handleConfirmBuyVipMonthly(interaction);
 
     expect(FarmingSubscriptionService.purchasePlan).toHaveBeenCalledWith(3, 'premium', 30);
-    expect(interaction.update).toHaveBeenCalledWith(
+    expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({ embeds: [], components: [] }),
     );
   });
@@ -247,7 +264,7 @@ describe('farming command — confirm buy handlers', () => {
     const interaction = makeButtonInteraction();
     await handleConfirmBuyVipMonthly(interaction);
 
-    expect(interaction.update).toHaveBeenCalledWith(
+    expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining('game:farming.subscription.insufficient_balance'),
       }),
@@ -264,7 +281,7 @@ describe('farming command — confirm buy handlers', () => {
     await handleConfirmUpgradeVIP(interaction);
 
     expect(FarmingSubscriptionService.upgradePlan).toHaveBeenCalledWith(4);
-    expect(interaction.update).toHaveBeenCalledWith(
+    expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({ embeds: [], components: [] }),
     );
   });
@@ -276,7 +293,7 @@ describe('farming command — confirm buy handlers', () => {
     const interaction = makeButtonInteraction();
     await handleConfirmUpgradeVIP(interaction);
 
-    expect(interaction.update).toHaveBeenCalledWith(
+    expect(interaction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining('game:farming.subscription.insufficient_balance'),
       }),

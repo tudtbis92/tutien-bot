@@ -5,6 +5,7 @@ import { eq, sql } from 'drizzle-orm';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import type { FarmingSettings } from '../../types/farming.js';
+import { redis } from '../../cache/redis.js';
 
 dayjs.extend(utc);
 
@@ -35,95 +36,115 @@ export class FarmingSubscriptionService {
    * Price: 7D=10k, 30D Basic=35k, 30D VIP=50k.
    */
   static async purchasePlan(userId: number, planType: 'free' | 'basic' | 'premium', durationDays: number): Promise<Date> {
-    let price = 0n;
-    
-    if (planType === 'basic') {
-      if (durationDays === 7) price = 10000n;
-      else if (durationDays === 30) price = 35000n;
-      else throw new Error('INVALID_DURATION');
-    } else if (planType === 'premium') {
-      if (durationDays === 30) price = 50000n;
-      else throw new Error('INVALID_DURATION'); // Note: Plan says 30D VIP=50k. Assuming 7D VIP doesn't exist or has different price, but let's stick to spec.
+    const lockKey = `lock:purchase:${userId}`;
+    const acquired = await redis.set(lockKey, '1', 'PX', 5000, 'NX');
+    if (acquired !== 'OK') {
+      throw new Error('TRANSACTION_IN_PROGRESS');
     }
 
-    const expiresAt = dayjs.utc().add(durationDays, 'day').toDate();
-
-    return await db.transaction(async (tx) => {
-      if (price > 0n) {
-        const updateResult = await tx
-          .update(users)
-          .set({
-            balance: sql`${users.balance} - ${price}`
-          })
-          .where(sql`${users.id} = ${userId} AND ${users.balance} >= ${price}`)
-          .returning({ id: users.id });
-
-        if (updateResult.length === 0) {
-          throw new Error('INSUFFICIENT_BALANCE');
-        }
+    try {
+      let price = 0n;
+      
+      if (planType === 'basic') {
+        if (durationDays === 7) price = 10000n;
+        else if (durationDays === 30) price = 35000n;
+        else throw new Error('INVALID_DURATION');
+      } else if (planType === 'premium') {
+        if (durationDays === 30) price = 50000n;
+        else throw new Error('INVALID_DURATION'); // Note: Plan says 30D VIP=50k. Assuming 7D VIP doesn't exist or has different price, but let's stick to spec.
       }
 
-      await tx
-        .insert(farmingSubscriptions)
-        .values({
-          userId,
-          planType,
-          expiresAt,
-        })
-        .onConflictDoUpdate({
-          target: [farmingSubscriptions.userId],
-          set: {
+      const expiresAt = dayjs.utc().add(durationDays, 'day').toDate();
+
+      return await db.transaction(async (tx) => {
+        if (price > 0n) {
+          const updateResult = await tx
+            .update(users)
+            .set({
+              balance: sql`${users.balance} - ${price}`
+            })
+            .where(sql`${users.id} = ${userId} AND ${users.balance} >= ${price}`)
+            .returning({ id: users.id });
+
+          if (updateResult.length === 0) {
+            throw new Error('INSUFFICIENT_BALANCE');
+          }
+        }
+
+        await tx
+          .insert(farmingSubscriptions)
+          .values({
+            userId,
             planType,
             expiresAt,
-            updatedAt: new Date()
-          }
-        });
+          })
+          .onConflictDoUpdate({
+            target: [farmingSubscriptions.userId],
+            set: {
+              planType,
+              expiresAt,
+              updatedAt: new Date()
+            }
+          });
 
-      return expiresAt;
-    });
+        return expiresAt;
+      });
+    } finally {
+      await redis.del(lockKey);
+    }
   }
 
   /**
    * Upgrade an active basic plan to VIP (premium).
    */
   static async upgradePlan(userId: number): Promise<Date> {
-    return await db.transaction(async (tx) => {
-      const [currentSub] = await tx
-        .select()
-        .from(farmingSubscriptions)
-        .where(eq(farmingSubscriptions.userId, userId))
-        .for('update');
-        
-      if (!currentSub || currentSub.planType !== 'basic' || !currentSub.expiresAt) {
-        throw new Error('INVALID_UPGRADE_STATE');
-      }
+    const lockKey = `lock:purchase:${userId}`;
+    const acquired = await redis.set(lockKey, '1', 'PX', 5000, 'NX');
+    if (acquired !== 'OK') {
+      throw new Error('TRANSACTION_IN_PROGRESS');
+    }
 
-      const fee = this.calculateUpgradeFee(currentSub.expiresAt);
-
-      if (fee > 0n) {
-        const updateResult = await tx
-          .update(users)
-          .set({
-            balance: sql`${users.balance} - ${fee}`
-          })
-          .where(sql`${users.id} = ${userId} AND ${users.balance} >= ${fee}`)
-          .returning({ id: users.id });
-
-        if (updateResult.length === 0) {
-          throw new Error('INSUFFICIENT_BALANCE');
+    try {
+      return await db.transaction(async (tx) => {
+        const [currentSub] = await tx
+          .select()
+          .from(farmingSubscriptions)
+          .where(eq(farmingSubscriptions.userId, userId))
+          .for('update');
+          
+        if (!currentSub || currentSub.planType !== 'basic' || !currentSub.expiresAt) {
+          throw new Error('INVALID_UPGRADE_STATE');
         }
-      }
 
-      await tx
-        .update(farmingSubscriptions)
-        .set({
-          planType: 'premium',
-          updatedAt: new Date()
-        })
-        .where(eq(farmingSubscriptions.userId, userId));
+        const fee = this.calculateUpgradeFee(currentSub.expiresAt);
 
-      return currentSub.expiresAt;
-    });
+        if (fee > 0n) {
+          const updateResult = await tx
+            .update(users)
+            .set({
+              balance: sql`${users.balance} - ${fee}`
+            })
+            .where(sql`${users.id} = ${userId} AND ${users.balance} >= ${fee}`)
+            .returning({ id: users.id });
+
+          if (updateResult.length === 0) {
+            throw new Error('INSUFFICIENT_BALANCE');
+          }
+        }
+
+        await tx
+          .update(farmingSubscriptions)
+          .set({
+            planType: 'premium',
+            updatedAt: new Date()
+          })
+          .where(eq(farmingSubscriptions.userId, userId));
+
+        return currentSub.expiresAt;
+      });
+    } finally {
+      await redis.del(lockKey);
+    }
   }
 
   /**

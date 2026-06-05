@@ -310,7 +310,8 @@
       "upgrade_fee": "Phí nâng cấp: {{fee}} Linh Thạch",
       "success": "Mua gói thành công! Hạn dùng đến {{expiry}}.",
       "insufficient_balance": "Không đủ Linh Thạch. Cần {{required}}, hiện có {{current}}.",
-      "overwrite_warning": "⚠️ Mua gói mới sẽ thay thế gói hiện tại. Bạn có chắc chắn?"
+      "overwrite_warning": "⚠️ Mua gói mới sẽ thay thế gói hiện tại. Bạn có chắc chắn?",
+      "transaction_in_progress": "交易正在处理中，请勿重复点击。"
     }
   }
 }
