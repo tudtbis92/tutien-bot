@@ -40,6 +40,8 @@ type _Character = {
   anomalyFlag: boolean;
 };
 
+type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 // ── Registration ─────────────────────────────────────────────────────────────
 
 /**
@@ -94,7 +96,7 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
   // ── Layers 2–4 inside a single DB transaction with SELECT FOR UPDATE ──────
   // Row-level lock on characters serializes processing for the SAME user at DB level.
   // Two workers processing different users run fully in parallel (no global bottleneck).
-  await db.transaction(async (tx) => {
+  const streakData = await db.transaction(async (tx) => {
     // ── Layer 2a: Fetch character with row lock ───────────────────────────
     const [char] = await tx
       .select()
@@ -102,7 +104,7 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
       .where(eq(characters.discordId, data.userId))
       .for('update'); // SELECT ... FOR UPDATE — row-level lock
 
-    if (!char) return; // User not registered — drop job silently
+    if (!char) return null; // User not registered — drop job silently
 
     // ── voice_leave: clear voice session start (VoiceMinuteWorker awards tu vi) ──
     if (data.type === 'voice_leave') {
@@ -110,7 +112,7 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
         .update(characters)
         .set({ voiceSessionStartedAt: null })
         .where(eq(characters.id, char.id));
-      return;
+      return null;
     }
 
     // From here: message or reaction types only
@@ -120,19 +122,19 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
     const now = data.timestamp;
     if (data.type === 'message' && char.lastMessageAt) {
       const msSinceLast = now - char.lastMessageAt.getTime();
-      if (msSinceLast < GAME_CONFIG.MESSAGE_COOLDOWN_MS) return;
+      if (msSinceLast < GAME_CONFIG.MESSAGE_COOLDOWN_MS) return null;
     }
     if (data.type === 'reaction' && char.lastReactionAt) {
       const msSinceLast = now - char.lastReactionAt.getTime();
-      if (msSinceLast < GAME_CONFIG.REACTION_COOLDOWN_MS) return;
+      if (msSinceLast < GAME_CONFIG.REACTION_COOLDOWN_MS) return null;
     }
 
     // ── Layer 3: Content quality gate (message type only) ────────────────
     if (data.type === 'message') {
       const valid = await isContentValid(data, char.discordId);
       if (!valid) {
-        await incrementAnomalyCounter(char.id);
-        return;
+        await incrementAnomalyCounter(char.id, tx);
+        return null;
       }
     }
 
@@ -157,7 +159,7 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
       const absoluteCap = currentRealm.entryThreshold + currentRealm.tuViRequired;
       if (Number(char.tuVi) >= absoluteCap) {
         // Already at or past breakthrough threshold — no award, no anomaly
-        return;
+        return null;
       }
     }
     const updateSet: Record<string, unknown> = {
@@ -184,8 +186,8 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
 
     if (!updated) {
       // RETURNING empty = daily cap hit
-      await incrementAnomalyCounter(char.id);
-      return;
+      await incrementAnomalyCounter(char.id, tx);
+      return null;
     }
 
     // ── Post-award: upsert guild_activity for guild leaderboard ──────────
@@ -197,16 +199,24 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
         set: { lastActiveAt: sql`now()` },
       });
 
-    // ── Post-award: daily streak logic (runs outside tx to avoid long hold) ─
-    // Streak bonus goes DIRECTLY to tu_vi (bypasses daily cap — it's a reward)
-    // Called outside transaction to release row lock before streak DB write
-    updateStreak(char.id, data.timestamp, {
+    return {
+      id: char.id,
       streakDays: char.streakDays,
       lastActiveDate: char.lastActiveDate,
-    }).catch((err) =>
-      logger.error('ActivityWorker', `updateStreak failed for char ${char.id}`, err),
-    );
+    };
   });
+
+  // ── Post-award: daily streak logic (runs outside tx to avoid long hold) ─
+  // Streak bonus goes DIRECTLY to tu_vi (bypasses daily cap — it's a reward)
+  // Called outside transaction to release row lock before streak DB write
+  if (streakData) {
+    updateStreak(streakData.id, data.timestamp, {
+      streakDays: streakData.streakDays,
+      lastActiveDate: streakData.lastActiveDate,
+    }).catch((err) =>
+      logger.error('ActivityWorker', `updateStreak failed for char ${streakData!.id}`, err),
+    );
+  }
 }
 
 // ── Layer 5: Anomaly Counter ──────────────────────────────────────────────────
@@ -216,7 +226,7 @@ async function processActivityJob(data: ActivityJobData): Promise<void> {
  * Key: anomaly:{charId}:{utcDate} with 25h TTL.
  * If counter exceeds ANOMALY_THRESHOLD, set anomaly_flag = true in DB.
  */
-async function incrementAnomalyCounter(charId: number): Promise<void> {
+async function incrementAnomalyCounter(charId: number, tx: TxClient = db as unknown as TxClient): Promise<void> {
   const utcDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const key = `anomaly:${charId}:${utcDate}`;
 
@@ -228,7 +238,7 @@ async function incrementAnomalyCounter(charId: number): Promise<void> {
 
   if (count >= GAME_CONFIG.ANOMALY_THRESHOLD) {
     // Set anomaly_flag in DB for admin review
-    await db
+    await tx
       .update(characters)
       .set({ anomalyFlag: true })
       .where(eq(characters.id, charId));
