@@ -77,7 +77,7 @@ describe('FarmingLoop', () => {
       }
     };
 
-    const loop = new FarmingLoop(client, settings, 'channel123');
+    const loop = new FarmingLoop(client, settings, 'channel123', '5');
     loop.start();
 
     // Verify handleMessage is registered
@@ -124,7 +124,7 @@ describe('FarmingLoop', () => {
       }
     };
 
-    const loop = new FarmingLoop(client, settings, 'channel123');
+    const loop = new FarmingLoop(client, settings, 'channel123', '5');
     loop.start();
 
     // Simulate owo cash response below threshold
@@ -152,7 +152,7 @@ describe('FarmingLoop', () => {
   });
 
   it('should detect captcha and stop loop, destroying client and sending IPC status', async () => {
-    const loop = new FarmingLoop(client, DEFAULT_FARMING_SETTINGS, 'channel123');
+    const loop = new FarmingLoop(client, DEFAULT_FARMING_SETTINGS, 'channel123', '5');
     loop.start();
 
     const mockMessage = {
@@ -168,7 +168,8 @@ describe('FarmingLoop', () => {
     // Verify it sent CAPTCHA_DETECTED status via IPC
     expect(process.send).toHaveBeenCalledWith({
       type: 'STATUS',
-      botId: 'selfbot123',
+      botId: '5',
+      discordId: 'selfbot123',
       status: 'CAPTCHA_DETECTED'
     });
 

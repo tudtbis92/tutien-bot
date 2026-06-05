@@ -217,7 +217,7 @@ export class SelfBotMaster {
       botIds: new Set()
     });
 
-    worker.on('message', async (message: { type: string, botId: string, status: string, error?: string }) => {
+    worker.on('message', async (message: { type: string, botId: string, discordId?: string, status: string, error?: string }) => {
       if (message && message.type === 'STATUS') {
         await this.handleWorkerStatus(message);
       }
@@ -235,18 +235,18 @@ export class SelfBotMaster {
     return worker;
   }
 
-  private async handleWorkerStatus(message: { botId: string, status: string, error?: string }) {
-    const { botId, status, error } = message;
+  private async handleWorkerStatus(message: { botId: string, discordId?: string, status: string, error?: string }) {
+    const { botId, discordId, status, error } = message;
     
     if (status === 'CAPTCHA_DETECTED') {
-      logger.warn('SelfBotMaster', `Bot ${botId} detected CAPTCHA!`);
+      logger.warn('SelfBotMaster', `Bot ${botId} (Discord ID: ${discordId}) detected CAPTCHA!`);
       try {
         await db.update(farmingAccounts)
           .set({ status: 'captcha_waiting' })
           .where(eq(farmingAccounts.userId, parseInt(botId, 10)));
           
-        if (this.manager) {
-          this.manager.broadcast({ type: 'NOTIFY_CAPTCHA', userId: botId });
+        if (this.manager && discordId) {
+          this.manager.broadcast({ type: 'NOTIFY_CAPTCHA', userId: discordId });
         }
       } catch (dbErr) {
         logger.error('SelfBotMaster', `Failed to update bot ${botId} status to captcha_waiting`, dbErr);

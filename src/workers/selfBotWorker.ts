@@ -36,10 +36,13 @@ export class FarmingLoop {
   private economyTimer: NodeJS.Timeout | null = null;
   private inventoryTimer: NodeJS.Timeout | null = null;
 
-  constructor(client: Client, settings: FarmingSettings | null, channelId: string | null) {
+  private dbUserId: string;
+
+  constructor(client: Client, settings: FarmingSettings | null, channelId: string | null, dbUserId: string) {
     this.client = client;
     this.settings = settings || DEFAULT_FARMING_SETTINGS;
     this.channelId = channelId;
+    this.dbUserId = dbUserId;
     
     this.client.on('messageCreate', this.handleMessage.bind(this));
   }
@@ -288,7 +291,12 @@ export class FarmingLoop {
       console.warn(`[${this.client.user?.id}] CAPTCHA DETECTED! Stopping loops.`);
       this.stop();
       if (process.send) {
-        process.send({ type: 'STATUS', botId: this.client.user?.id, status: 'CAPTCHA_DETECTED' });
+        process.send({ 
+          type: 'STATUS', 
+          botId: this.dbUserId, 
+          discordId: this.client.user?.id, 
+          status: 'CAPTCHA_DETECTED' 
+        });
       }
       this.client.destroy();
       return;
@@ -398,7 +406,7 @@ export class WorkerManager {
         client.once('ready', () => {
           this.sendStatus(bot.id, 'READY');
           
-          const loop = new FarmingLoop(client, bot.settings || null, bot.channelId || null);
+          const loop = new FarmingLoop(client, bot.settings || null, bot.channelId || null, bot.id);
           this.loops.set(bot.id, loop);
           loop.start();
         });
@@ -457,7 +465,13 @@ export class WorkerManager {
 
   private sendStatus(botId: string, status: string, error?: string) {
     if (process.send) {
-      process.send({ type: 'STATUS', botId, status, error });
+      process.send({ 
+        type: 'STATUS', 
+        botId, 
+        discordId: this.clients.get(botId)?.user?.id, 
+        status, 
+        error 
+      });
     }
   }
 }
