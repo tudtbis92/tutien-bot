@@ -1,7 +1,7 @@
 import { fork, ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ShardingManager } from 'discord.js';
-import type { FarmingSettings } from '../types/farming.js';
+import { DEFAULT_FARMING_SETTINGS, type FarmingSettings } from '../types/farming.js';
 import { db } from '../db/client.js';
 import { farmingAccounts, proxies, farmingSubscriptions } from '../db/schema/farming.js';
 import { eq } from 'drizzle-orm';
@@ -122,7 +122,23 @@ export class SelfBotMaster {
           }
 
           let finalSettings = account.settings as FarmingSettings | null;
-          if (finalSettings && subscription.planType !== 'premium') {
+          if (!finalSettings) {
+            finalSettings = {
+              ...DEFAULT_FARMING_SETTINGS,
+              active: true,
+              commands: {
+                ...DEFAULT_FARMING_SETTINGS.commands,
+                pray: {
+                  enabled: subscription.planType === 'premium',
+                  targetId: null,
+                }
+              }
+            };
+          } else {
+            finalSettings.active = true;
+          }
+
+          if (subscription.planType !== 'premium') {
             finalSettings = FarmingSubscriptionService.sanitizeFarmingSettings(finalSettings, subscription.planType);
           }
 

@@ -3,6 +3,8 @@ import { SelfBotMaster } from '../selfBotMaster.js';
 import * as child_process from 'node:child_process';
 import { EncryptionService } from '../../services/encryptionService.js';
 import { EventEmitter } from 'node:events';
+import { DEFAULT_FARMING_SETTINGS } from '../../types/farming.js';
+import { FarmingSubscriptionService } from '../../services/farming/subscriptionService.js';
 
 const mockFork = vi.hoisted(() => vi.fn());
 vi.mock('node:child_process', () => ({
@@ -189,6 +191,21 @@ describe('SelfBotMaster', () => {
 
     await master.rebalance();
 
+    const expectedSettings = FarmingSubscriptionService.sanitizeFarmingSettings(
+      {
+        ...DEFAULT_FARMING_SETTINGS,
+        active: true,
+        commands: {
+          ...DEFAULT_FARMING_SETTINGS.commands,
+          pray: {
+            enabled: false,
+            targetId: null,
+          }
+        }
+      },
+      'basic'
+    );
+
     expect(mockChild.send).toHaveBeenCalledWith({
       type: 'START_BOTS',
       payload: [{
@@ -197,7 +214,7 @@ describe('SelfBotMaster', () => {
         proxy: 'http://proxy',
         workerId: null,
         channelId: null,
-        settings: null
+        settings: expectedSettings
       }]
     });
   });
@@ -293,6 +310,21 @@ describe('SelfBotMaster', () => {
     expect(mocks.mockUpdate).toHaveBeenCalled();
     expect(mocks.mockSet).toHaveBeenCalledWith(expect.objectContaining({ channelId: 'new-channel-123' }));
 
+    const expectedSettings = FarmingSubscriptionService.sanitizeFarmingSettings(
+      {
+        ...DEFAULT_FARMING_SETTINGS,
+        active: true,
+        commands: {
+          ...DEFAULT_FARMING_SETTINGS.commands,
+          pray: {
+            enabled: false,
+            targetId: null,
+          }
+        }
+      },
+      'basic'
+    );
+
     expect(mockChild.send).toHaveBeenCalledWith({
       type: 'START_BOTS',
       payload: [{
@@ -301,7 +333,7 @@ describe('SelfBotMaster', () => {
         proxy: undefined,
         workerId: null,
         channelId: 'new-channel-123',
-        settings: null
+        settings: expectedSettings
       }]
     });
   });
