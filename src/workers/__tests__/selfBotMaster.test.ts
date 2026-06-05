@@ -11,8 +11,10 @@ vi.mock('node:child_process', () => ({
 
 const mocks = vi.hoisted(() => {
   const mockWhere = vi.fn();
-  const mockLeftJoin = vi.fn(() => ({ where: mockWhere }));
-  const mockFrom = vi.fn(() => ({ leftJoin: mockLeftJoin, where: mockWhere }));
+  const mockLeftJoin = vi.fn();
+  const chain = { leftJoin: mockLeftJoin, where: mockWhere };
+  mockLeftJoin.mockReturnValue(chain);
+  const mockFrom = vi.fn(() => chain);
   const mockSelect = vi.fn(() => ({ from: mockFrom }));
   const mockSet = vi.fn(() => ({ where: mockWhere }));
   const mockUpdate = vi.fn(() => ({ set: mockSet }));
@@ -44,6 +46,11 @@ vi.mock('../../db/schema/farming.js', () => ({
   proxies: {
     id: 'id',
   },
+  farmingSubscriptions: {
+    userId: 'userId',
+    planType: 'planType',
+    expiresAt: 'expiresAt',
+  },
 }));
 
 describe('SelfBotMaster', () => {
@@ -51,9 +58,10 @@ describe('SelfBotMaster', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    const chain = { leftJoin: mocks.mockLeftJoin, where: mocks.mockWhere };
+    mocks.mockLeftJoin.mockReturnValue(chain);
     mocks.mockSelect.mockImplementation(() => ({ from: mocks.mockFrom }));
-    mocks.mockFrom.mockImplementation(() => ({ leftJoin: mocks.mockLeftJoin, where: mocks.mockWhere }));
-    mocks.mockLeftJoin.mockImplementation(() => ({ where: mocks.mockWhere }));
+    mocks.mockFrom.mockImplementation(() => chain);
     mocks.mockUpdate.mockImplementation(() => ({ set: mocks.mockSet }));
     mocks.mockSet.mockImplementation(() => ({ where: mocks.mockWhere }));
     
@@ -80,7 +88,12 @@ describe('SelfBotMaster', () => {
         channelId: null,
         settings: null
       },
-      proxy: null
+      proxy: null,
+      subscription: {
+        userId: i + 1,
+        planType: 'basic',
+        expiresAt: new Date(Date.now() + 86400 * 1000)
+      }
     }));
 
     mocks.mockWhere.mockResolvedValueOnce(mockAccounts);
@@ -111,7 +124,12 @@ describe('SelfBotMaster', () => {
         channelId: null,
         settings: null
       },
-      proxy: null
+      proxy: null,
+      subscription: {
+        userId: i + 1,
+        planType: 'basic',
+        expiresAt: new Date(Date.now() + 86400 * 1000)
+      }
     }));
 
     mocks.mockWhere.mockResolvedValueOnce(mockAccounts);
@@ -147,7 +165,12 @@ describe('SelfBotMaster', () => {
         channelId: null,
         settings: null
       },
-      proxy: null
+      proxy: null,
+      subscription: {
+        userId: 1,
+        planType: 'basic',
+        expiresAt: new Date(Date.now() + 86400 * 1000)
+      }
     }];
 
     mocks.mockWhere.mockResolvedValueOnce(mockAccounts);
@@ -186,7 +209,12 @@ describe('SelfBotMaster', () => {
         channelId: null,
         settings: null
       },
-      proxy: null
+      proxy: null,
+      subscription: {
+        userId: 1,
+        planType: 'basic',
+        expiresAt: new Date(Date.now() + 86400 * 1000)
+      }
     }];
 
     mocks.mockWhere.mockResolvedValue(mockAccounts);

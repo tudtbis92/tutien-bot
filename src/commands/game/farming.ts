@@ -85,23 +85,18 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         // eslint-disable-next-line i18next/no-literal-string
         .setLabel('Mua Gói VIP (30 Ngày)')
         .setStyle(ButtonStyle.Success)
-        .setEmoji('🌟')
+        .setEmoji('🌟'),
+      new ButtonBuilder()
+        .setCustomId('farming:upgrade_vip')
+        // eslint-disable-next-line i18next/no-literal-string
+        .setLabel('Nâng cấp VIP / Upgrade VIP')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('💎')
     );
 
     const sub = await db.query.farmingSubscriptions.findFirst({
       where: eq(farmingSubscriptions.userId, userRow.id),
     });
-
-    if (sub?.planType === 'basic' && sub.expiresAt) {
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId('farming:upgrade_vip')
-          // eslint-disable-next-line i18next/no-literal-string
-          .setLabel('Nâng cấp VIP / Upgrade VIP')
-          .setStyle(ButtonStyle.Success)
-          .setEmoji('💎')
-      );
-    }
 
     const planName = sub ? t(`game:farming.subscription.types.${sub.planType}`) : t('game:farming.subscription.types.free');
     // eslint-disable-next-line i18next/no-literal-string
@@ -274,7 +269,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       );
     }
 
-    await interaction.reply({ embeds: [embed], components: [row] });
+    await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
   }
 }
 

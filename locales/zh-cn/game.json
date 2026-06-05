@@ -275,7 +275,7 @@
   "farming": {
     "setup": {
       "title": "🤖 OwO 自动挂机服务",
-      "description": "本系统提供 self-bot 租用服务，用于自动执行 OwO 机器人的操作（如 hunt, battle, pray/curse 等），帮助您高效积累 OwO 资金和道具。\n\n该服务独立于修仙主游戏运行。唯一的关联是您需要消耗 **灵石** 来购买/续费该服务。\n\n💰 **服务价格**:\n• 7天礼包 (周): **10,000 灵石**\n• 30天礼包 (月): **35,000 灵石**\n\n⚠️ **警告**: 使用此服务需要您提供 Discord Token 以进行自动化操作。所有数据均使用 AES-256-GCM 安全加密，但 self-bot 违反了 Discord 的服务条款 (TOS)。您将独自承担账号的任何风险。\n\n点击下方相应按钮配置 Token 或购买服务包。",
+      "description": "本系统提供 self-bot 租用服务，用于自动执行 OwO 机器人的操作（如 hunt, battle, pray/curse 等），帮助您高效积累 OwO 资金和道具。\n\n该服务独立于修仙主游戏运行。唯一的关联是您需要消耗 **灵石** 来购买/续费该服务。\n\n💰 **服务价格**:\n• 7天礼包 (周): **10,000 灵石**\n• 30天礼包 (月): **35,000 灵石**\n• VIP礼包 (30天): **50,000 灵石**\n• VIP升级: **剩余天数 × 1,000 灵石/天**\n\n⚠️ **警告**: 使用此服务需要您提供 Discord Token 以进行自动化操作。所有数据均使用 AES-256-GCM 安全加密，但 self-bot 违反了 Discord 的服务条款 (TOS)。您将独自承担账号的任何风险。\n\n点击下方相应按钮配置 Token 或购买服务包。",
       "button_label": "配置 Token",
       "button_buy_weekly": "购买周卡",
       "button_buy_monthly": "购买月卡",

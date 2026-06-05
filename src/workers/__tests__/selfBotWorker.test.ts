@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FarmingLoop } from '../selfBotWorker.js';
 import { Client, TextChannel } from 'discord.js-selfbot-v13';
@@ -49,7 +50,11 @@ describe('FarmingLoop', () => {
     });
 
     // Mock process.send
-    vi.spyOn(process as any, 'send').mockImplementation(vi.fn());
+    if (typeof (process as any).send === 'function') {
+      vi.spyOn(process as any, 'send').mockImplementation(vi.fn());
+    } else {
+      (process as any).send = vi.fn();
+    }
   });
 
   afterEach(() => {
