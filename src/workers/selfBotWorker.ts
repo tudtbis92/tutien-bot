@@ -376,6 +376,64 @@ export class FarmingLoop {
 
     // After captcha check, ignore if not in configured channel
     if (message.channel.id !== this.channelId) return;
+
+    // Parse text-based inventory messages (e.g. for self-bots where OwO sends inventory as text)
+    const isTextInventory = content.includes('inventory') || content.includes('kho đồ') || 
+                            content.includes('hành trang') || content.includes('背包') ||
+                            /`(0?49|0?50|0?5[1-9]|0?6[0-9]|0?7[0-1])`/.test(content);
+
+    if (isTextInventory && this.settings.autoGem?.enabled) {
+      console.log(`[DEBUG] [SelfBot] Parsing text inventory response...`);
+      // Strip custom emojis to avoid matching emoji IDs as quantities
+      const cleanContent = content.replace(/<a?:[a-zA-Z0-9_]+:[0-9]+>/g, '');
+      const gemRegex = /`(0?49|0?50|0?5[1-9]|0?6[0-9]|0?7[0-1])`[^0-9⁰¹²³⁴⁵⁶⁷⁸⁹\n`]*([⁰¹²³⁴⁵⁶⁷⁸⁹]+|[0-9]+)?/g;
+      const matches = [...cleanContent.matchAll(gemRegex)];
+      
+      this.inventoryCache.hunting = [];
+      this.inventoryCache.lucky = [];
+      this.inventoryCache.empowering = [];
+      this.lootboxCount = 0;
+      this.fabledLootboxCount = 0;
+      
+      const parseSuperscript = (str?: string): number => {
+        if (!str) return 1;
+        const map: { [key: string]: string } = {
+          '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4',
+          '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9'
+        };
+        let result = '';
+        for (const char of str) {
+          if (map[char]) result += map[char];
+          else if (char >= '0' && char <= '9') result += char;
+        }
+        return result ? parseInt(result, 10) : 1;
+      };
+
+      for (const match of matches) {
+        const id = match[1];
+        const qtyStr = match[2];
+        const qty = parseSuperscript(qtyStr);
+        const num = parseInt(id, 10);
+        
+        if (num === 49) {
+          this.fabledLootboxCount = qty;
+        } else if (num === 50) {
+          this.lootboxCount = qty;
+        } else if (num >= 51 && num <= 57) {
+          const normalizedId = String(num);
+          for (let i = 0; i < qty; i++) this.inventoryCache.hunting.push(normalizedId);
+        } else if (num >= 58 && num <= 64) {
+          const normalizedId = String(num);
+          for (let i = 0; i < qty; i++) this.inventoryCache.lucky.push(normalizedId);
+        } else if (num >= 65 && num <= 71) {
+          const normalizedId = String(num);
+          for (let i = 0; i < qty; i++) this.inventoryCache.empowering.push(normalizedId);
+        }
+      }
+      
+      this.lastInventorySync = Date.now();
+      console.log(`[${this.client.user?.id}] Inventory cache updated (text): hunting: ${this.inventoryCache.hunting.length}, lucky: ${this.inventoryCache.lucky.length}, empowering: ${this.inventoryCache.empowering.length}, lootboxes: ${this.lootboxCount}, fabledLootboxes: ${this.fabledLootboxCount}`);
+    }
     
     // Cowoncy balance parsing for money transfer
     const cashRegex = /you(?: currently)? have (?:__)?\*\*?([\d,]+)\*\*?(?:__)? cowoncy/i;
@@ -501,8 +559,10 @@ export class FarmingLoop {
 
       if (isInventory) {
         if (this.settings.autoGem?.enabled) {
-          const gemRegex = /`(49|50|5[1-9]|6[0-9]|7[0-1])`[ \t]*(?:x|:)?[ \t]*`?([0-9]+)?`?/g;
-          const matches = [...desc.matchAll(gemRegex)];
+          // Strip custom emojis to avoid matching emoji IDs as quantities
+          const cleanDesc = desc.replace(/<a?:[a-zA-Z0-9_]+:[0-9]+>/g, '');
+          const gemRegex = /`(0?49|0?50|0?5[1-9]|0?6[0-9]|0?7[0-1])`[^0-9⁰¹²³⁴⁵⁶⁷⁸⁹\n`]*([⁰¹²³⁴⁵⁶⁷⁸⁹]+|[0-9]+)?/g;
+          const matches = [...cleanDesc.matchAll(gemRegex)];
           
           this.inventoryCache.hunting = [];
           this.inventoryCache.lucky = [];
@@ -510,10 +570,24 @@ export class FarmingLoop {
           this.lootboxCount = 0;
           this.fabledLootboxCount = 0;
           
+          const parseSuperscript = (str?: string): number => {
+            if (!str) return 1;
+            const map: { [key: string]: string } = {
+              '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4',
+              '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9'
+            };
+            let result = '';
+            for (const char of str) {
+              if (map[char]) result += map[char];
+              else if (char >= '0' && char <= '9') result += char;
+            }
+            return result ? parseInt(result, 10) : 1;
+          };
+
           for (const match of matches) {
             const id = match[1];
             const qtyStr = match[2];
-            const qty = qtyStr ? parseInt(qtyStr, 10) : 1;
+            const qty = parseSuperscript(qtyStr);
             const num = parseInt(id, 10);
             
             if (num === 49) {
@@ -521,11 +595,14 @@ export class FarmingLoop {
             } else if (num === 50) {
               this.lootboxCount = qty;
             } else if (num >= 51 && num <= 57) {
-              for (let i = 0; i < qty; i++) this.inventoryCache.hunting.push(id);
+              const normalizedId = String(num);
+              for (let i = 0; i < qty; i++) this.inventoryCache.hunting.push(normalizedId);
             } else if (num >= 58 && num <= 64) {
-              for (let i = 0; i < qty; i++) this.inventoryCache.lucky.push(id);
+              const normalizedId = String(num);
+              for (let i = 0; i < qty; i++) this.inventoryCache.lucky.push(normalizedId);
             } else if (num >= 65 && num <= 71) {
-              for (let i = 0; i < qty; i++) this.inventoryCache.empowering.push(id);
+              const normalizedId = String(num);
+              for (let i = 0; i < qty; i++) this.inventoryCache.empowering.push(normalizedId);
             }
           }
           

@@ -374,4 +374,41 @@ describe('FarmingLoop', () => {
 
     loop.stop();
   });
+
+  it('should parse text-based inventory response with leading zeros and superscripts correctly', async () => {
+    const settings = {
+      ...DEFAULT_FARMING_SETTINGS,
+      active: true,
+      autoGem: {
+        enabled: true,
+        preferredTiers: { hunting: 3, lucky: 3, empowering: 1 },
+        useSpecialGemsDuringEvents: true
+      }
+    };
+
+    const loop = new FarmingLoop(client, settings, 'channel123', '5');
+    loop.start();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const mockMessage = {
+      author: { id: '408785106942164992' },
+      content: `**====== Annie của Boss's Inventory ======**
+\`049\`<a:flootbox:725570544065445919>⁰⁰³    \`050\`<:box:427352600476647425>⁰⁵⁰    \`051\`<:gem1:510366764249382922>⁰⁰²    \`058\`<:gem2:510366763972558848>⁰⁰¹
+\`065\`<:gem3:510366763972558848>⁰⁰¹`,
+      channel: { id: 'channel123' },
+      attachments: { size: 0 },
+      embeds: []
+    };
+
+    await handleMessageCallback(mockMessage);
+
+    const cache = (loop as any).inventoryCache;
+    expect(cache.hunting).toEqual(['51', '51']);
+    expect(cache.lucky).toEqual(['58']);
+    expect(cache.empowering).toEqual(['65']);
+    expect((loop as any).lootboxCount).toBe(50);
+    expect((loop as any).fabledLootboxCount).toBe(3);
+
+    loop.stop();
+  });
 });
