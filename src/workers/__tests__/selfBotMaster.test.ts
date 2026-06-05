@@ -219,6 +219,81 @@ describe('SelfBotMaster', () => {
     });
   });
 
+  it('forces premium features to true for premium users even if settings in DB are basic/disabled', async () => {
+    const mockAccounts = [{
+      account: {
+        userId: 1,
+        encryptedToken: 'enc',
+        iv: 'iv',
+        tag: 'tag',
+        keyVersion: 'v1',
+        proxyUrl: 'http://proxy',
+        workerId: null,
+        channelId: null,
+        settings: {
+          ...DEFAULT_FARMING_SETTINGS,
+          commands: {
+            ...DEFAULT_FARMING_SETTINGS.commands,
+            pray: { enabled: false, targetId: null }
+          },
+          autoGem: {
+            ...DEFAULT_FARMING_SETTINGS.autoGem,
+            enabled: false
+          },
+          antiBan: {
+            socialChatter: false,
+            periodicSleep: false
+          },
+          economy: {
+            ...DEFAULT_FARMING_SETTINGS.economy,
+            autoUpgradeHuntbot: false
+          }
+        }
+      },
+      proxy: null,
+      subscription: {
+        userId: 1,
+        planType: 'premium',
+        expiresAt: new Date(Date.now() + 86400 * 1000)
+      }
+    }];
+
+    mocks.mockWhere.mockResolvedValueOnce(mockAccounts);
+    vi.spyOn(EncryptionService, 'decrypt').mockReturnValue('dec_token');
+
+    const mockChild = new EventEmitter() as unknown as child_process.ChildProcess;
+    mockChild.send = vi.fn();
+    mockChild.kill = vi.fn();
+    mockFork.mockReturnValue(mockChild);
+
+    await master.rebalance();
+
+    expect(mockChild.send).toHaveBeenCalledWith({
+      type: 'START_BOTS',
+      payload: [{
+        id: '1',
+        token: 'dec_token',
+        proxy: 'http://proxy',
+        workerId: null,
+        channelId: null,
+        settings: expect.objectContaining({
+          active: true,
+          commands: expect.objectContaining({
+            pray: expect.objectContaining({ enabled: true })
+          }),
+          autoGem: expect.objectContaining({ enabled: true }),
+          antiBan: expect.objectContaining({
+            socialChatter: true,
+            periodicSleep: true
+          }),
+          economy: expect.objectContaining({
+            autoUpgradeHuntbot: true
+          })
+        })
+      }]
+    });
+  });
+
   it('restarts a worker if it crashes unexpectedly', async () => {
     const mockAccounts = [{
       account: {

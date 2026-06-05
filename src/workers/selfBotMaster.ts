@@ -136,6 +136,36 @@ export class SelfBotMaster {
             };
           } else {
             finalSettings.active = true;
+            if (subscription.planType === 'premium') {
+              // Ensure premium features are enabled by default even if settings were previously basic/disabled
+              if (!finalSettings.commands) {
+                finalSettings.commands = { ...DEFAULT_FARMING_SETTINGS.commands };
+              }
+              if (!finalSettings.commands.pray) {
+                finalSettings.commands.pray = { enabled: true, targetId: null };
+              } else {
+                finalSettings.commands.pray.enabled = true;
+              }
+              
+              if (!finalSettings.economy) {
+                finalSettings.economy = { ...DEFAULT_FARMING_SETTINGS.economy };
+              } else {
+                finalSettings.economy.autoUpgradeHuntbot = true;
+              }
+
+              if (!finalSettings.autoGem) {
+                finalSettings.autoGem = { ...DEFAULT_FARMING_SETTINGS.autoGem };
+              } else {
+                finalSettings.autoGem.enabled = true;
+              }
+
+              if (!finalSettings.antiBan) {
+                finalSettings.antiBan = { ...DEFAULT_FARMING_SETTINGS.antiBan };
+              } else {
+                finalSettings.antiBan.socialChatter = true;
+                finalSettings.antiBan.periodicSleep = true;
+              }
+            }
           }
 
           if (subscription.planType !== 'premium') {
