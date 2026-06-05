@@ -40,7 +40,7 @@ export class FarmingLoop {
 
   constructor(client: Client, settings: FarmingSettings | null, channelId: string | null, dbUserId: string) {
     this.client = client;
-    this.settings = settings || DEFAULT_FARMING_SETTINGS;
+    this.settings = settings || { ...DEFAULT_FARMING_SETTINGS, active: true };
     this.channelId = channelId;
     this.dbUserId = dbUserId;
     
