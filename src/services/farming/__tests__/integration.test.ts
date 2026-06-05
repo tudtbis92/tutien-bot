@@ -253,9 +253,12 @@ describe('Monetization Integration Tests', () => {
     // This flow specifically tests the service, not the master. 
     // We mock the db.transaction to simulate this.
     const mockTx = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      for: vi.fn().mockResolvedValue([]),
       update: vi.fn().mockReturnThis(),
       set: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
       returning: vi.fn().mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([]), // First succeeds, second fails
       insert: vi.fn().mockReturnThis(),
       values: vi.fn().mockReturnThis(),

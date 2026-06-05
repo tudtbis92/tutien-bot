@@ -54,9 +54,12 @@ describe('FarmingSubscriptionService', () => {
     it('should calculate correct prices and use transaction', async () => {
       // Mock db.transaction to just execute the callback with a mock tx object
       const mockTx = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([{ id: 1 }]),
         insert: vi.fn().mockReturnThis(),
         values: vi.fn().mockReturnThis(),
@@ -80,9 +83,12 @@ describe('FarmingSubscriptionService', () => {
 
     it('should throw INSUFFICIENT_BALANCE if returning is empty', async () => {
       const mockTx = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([]), // Empty array simulates insufficient balance
       };
       
@@ -105,9 +111,12 @@ describe('FarmingSubscriptionService', () => {
     // TC-07-12: balance exactly equals fee (boundary case)
     it('TC-07-12: should succeed when balance exactly equals the plan fee', async () => {
       const mockTx = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([{ id: 1 }]), // balance == fee: UPDATE matches 1 row
         insert: vi.fn().mockReturnThis(),
         values: vi.fn().mockReturnThis(),
@@ -144,9 +153,12 @@ describe('FarmingSubscriptionService', () => {
       redis.del = vi.fn();
 
       const mockTx = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([{ id: 1 }]),
         insert: vi.fn().mockReturnThis(),
         values: vi.fn().mockReturnThis(),
@@ -174,9 +186,12 @@ describe('FarmingSubscriptionService', () => {
       redis.del = vi.fn();
 
       const mockTx = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([]), // Empty array simulates insufficient balance
       };
       
@@ -192,6 +207,22 @@ describe('FarmingSubscriptionService', () => {
 
       redis.set = originalSet;
       redis.del = originalDel;
+    });
+
+    it('should throw TRANSACTION_IN_PROGRESS if purchase is attempted within 5 seconds of last update', async () => {
+      const mockTx = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([{ updatedAt: new Date(Date.now() - 2000) }]), // Updated 2 seconds ago
+      };
+
+      vi.mocked(db.transaction).mockImplementation(async (cb) => {
+        return await cb(mockTx as any);
+      });
+
+      await expect(FarmingSubscriptionService.purchasePlan(1, 'basic', 7))
+        .rejects.toThrow('TRANSACTION_IN_PROGRESS');
     });
   });
 
@@ -346,6 +377,22 @@ describe('FarmingSubscriptionService', () => {
 
       redis.set = originalSet;
       redis.del = originalDel;
+    });
+
+    it('should throw TRANSACTION_IN_PROGRESS if upgrade is attempted within 5 seconds of last update', async () => {
+      const mockTx = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([{ planType: 'basic', expiresAt: new Date(Date.now() + 100000), updatedAt: new Date(Date.now() - 2000) }]), // Updated 2 seconds ago
+      };
+
+      vi.mocked(db.transaction).mockImplementation(async (cb) => {
+        return await cb(mockTx as any);
+      });
+
+      await expect(FarmingSubscriptionService.upgradePlan(1))
+        .rejects.toThrow('TRANSACTION_IN_PROGRESS');
     });
   });
 });

@@ -58,6 +58,20 @@ export class FarmingSubscriptionService {
       const expiresAt = dayjs.utc().add(durationDays, 'day').toDate();
 
       const result = await db.transaction(async (tx) => {
+        // Idempotency check: check if the user has a subscription updated in the last 5 seconds
+        const [currentSub] = await tx
+          .select()
+          .from(farmingSubscriptions)
+          .where(eq(farmingSubscriptions.userId, userId))
+          .for('update');
+
+        if (currentSub && currentSub.updatedAt) {
+          const msSinceUpdate = Date.now() - currentSub.updatedAt.getTime();
+          if (msSinceUpdate < 5000) {
+            throw new Error('TRANSACTION_IN_PROGRESS');
+          }
+        }
+
         if (price > 0n) {
           const updateResult = await tx
             .update(users)
@@ -121,6 +135,13 @@ export class FarmingSubscriptionService {
           
         if (!currentSub || currentSub.planType !== 'basic' || !currentSub.expiresAt) {
           throw new Error('INVALID_UPGRADE_STATE');
+        }
+
+        if (currentSub.updatedAt) {
+          const msSinceUpdate = Date.now() - currentSub.updatedAt.getTime();
+          if (msSinceUpdate < 5000) {
+            throw new Error('TRANSACTION_IN_PROGRESS');
+          }
         }
 
         const fee = this.calculateUpgradeFee(currentSub.expiresAt);
