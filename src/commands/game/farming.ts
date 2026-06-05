@@ -289,11 +289,15 @@ export async function handleFarmingStartButton(interaction: ButtonInteraction): 
 }
 
 export async function handleFarmingBuyWeeklyButton(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
   const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
   const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);
 
-  if (!userRow) return;
+  if (!userRow) {
+    await interaction.editReply({ content: t('game:farming.errors.not_registered') });
+    return;
+  }
 
   const sub = await db.query.farmingSubscriptions.findFirst({
     where: eq(farmingSubscriptions.userId, userRow.id),
@@ -314,15 +318,19 @@ export async function handleFarmingBuyWeeklyButton(interaction: ButtonInteractio
       .setStyle(ButtonStyle.Success)
   );
 
-  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  await interaction.editReply({ embeds: [embed], components: [row] });
 }
 
 export async function handleFarmingBuyMonthlyButton(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
   const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
   const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);
 
-  if (!userRow) return;
+  if (!userRow) {
+    await interaction.editReply({ content: t('game:farming.errors.not_registered') });
+    return;
+  }
 
   const sub = await db.query.farmingSubscriptions.findFirst({
     where: eq(farmingSubscriptions.userId, userRow.id),
@@ -343,15 +351,19 @@ export async function handleFarmingBuyMonthlyButton(interaction: ButtonInteracti
       .setStyle(ButtonStyle.Success)
   );
 
-  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  await interaction.editReply({ embeds: [embed], components: [row] });
 }
 
 export async function handleFarmingBuyVipMonthlyButton(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
   const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
   const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);
 
-  if (!userRow) return;
+  if (!userRow) {
+    await interaction.editReply({ content: t('game:farming.errors.not_registered') });
+    return;
+  }
 
   const sub = await db.query.farmingSubscriptions.findFirst({
     where: eq(farmingSubscriptions.userId, userRow.id),
@@ -371,15 +383,19 @@ export async function handleFarmingBuyVipMonthlyButton(interaction: ButtonIntera
       .setStyle(ButtonStyle.Success)
   );
 
-  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  await interaction.editReply({ embeds: [embed], components: [row] });
 }
 
 export async function handleFarmingUpgradeVIPButton(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
   const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
   const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);
 
-  if (!userRow) return;
+  if (!userRow) {
+    await interaction.editReply({ content: t('game:farming.errors.not_registered') });
+    return;
+  }
 
   const sub = await db.query.farmingSubscriptions.findFirst({
     where: eq(farmingSubscriptions.userId, userRow.id),
@@ -387,7 +403,7 @@ export async function handleFarmingUpgradeVIPButton(interaction: ButtonInteracti
 
   if (!sub || sub.planType !== 'basic' || !sub.expiresAt) {
     // eslint-disable-next-line i18next/no-literal-string
-    await interaction.reply({ content: 'Invalid upgrade state.', ephemeral: true });
+    await interaction.editReply({ content: 'Invalid upgrade state.' });
     return;
   }
 
@@ -408,10 +424,12 @@ export async function handleFarmingUpgradeVIPButton(interaction: ButtonInteracti
       .setStyle(ButtonStyle.Success)
   );
 
-  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  await interaction.editReply({ embeds: [embed], components: [row] });
 }
 
 export async function handleFarmingTokenModal(interaction: ModalSubmitInteraction): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
+
   const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
   const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);
@@ -420,7 +438,7 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
   
   // Basic format validation
   if (!token || token.length < 50) {
-    await interaction.reply({ content: t('game:farming.errors.invalid_token'), ephemeral: true });
+    await interaction.editReply({ content: t('game:farming.errors.invalid_token') });
     return;
   }
 
@@ -434,18 +452,18 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
     tag = encrypted.tag;
   } catch (error) {
     logger.error('Farming', 'Failed to encrypt token', error);
-    await interaction.reply({ content: t('game:farming.errors.encryption_failed'), ephemeral: true });
+    await interaction.editReply({ content: t('game:farming.errors.encryption_failed') });
     return;
   }
 
   if (!userRow) {
-    await interaction.reply({ content: t('game:farming.errors.user_not_found'), ephemeral: true });
+    await interaction.editReply({ content: t('game:farming.errors.user_not_found') });
     return;
   }
 
   const selfBotId = getUserIdFromToken(token);
   if (!selfBotId) {
-    await interaction.reply({ content: t('game:farming.errors.invalid_token'), ephemeral: true });
+    await interaction.editReply({ content: t('game:farming.errors.invalid_token') });
     return;
   }
 
@@ -498,14 +516,16 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
     logger.warn('Farming', 'process.send is undefined, cannot notify ShardingManager');
   }
 
-  await interaction.reply({ content: t('game:farming.success.token_saved'), ephemeral: true });
+  await interaction.editReply({ content: t('game:farming.success.token_saved') });
 }
 
 export async function handleConfirmBuyWeekly(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferUpdate();
   const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
   if (!userRow) return;
+
+  const locale = resolveLocale(userRow.locale, interaction.locale);
+  const t = getT(locale);
 
   const { FarmingSubscriptionService } = await import('../../services/farming/subscriptionService.js');
   try {
@@ -513,23 +533,25 @@ export async function handleConfirmBuyWeekly(interaction: ButtonInteraction): Pr
     if (process.send) {
       process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
     }
-    await interaction.update({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
+    await interaction.editReply({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
   } catch (error) {
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
-      await interaction.update({ content: t('game:farming.subscription.insufficient_balance', { required: '10000', current: '?' }), embeds: [], components: [] });
+      await interaction.editReply({ content: t('game:farming.subscription.insufficient_balance', { required: '10000', current: '?' }), embeds: [], components: [] });
     } else {
       logger.error('Farming', 'Failed to purchase weekly plan', error);
       // eslint-disable-next-line i18next/no-literal-string
-      await interaction.update({ content: 'Transaction failed.', embeds: [], components: [] });
+      await interaction.editReply({ content: 'Transaction failed.', embeds: [], components: [] });
     }
   }
 }
 
 export async function handleConfirmBuyMonthly(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferUpdate();
   const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
   if (!userRow) return;
+
+  const locale = resolveLocale(userRow.locale, interaction.locale);
+  const t = getT(locale);
 
   const { FarmingSubscriptionService } = await import('../../services/farming/subscriptionService.js');
   try {
@@ -537,23 +559,25 @@ export async function handleConfirmBuyMonthly(interaction: ButtonInteraction): P
     if (process.send) {
       process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
     }
-    await interaction.update({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
+    await interaction.editReply({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
   } catch (error) {
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
-      await interaction.update({ content: t('game:farming.subscription.insufficient_balance', { required: '35000', current: '?' }), embeds: [], components: [] });
+      await interaction.editReply({ content: t('game:farming.subscription.insufficient_balance', { required: '35000', current: '?' }), embeds: [], components: [] });
     } else {
       logger.error('Farming', 'Failed to purchase monthly plan', error);
       // eslint-disable-next-line i18next/no-literal-string
-      await interaction.update({ content: 'Transaction failed.', embeds: [], components: [] });
+      await interaction.editReply({ content: 'Transaction failed.', embeds: [], components: [] });
     }
   }
 }
 
 export async function handleConfirmBuyVipMonthly(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferUpdate();
   const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
   if (!userRow) return;
+
+  const locale = resolveLocale(userRow.locale, interaction.locale);
+  const t = getT(locale);
 
   const { FarmingSubscriptionService } = await import('../../services/farming/subscriptionService.js');
   try {
@@ -561,23 +585,25 @@ export async function handleConfirmBuyVipMonthly(interaction: ButtonInteraction)
     if (process.send) {
       process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
     }
-    await interaction.update({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
+    await interaction.editReply({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
   } catch (error) {
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
-      await interaction.update({ content: t('game:farming.subscription.insufficient_balance', { required: '50000', current: '?' }), embeds: [], components: [] });
+      await interaction.editReply({ content: t('game:farming.subscription.insufficient_balance', { required: '50000', current: '?' }), embeds: [], components: [] });
     } else {
       logger.error('Farming', 'Failed to purchase VIP monthly plan', error);
       // eslint-disable-next-line i18next/no-literal-string
-      await interaction.update({ content: 'Transaction failed.', embeds: [], components: [] });
+      await interaction.editReply({ content: 'Transaction failed.', embeds: [], components: [] });
     }
   }
 }
 
 export async function handleConfirmUpgradeVIP(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferUpdate();
   const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
   if (!userRow) return;
+
+  const locale = resolveLocale(userRow.locale, interaction.locale);
+  const t = getT(locale);
 
   const { FarmingSubscriptionService } = await import('../../services/farming/subscriptionService.js');
   try {
@@ -585,14 +611,14 @@ export async function handleConfirmUpgradeVIP(interaction: ButtonInteraction): P
     if (process.send) {
       process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
     }
-    await interaction.update({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
+    await interaction.editReply({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
   } catch (error) {
     if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
-      await interaction.update({ content: t('game:farming.subscription.insufficient_balance', { required: '?', current: '?' }), embeds: [], components: [] });
+      await interaction.editReply({ content: t('game:farming.subscription.insufficient_balance', { required: '?', current: '?' }), embeds: [], components: [] });
     } else {
       logger.error('Farming', 'Failed to upgrade VIP plan', error);
       // eslint-disable-next-line i18next/no-literal-string
-      await interaction.update({ content: 'Transaction failed.', embeds: [], components: [] });
+      await interaction.editReply({ content: 'Transaction failed.', embeds: [], components: [] });
     }
   }
 }
