@@ -396,8 +396,23 @@ export class FarmingLoop {
     const myGlobalName = (this.client.user as any)?.globalName?.toLowerCase();
     const myNickname = message.guild?.members?.me?.nickname?.toLowerCase();
     const myDisplayName = message.guild?.members?.me?.displayName?.toLowerCase();
+
+    const actionKeywords = [
+      'found', 'caught',            // English
+      'tìm thấy', 'bắt được',       // Vietnamese
+      '找到了', '抓到了', '发现', '捕获' // Chinese
+    ];
     
-    const isMyHunt = (content.includes('found') || content.includes('caught')) && 
+    let actionIndex = -1;
+    for (const kw of actionKeywords) {
+      const idx = content.indexOf(kw);
+      if (idx !== -1) {
+        actionIndex = idx;
+        break;
+      }
+    }
+
+    const isMyHunt = actionIndex !== -1 && 
       (
         (myUsername && content.includes(myUsername)) || 
         (myGlobalName && content.includes(myGlobalName)) || 
@@ -406,12 +421,8 @@ export class FarmingLoop {
       );
 
     if (isMyHunt && this.settings.autoGem?.enabled) {
-      const foundIndex = content.indexOf('found');
-      const caughtIndex = content.indexOf('caught');
-      const index = foundIndex !== -1 ? foundIndex : caughtIndex;
-      
-      if (index !== -1) {
-        const prefix = content.substring(0, index);
+      if (actionIndex !== -1) {
+        const prefix = content.substring(0, actionIndex);
         const hasHunting = prefix.includes('💎');
         const hasLucky = prefix.includes('🍀');
         const hasEmpowering = prefix.includes('⚔️') || prefix.includes('⚡');
@@ -453,13 +464,25 @@ export class FarmingLoop {
       const desc = message.embeds[0].description?.toLowerCase() || '';
       const author = message.embeds[0].author?.name?.toLowerCase() || '';
       
-      if (author.includes('checklist') || title.includes('checklist')) {
+      const isChecklist = author.includes('checklist') || title.includes('checklist') ||
+                          author.includes('việc cần làm') || title.includes('việc cần làm') ||
+                          author.includes('danh sách') || title.includes('danh sách') ||
+                          author.includes('清单') || title.includes('清单') ||
+                          author.includes('任務') || title.includes('任務');
+
+      if (isChecklist) {
         if (desc.includes('❌') && desc.includes('daily')) {
           await this.executeCommand('owo daily');
         }
       }
       
-      if (author.includes('inventory') || title.includes('inventory')) {
+      const isInventory = author.includes('inventory') || title.includes('inventory') ||
+                          author.includes('kho đồ') || title.includes('kho đồ') ||
+                          author.includes('hành trang') || title.includes('hành trang') ||
+                          author.includes('背包') || title.includes('背包') ||
+                          /`(49|50|5[1-9]|6[0-9]|7[0-1])`/.test(desc);
+
+      if (isInventory) {
         if (this.settings.autoGem?.enabled) {
           const gemRegex = /`(49|50|5[1-9]|6[0-9]|7[0-1])`[ \t]*(?:x|:)?[ \t]*`?([0-9]+)?`?/g;
           const matches = [...desc.matchAll(gemRegex)];
