@@ -44,6 +44,8 @@ export class FarmingLoop {
     empowering: [] as string[]
   };
   private lastInventorySync = 0;
+  private lootboxCount = 0;
+  private fabledLootboxCount = 0;
 
   constructor(client: Client, settings: FarmingSettings | null, channelId: string | null, dbUserId: string) {
     this.client = client;
@@ -133,20 +135,38 @@ export class FarmingLoop {
       this.commandQueue.shift();
 
       if (this.commandQueue.length > 0 && !this.isStopped && !this.isSleeping) {
-        // Human-like delay between consecutive queued commands
-        await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+        // Human-like delay between consecutive queued commands (bypassed in test environment)
+        const delay = process.env.NODE_ENV === 'test' ? 0 : 1000 + Math.random() * 1000;
+        if (delay > 0) {
+          await new Promise(r => setTimeout(r, delay));
+        }
       }
     }
 
     this.isProcessingQueue = false;
   }
 
-  private async triggerInventorySync() {
+  private async triggerInventorySync(force: boolean = false) {
     const now = Date.now();
-    // Throttle inventory sync to once every 5 minutes to avoid spamming owo inv
-    if (now - this.lastInventorySync > 5 * 60 * 1000) {
-      console.log(`[${this.client.user?.id}] Inventory cache depleted or out of sync. Fetching owo inv...`);
+    const hasLootboxes = this.lootboxCount > 0 || this.fabledLootboxCount > 0;
+    
+    // Bypass throttle if forced or if we have lootboxes to open
+    if (force || hasLootboxes || (now - this.lastInventorySync > 5 * 60 * 1000)) {
       this.lastInventorySync = now;
+      
+      if (this.lootboxCount > 0) {
+        console.log(`[${this.client.user?.id}] Lootboxes available (${this.lootboxCount}). Opening all lootboxes...`);
+        await this.executeCommand('owo lb all');
+        this.lootboxCount = 0;
+      }
+      
+      if (this.fabledLootboxCount > 0) {
+        console.log(`[${this.client.user?.id}] Fabled lootboxes available (${this.fabledLootboxCount}). Opening fabled lootbox...`);
+        await this.executeCommand('owo lb f');
+        this.fabledLootboxCount = 0;
+      }
+
+      console.log(`[${this.client.user?.id}] Inventory cache depleted or out of sync. Fetching owo inv...`);
       await this.executeCommand('owo inv');
     }
   }
@@ -441,12 +461,14 @@ export class FarmingLoop {
       
       if (author.includes('inventory') || title.includes('inventory')) {
         if (this.settings.autoGem?.enabled) {
-          const gemRegex = /`(5[1-9]|6[0-9]|7[0-1])`[ \t]*(?:x|:)?[ \t]*`?([0-9]+)?`?/g;
+          const gemRegex = /`(49|50|5[1-9]|6[0-9]|7[0-1])`[ \t]*(?:x|:)?[ \t]*`?([0-9]+)?`?/g;
           const matches = [...desc.matchAll(gemRegex)];
           
           this.inventoryCache.hunting = [];
           this.inventoryCache.lucky = [];
           this.inventoryCache.empowering = [];
+          this.lootboxCount = 0;
+          this.fabledLootboxCount = 0;
           
           for (const match of matches) {
             const id = match[1];
@@ -454,7 +476,11 @@ export class FarmingLoop {
             const qty = qtyStr ? parseInt(qtyStr, 10) : 1;
             const num = parseInt(id, 10);
             
-            if (num >= 51 && num <= 57) {
+            if (num === 49) {
+              this.fabledLootboxCount = qty;
+            } else if (num === 50) {
+              this.lootboxCount = qty;
+            } else if (num >= 51 && num <= 57) {
               for (let i = 0; i < qty; i++) this.inventoryCache.hunting.push(id);
             } else if (num >= 58 && num <= 64) {
               for (let i = 0; i < qty; i++) this.inventoryCache.lucky.push(id);
@@ -464,7 +490,7 @@ export class FarmingLoop {
           }
           
           this.lastInventorySync = Date.now();
-          console.log(`[${this.client.user?.id}] Inventory cache updated: hunting: ${this.inventoryCache.hunting.length}, lucky: ${this.inventoryCache.lucky.length}, empowering: ${this.inventoryCache.empowering.length}`);
+          console.log(`[${this.client.user?.id}] Inventory cache updated: hunting: ${this.inventoryCache.hunting.length}, lucky: ${this.inventoryCache.lucky.length}, empowering: ${this.inventoryCache.empowering.length}, lootboxes: ${this.lootboxCount}, fabledLootboxes: ${this.fabledLootboxCount}`);
         }
       }
     }

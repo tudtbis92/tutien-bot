@@ -209,7 +209,7 @@ describe('FarmingLoop', () => {
       attachments: { size: 0 },
       embeds: [{
         title: 'selfbot123\'s inventory',
-        description: 'Gems list:\n`51` x5\n`58` x3\n`65`\n`72` x10', // 72 is out of range
+        description: 'Gems list:\n`49` x2\n`50` x10\n`51` x5\n`58` x3\n`65`\n`72` x10', // 72 is out of range
         author: { name: 'selfbot123\'s inventory' }
       }]
     };
@@ -220,6 +220,8 @@ describe('FarmingLoop', () => {
     expect(cache.hunting).toEqual(['51', '51', '51', '51', '51']);
     expect(cache.lucky).toEqual(['58', '58', '58']);
     expect(cache.empowering).toEqual(['65']);
+    expect((loop as any).lootboxCount).toBe(10);
+    expect((loop as any).fabledLootboxCount).toBe(2);
 
     loop.stop();
   });
@@ -316,6 +318,59 @@ describe('FarmingLoop', () => {
 
     // Active gems are missing and cache is empty, should trigger owo inv
     expect(mockSendFn).toHaveBeenCalledWith('owo inv');
+
+    loop.stop();
+  });
+
+  it('should open lootboxes and then trigger inventory sync when cache is depleted but lootboxes are available', async () => {
+    const settings = {
+      ...DEFAULT_FARMING_SETTINGS,
+      active: true,
+      autoGem: {
+        enabled: true,
+        preferredTiers: { hunting: 3, lucky: 3, empowering: 1 },
+        useSpecialGemsDuringEvents: true
+      }
+    };
+
+    const loop = new FarmingLoop(client, settings, 'channel123', '5');
+    loop.start();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Cache is empty, but we have lootboxes
+    const cache = (loop as any).inventoryCache;
+    cache.hunting = [];
+    cache.lucky = [];
+    cache.empowering = [];
+    (loop as any).lootboxCount = 5;
+    (loop as any).fabledLootboxCount = 1;
+    (loop as any).lastInventorySync = 0;
+
+    const mockMessage = {
+      author: { id: '408785106942164992' },
+      content: '**selfbot123** found a Common Animal!', // No active gems
+      channel: { id: 'channel123' },
+      embeds: [],
+      attachments: { size: 0 }
+    };
+
+    const mockFetch = vi.mocked(client.channels.fetch);
+    const mockSendFn = vi.fn();
+    mockFetch.mockResolvedValue({
+      isText: () => true,
+      send: mockSendFn
+    } as unknown as TextChannel);
+
+    await handleMessageCallback(mockMessage);
+
+    // Should open lootboxes (both regular and fabled) and then call owo inv
+    expect(mockSendFn).toHaveBeenCalledWith('owo lb all');
+    expect(mockSendFn).toHaveBeenCalledWith('owo lb f');
+    expect(mockSendFn).toHaveBeenCalledWith('owo inv');
+
+    // Counts should be reset to 0
+    expect((loop as any).lootboxCount).toBe(0);
+    expect((loop as any).fabledLootboxCount).toBe(0);
 
     loop.stop();
   });
