@@ -30,6 +30,12 @@ vi.mock('../../db/client.js', () => ({
 }));
 
 vi.mock('../../services/encryptionService.js');
+const mockCreateFarmingChannelFromManager = vi.hoisted(() => vi.fn());
+const mockGetUserIdFromToken = vi.hoisted(() => vi.fn().mockReturnValue('123456789'));
+vi.mock('../../services/farming/channelService.js', () => ({
+  createFarmingChannelFromManager: mockCreateFarmingChannelFromManager,
+  getUserIdFromToken: mockGetUserIdFromToken,
+}));
 vi.mock('../../utils/logger.js', () => ({
   logger: {
     info: vi.fn(),
@@ -246,5 +252,57 @@ describe('SelfBotMaster', () => {
 
     expect(mockFork).toHaveBeenCalledTimes(2);
     expect(master.getWorkerCount()).toBe(1);
+  });
+
+  it('automatically creates a channel when channelId is missing', async () => {
+    const mockAccounts = [{
+      account: {
+        userId: 1,
+        encryptedToken: 'enc',
+        iv: 'iv',
+        tag: 'tag',
+        keyVersion: 'v1',
+        proxyUrl: null,
+        workerId: null,
+        channelId: null,
+        settings: null
+      },
+      proxy: null,
+      subscription: {
+        userId: 1,
+        planType: 'basic',
+        expiresAt: new Date(Date.now() + 86400 * 1000)
+      }
+    }];
+
+    mocks.mockWhere.mockResolvedValueOnce(mockAccounts);
+    vi.spyOn(EncryptionService, 'decrypt').mockReturnValue('dec_token');
+    mockCreateFarmingChannelFromManager.mockResolvedValueOnce('new-channel-123');
+
+    const mockChild = new EventEmitter() as unknown as child_process.ChildProcess;
+    mockChild.send = vi.fn();
+    mockChild.kill = vi.fn();
+    mockFork.mockReturnValue(mockChild);
+
+    // Mock ShardingManager
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockManager = {} as any;
+    await master.start(mockManager, 999999);
+
+    expect(mockCreateFarmingChannelFromManager).toHaveBeenCalledWith(mockManager, '1', '123456789');
+    expect(mocks.mockUpdate).toHaveBeenCalled();
+    expect(mocks.mockSet).toHaveBeenCalledWith(expect.objectContaining({ channelId: 'new-channel-123' }));
+
+    expect(mockChild.send).toHaveBeenCalledWith({
+      type: 'START_BOTS',
+      payload: [{
+        id: '1',
+        token: 'dec_token',
+        proxy: undefined,
+        workerId: null,
+        channelId: 'new-channel-123',
+        settings: null
+      }]
+    });
   });
 });

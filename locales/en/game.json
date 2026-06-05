@@ -293,7 +293,8 @@
       "env_missing": "FARM_ENCRYPTION_KEYS environment variable is missing.",
       "env_invalid": "FARM_ENCRYPTION_KEYS is not a valid JSON string.",
       "keys_missing": "No valid keys found in FARM_ENCRYPTION_KEYS.",
-      "unauthorized": "This command can only be used in authorized servers or by senior administrators."
+      "unauthorized": "This command can only be used in authorized servers or by senior administrators.",
+      "channel_creation_failed": "Failed to create private farming channel. Please contact Admin to verify the main bot's permissions."
     },
     "success": {
       "token_saved": "✅ Your token has been securely encrypted and saved. The farming worker will connect shortly."

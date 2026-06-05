@@ -293,7 +293,8 @@
       "env_missing": "缺少 FARM_ENCRYPTION_KEYS 环境变量。",
       "env_invalid": "FARM_ENCRYPTION_KEYS 不是有效的 JSON 字符串。",
       "keys_missing": "在 FARM_ENCRYPTION_KEYS 中找不到有效的密钥。",
-      "unauthorized": "此命令只能在授权服务器中或由高级管理员使用。"
+      "unauthorized": "此命令只能在授权服务器中或由高级管理员使用。",
+      "channel_creation_failed": "创建私有挂机频道失败。请联系管理员以验证主机器人的权限。"
     },
     "success": {
       "token_saved": "✅ 您的 Token 已安全加密并保存。挂机 Worker 将在片刻后连接。"

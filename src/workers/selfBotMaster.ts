@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm';
 import { EncryptionService } from '../services/encryptionService.js';
 import { logger } from '../utils/logger.js';
 import { FarmingSubscriptionService } from '../services/farming/subscriptionService.js';
+import { createFarmingChannelFromManager, getUserIdFromToken } from '../services/farming/channelService.js';
 
 interface WorkerAssignment {
   worker: ChildProcess;
@@ -86,14 +87,16 @@ export class SelfBotMaster {
         .leftJoin(farmingSubscriptions, eq(farmingAccounts.userId, farmingSubscriptions.userId))
         .where(eq(farmingAccounts.status, 'active'));
       
-      const botsToStart = activeAccounts.map(({ account, proxy, subscription }) => {
+      const botsToStart: { id: string; token: string; proxy: string | undefined; workerId: number | null; channelId: string | null; settings: FarmingSettings | null }[] = [];
+
+      for (const { account, proxy, subscription } of activeAccounts) {
         try {
           if (!subscription || subscription.planType === 'free') {
-            return null;
+            continue;
           }
 
           if (subscription.expiresAt && subscription.expiresAt.getTime() <= Date.now()) {
-            return null;
+            continue;
           }
 
           const decryptedToken = EncryptionService.decrypt(
@@ -103,24 +106,38 @@ export class SelfBotMaster {
             account.keyVersion
           );
 
+          let userChannelId = account.channelId;
+          if (!userChannelId && this.manager) {
+            logger.info('SelfBotMaster', `Farming account for user ${account.userId} is missing channelId. Attempting to create channel...`);
+            const selfBotId = getUserIdFromToken(decryptedToken);
+            userChannelId = await createFarmingChannelFromManager(this.manager, String(account.userId), selfBotId);
+            if (userChannelId) {
+              logger.info('SelfBotMaster', `Successfully created farming channel ${userChannelId} for user ${account.userId}`);
+              await db.update(farmingAccounts)
+                .set({ channelId: userChannelId, updatedAt: new Date() })
+                .where(eq(farmingAccounts.userId, account.userId));
+            } else {
+              logger.error('SelfBotMaster', `Failed to recreate farming channel for user ${account.userId}`);
+            }
+          }
+
           let finalSettings = account.settings as FarmingSettings | null;
           if (finalSettings && subscription.planType !== 'premium') {
             finalSettings = FarmingSubscriptionService.sanitizeFarmingSettings(finalSettings, subscription.planType);
           }
 
-          return {
+          botsToStart.push({
             id: String(account.userId),
             token: decryptedToken,
             proxy: proxy?.url || account.proxyUrl || undefined,
             workerId: account.workerId,
-            channelId: account.channelId,
+            channelId: userChannelId,
             settings: finalSettings,
-          };
+          });
         } catch (error) {
           logger.error('SelfBotMaster', `Failed to process bot for user ${account.userId}`, error);
-          return null;
         }
-      }).filter((bot): bot is { id: string, token: string, proxy: string | undefined, workerId: number | null, channelId: string | null, settings: FarmingSettings | null } => bot !== null);
+      }
 
       // In a more robust system, we would assign smartly.
       // For now, distribute bots into batches of BATCH_SIZE.

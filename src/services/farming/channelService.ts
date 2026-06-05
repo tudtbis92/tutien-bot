@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Client, ChannelType, PermissionFlagsBits, type OverwriteData } from 'discord.js';
+import { Client, ChannelType, PermissionFlagsBits, type OverwriteData, ShardingManager } from 'discord.js';
 import { config } from '../../config.js';
 
 /**
@@ -84,7 +84,8 @@ export async function createFarmingChannel(client: Client, ownerId: string, self
           permissionOverwrites: overwrites.filter(o => o.id !== '') as any
         });
         return channel.id;
-      } catch {
+      } catch (err) {
+        console.error(`[Shard ${c.shard?.ids?.join(',')} - ChannelService] Failed to create farming channel for user ${ownerId}:`, err);
         return null;
       }
     }, { context });
@@ -124,9 +125,81 @@ export async function createFarmingChannel(client: Client, ownerId: string, self
         permissionOverwrites: overwrites.filter(o => o.id !== '')
       });
       return channel.id;
-    } catch {
+    } catch (err) {
+      console.error(`[ChannelService] Failed to create farming channel locally for user ${ownerId}:`, err);
       return null;
     }
+  }
+}
+
+/**
+ * Creates a private farming channel for the user, called from ShardingManager process.
+ * @param manager The ShardingManager instance
+ * @param ownerId The owner's Discord ID
+ * @param selfBotId Optional Discord ID of the self-bot
+ * @returns The created channel ID or null if failed
+ */
+export async function createFarmingChannelFromManager(manager: ShardingManager, ownerId: string, selfBotId?: string | null): Promise<string | null> {
+  const context = { 
+    authServerId: config.AUTH_SERVER_ID, 
+    categoryId: config.FARMING_CATEGORY_ID, 
+    ownerId,
+    selfBotId
+  };
+
+  try {
+    const results = await manager.broadcastEval(async (c, { authServerId, categoryId, ownerId, selfBotId }) => {
+      const guild = c.guilds.cache.get(authServerId);
+      if (!guild) return null;
+      if (guild.channels.cache.size >= 500) return null;
+      
+      const channelName = `farm-${ownerId}`;
+      const existing = guild.channels.cache.find(ch => ch.name === channelName);
+      if (existing) return existing.id;
+      
+      try {
+        const VIEW_CHANNEL = 1024n;
+        const SEND_MESSAGES = 2048n;
+        const READ_HISTORY = 65536n;
+        const MANAGE_CHANNELS = 16n;
+
+        const overwrites: { id: string; deny?: bigint[]; allow?: bigint[] }[] = [
+          { id: guild.roles.everyone.id, deny: [VIEW_CHANNEL] },
+          { id: ownerId, allow: [VIEW_CHANNEL, READ_HISTORY] },
+          { id: c.user?.id ?? '', allow: [VIEW_CHANNEL, SEND_MESSAGES, MANAGE_CHANNELS] }
+        ];
+
+        if (selfBotId && selfBotId !== ownerId) {
+          overwrites.push({ id: selfBotId, allow: [VIEW_CHANNEL, SEND_MESSAGES] });
+        } else if (!selfBotId) {
+          const ownerOverwrite = overwrites.find(o => o.id === ownerId);
+          if (ownerOverwrite?.allow) {
+            ownerOverwrite.allow = [VIEW_CHANNEL, SEND_MESSAGES, READ_HISTORY];
+          }
+        } else if (selfBotId === ownerId) {
+          const ownerOverwrite = overwrites.find(o => o.id === ownerId);
+          if (ownerOverwrite?.allow) {
+            ownerOverwrite.allow = [VIEW_CHANNEL, SEND_MESSAGES, READ_HISTORY];
+          }
+        }
+
+        const channel = await guild.channels.create({
+          name: channelName,
+          type: 0, // ChannelType.GuildText
+          parent: categoryId,
+          permissionOverwrites: overwrites.filter(o => o.id !== '') as any
+        });
+        return channel.id;
+      } catch (err) {
+        console.error(`[Shard ${c.shard?.ids?.join(',')} - ChannelService] Failed to create farming channel for user ${ownerId}:`, err);
+        return null;
+      }
+    }, { context });
+    
+    return results.find(id => id !== null) || null;
+  } catch (err) {
+    console.error(`[ChannelService] broadcastEval failed during channel creation for user ${ownerId}:`, err);
+    return null;
   }
 }
 

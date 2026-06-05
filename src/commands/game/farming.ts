@@ -476,6 +476,11 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
   }
 
   const newChannelId = await createFarmingChannel(interaction.client, interaction.user.id, selfBotId);
+  if (!newChannelId) {
+    // eslint-disable-next-line i18next/no-literal-string
+    await interaction.editReply({ content: t('game:farming.errors.channel_creation_failed') || 'Failed to create farming channel. Please contact an Administrator.' });
+    return;
+  }
 
   // Upsert into farming_accounts
   await db.insert(farmingAccounts)
