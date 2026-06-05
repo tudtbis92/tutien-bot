@@ -259,6 +259,11 @@ export class FarmingLoop {
   private async handleMessage(message: any) {
     if (this.isStopped || message.author.id !== OWO_BOT_ID) return;
 
+    // Only process messages in the private farm channel or DMs
+    const isDM = message.channel.type === 'DM' || message.channel.type === 'dm' || message.channel.type === 1;
+    const isFarmChannel = message.channel.id === this.channelId;
+    if (!isDM && !isFarmChannel) return;
+
     const content = message.content.toLowerCase();
     
     // CAPTCHA DETECTION
