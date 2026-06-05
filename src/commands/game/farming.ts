@@ -94,19 +94,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         .setEmoji('💎')
     );
 
-    const sub = await db.query.farmingSubscriptions.findFirst({
-      where: eq(farmingSubscriptions.userId, userRow.id),
-    });
-
-    const planName = sub ? t(`game:farming.subscription.types.${sub.planType}`) : t('game:farming.subscription.types.free');
-    // eslint-disable-next-line i18next/no-literal-string
-    const expiryStr = sub?.expiresAt ? dayjs.utc(sub.expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') : 'N/A';
-    
-    embed.addFields(
-      { name: t('game:farming.subscription.status'), value: planName, inline: true },
-      { name: t('game:farming.subscription.expiry'), value: expiryStr, inline: true }
-    );
-
     await interaction.reply({ embeds: [embed], components: [row] });
   } else if (subcommand === 'status') {
     const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));

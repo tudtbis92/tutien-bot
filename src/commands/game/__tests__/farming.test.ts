@@ -330,7 +330,7 @@ describe('farming command — subscription status display (TC-07-04, TC-07-05)',
     expect(expiryField?.value).toBe('N/A');
   });
 
-  it('TC-07-05: /farming setup reply contains subscription.status and subscription.expiry fields', async () => {
+  it('TC-07-05: /farming setup reply does not contain subscription status and expiry fields', async () => {
     (db as any).where.mockResolvedValue([{ id: 7, locale: 'vi' }]);
     (db.query.farmingSubscriptions.findFirst as any).mockResolvedValue({
       userId: 7,
@@ -344,7 +344,7 @@ describe('farming command — subscription status display (TC-07-04, TC-07-05)',
     expect(interaction.reply).toHaveBeenCalled();
     const replyArg = interaction.reply.mock.calls[0][0];
     const fields: any[] = replyArg.embeds[0].data.fields;
-    expect(fields.some((f: any) => f.name === 'game:farming.subscription.status')).toBe(true);
-    expect(fields.some((f: any) => f.name === 'game:farming.subscription.expiry')).toBe(true);
+    expect(fields.some((f: any) => f.name === 'game:farming.subscription.status')).toBe(false);
+    expect(fields.some((f: any) => f.name === 'game:farming.subscription.expiry')).toBe(false);
   });
 });
