@@ -156,12 +156,12 @@ async function main(): Promise<void> {
   // Step 4: Health check HTTP server ONLY in ShardingManager
   await startHealthServer(manager);
 
-  // Step 4.5: Start SelfBotMaster
-  logger.info('ShardingManager', 'Starting SelfBotMaster...');
-  await SelfBotMaster.getInstance().start(manager);
-
   // Step 5: Spawn all shards — manager queries Discord for optimal shard count
   await manager.spawn();
+
+  // Step 5.5: Start SelfBotMaster
+  logger.info('ShardingManager', 'Starting SelfBotMaster...');
+  await SelfBotMaster.getInstance().start(manager);
 
   logger.info('ShardingManager', 'All shards launched');
 }
