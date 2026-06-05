@@ -42,6 +42,7 @@ export class FarmingSubscriptionService {
       throw new Error('TRANSACTION_IN_PROGRESS');
     }
 
+    let success = false;
     try {
       let price = 0n;
       
@@ -56,7 +57,7 @@ export class FarmingSubscriptionService {
 
       const expiresAt = dayjs.utc().add(durationDays, 'day').toDate();
 
-      return await db.transaction(async (tx) => {
+      const result = await db.transaction(async (tx) => {
         if (price > 0n) {
           const updateResult = await tx
             .update(users)
@@ -89,8 +90,13 @@ export class FarmingSubscriptionService {
 
         return expiresAt;
       });
+
+      success = true;
+      return result;
     } finally {
-      await redis.del(lockKey);
+      if (!success) {
+        await redis.del(lockKey);
+      }
     }
   }
 
@@ -104,8 +110,9 @@ export class FarmingSubscriptionService {
       throw new Error('TRANSACTION_IN_PROGRESS');
     }
 
+    let success = false;
     try {
-      return await db.transaction(async (tx) => {
+      const result = await db.transaction(async (tx) => {
         const [currentSub] = await tx
           .select()
           .from(farmingSubscriptions)
@@ -142,8 +149,13 @@ export class FarmingSubscriptionService {
 
         return currentSub.expiresAt;
       });
+
+      success = true;
+      return result;
     } finally {
-      await redis.del(lockKey);
+      if (!success) {
+        await redis.del(lockKey);
+      }
     }
   }
 

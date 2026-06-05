@@ -122,6 +122,77 @@ describe('FarmingSubscriptionService', () => {
       await expect(FarmingSubscriptionService.purchasePlan(1, 'basic', 7)).resolves.toBeInstanceOf(Date);
       expect(mockTx.returning).toHaveBeenCalled();
     });
+
+    it('should throw TRANSACTION_IN_PROGRESS if Redis lock cannot be acquired', async () => {
+      const { redis } = await import('../../../cache/redis.js');
+      const originalSet = redis.set;
+      redis.set = vi.fn().mockResolvedValue('BUSY'); // returns anything other than OK
+
+      try {
+        await expect(FarmingSubscriptionService.purchasePlan(1, 'basic', 7))
+          .rejects.toThrow('TRANSACTION_IN_PROGRESS');
+      } finally {
+        redis.set = originalSet;
+      }
+    });
+
+    it('should retain Redis lock on successful purchase', async () => {
+      const { redis } = await import('../../../cache/redis.js');
+      const originalSet = redis.set;
+      const originalDel = redis.del;
+      redis.set = vi.fn().mockResolvedValue('OK');
+      redis.del = vi.fn();
+
+      const mockTx = {
+        update: vi.fn().mockReturnThis(),
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockReturnThis(),
+        onConflictDoUpdate: vi.fn().mockResolvedValue({}),
+      };
+      
+      vi.mocked(db.transaction).mockImplementation(async (cb) => {
+        return await cb(mockTx as any);
+      });
+
+      await FarmingSubscriptionService.purchasePlan(1, 'basic', 7);
+
+      // Verify redis.del was NOT called since purchase succeeded
+      expect(redis.del).not.toHaveBeenCalled();
+
+      redis.set = originalSet;
+      redis.del = originalDel;
+    });
+
+    it('should release Redis lock on failed purchase', async () => {
+      const { redis } = await import('../../../cache/redis.js');
+      const originalSet = redis.set;
+      const originalDel = redis.del;
+      redis.set = vi.fn().mockResolvedValue('OK');
+      redis.del = vi.fn();
+
+      const mockTx = {
+        update: vi.fn().mockReturnThis(),
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([]), // Empty array simulates insufficient balance
+      };
+      
+      vi.mocked(db.transaction).mockImplementation(async (cb) => {
+        return await cb(mockTx as any);
+      });
+
+      await expect(FarmingSubscriptionService.purchasePlan(1, 'basic', 7))
+        .rejects.toThrow('INSUFFICIENT_BALANCE');
+
+      // Verify redis.del was called since purchase failed
+      expect(redis.del).toHaveBeenCalledWith('lock:purchase:1');
+
+      redis.set = originalSet;
+      redis.del = originalDel;
+    });
   });
 
   describe('upgradePlan', () => {
@@ -200,6 +271,81 @@ describe('FarmingSubscriptionService', () => {
       });
 
       await expect(FarmingSubscriptionService.upgradePlan(1)).rejects.toThrow('PLAN_EXPIRED');
+    });
+
+    it('should throw TRANSACTION_IN_PROGRESS if Redis lock cannot be acquired during upgrade', async () => {
+      const { redis } = await import('../../../cache/redis.js');
+      const originalSet = redis.set;
+      redis.set = vi.fn().mockResolvedValue('BUSY'); // returns anything other than OK
+
+      try {
+        await expect(FarmingSubscriptionService.upgradePlan(1))
+          .rejects.toThrow('TRANSACTION_IN_PROGRESS');
+      } finally {
+        redis.set = originalSet;
+      }
+    });
+
+    it('should retain Redis lock on successful upgrade', async () => {
+      const { redis } = await import('../../../cache/redis.js');
+      const originalSet = redis.set;
+      const originalDel = redis.del;
+      redis.set = vi.fn().mockResolvedValue('OK');
+      redis.del = vi.fn();
+
+      const expiresAt = new Date('2026-06-15T00:00:00Z');
+      const mockTx = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([{ planType: 'basic', expiresAt }]),
+        update: vi.fn().mockReturnThis(),
+        set: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+      };
+
+      vi.mocked(db.transaction).mockImplementation(async (cb) => {
+        return await cb(mockTx as any);
+      });
+
+      await FarmingSubscriptionService.upgradePlan(1);
+
+      // Verify redis.del was NOT called since upgrade succeeded
+      expect(redis.del).not.toHaveBeenCalled();
+
+      redis.set = originalSet;
+      redis.del = originalDel;
+    });
+
+    it('should release Redis lock on failed upgrade', async () => {
+      const { redis } = await import('../../../cache/redis.js');
+      const originalSet = redis.set;
+      const originalDel = redis.del;
+      redis.set = vi.fn().mockResolvedValue('OK');
+      redis.del = vi.fn();
+
+      const expiresAt = new Date('2026-06-15T00:00:00Z');
+      const mockTx = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([{ planType: 'basic', expiresAt }]),
+        update: vi.fn().mockReturnThis(),
+        set: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([]), // empty = insufficient
+      };
+
+      vi.mocked(db.transaction).mockImplementation(async (cb) => {
+        return await cb(mockTx as any);
+      });
+
+      await expect(FarmingSubscriptionService.upgradePlan(1)).rejects.toThrow('INSUFFICIENT_BALANCE');
+
+      // Verify redis.del was called since upgrade failed
+      expect(redis.del).toHaveBeenCalledWith('lock:purchase:1');
+
+      redis.set = originalSet;
+      redis.del = originalDel;
     });
   });
 });
