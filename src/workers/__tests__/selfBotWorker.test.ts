@@ -20,7 +20,7 @@ vi.mock('discord.js-selfbot-v13', () => {
     login = vi.fn().mockResolvedValue('token');
     destroy = vi.fn();
     channels = mockChannels;
-    user = { id: 'selfbot123' };
+    user = { id: 'selfbot123', username: 'selfbot123' };
   }
 
   return {
@@ -74,6 +74,10 @@ describe('FarmingLoop', () => {
         enabled: true,
         mainAccountId: '999999999999999999',
         threshold: 50000,
+      },
+      autoGem: {
+        ...DEFAULT_FARMING_SETTINGS.autoGem,
+        enabled: false,
       }
     };
 
@@ -121,6 +125,10 @@ describe('FarmingLoop', () => {
         enabled: true,
         mainAccountId: '999999999999999999',
         threshold: 50000,
+      },
+      autoGem: {
+        ...DEFAULT_FARMING_SETTINGS.autoGem,
+        enabled: false,
       }
     };
 
@@ -175,6 +183,139 @@ describe('FarmingLoop', () => {
 
     // Verify it destroyed the client to prevent further actions
     expect(client.destroy).toHaveBeenCalled();
+
+    loop.stop();
+  });
+
+  it('should parse owo inv response and populate inventory cache correctly', async () => {
+    const settings = {
+      ...DEFAULT_FARMING_SETTINGS,
+      active: true,
+      autoGem: {
+        enabled: true,
+        preferredTiers: { hunting: 3, lucky: 3, empowering: 1 },
+        useSpecialGemsDuringEvents: true
+      }
+    };
+
+    const loop = new FarmingLoop(client, settings, 'channel123', '5');
+    loop.start();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const mockMessage = {
+      author: { id: '408785106942164992' },
+      content: '',
+      channel: { id: 'channel123' },
+      attachments: { size: 0 },
+      embeds: [{
+        title: 'selfbot123\'s inventory',
+        description: 'Gems list:\n`51` x5\n`58` x3\n`65`\n`72` x10', // 72 is out of range
+        author: { name: 'selfbot123\'s inventory' }
+      }]
+    };
+
+    await handleMessageCallback(mockMessage);
+
+    const cache = (loop as any).inventoryCache;
+    expect(cache.hunting).toEqual(['51', '51', '51', '51', '51']);
+    expect(cache.lucky).toEqual(['58', '58', '58']);
+    expect(cache.empowering).toEqual(['65']);
+
+    loop.stop();
+  });
+
+  it('should check hunt responses and trigger owo use command when active gems are missing', async () => {
+    const settings = {
+      ...DEFAULT_FARMING_SETTINGS,
+      active: true,
+      autoGem: {
+        enabled: true,
+        preferredTiers: { hunting: 3, lucky: 3, empowering: 1 },
+        useSpecialGemsDuringEvents: true
+      }
+    };
+
+    const loop = new FarmingLoop(client, settings, 'channel123', '5');
+    loop.start();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Pre-populate inventory cache
+    const cache = (loop as any).inventoryCache;
+    cache.hunting = ['51', '52'];
+    cache.lucky = ['58', '59'];
+    cache.empowering = ['65', '66'];
+
+    // Simulate owo hunt response where only hunting gem is active
+    const mockMessage = {
+      author: { id: '408785106942164992' },
+      content: '**selfbot123** [💎] found a Common Animal!',
+      channel: { id: 'channel123' },
+      embeds: [],
+      attachments: { size: 0 }
+    };
+
+    const mockFetch = vi.mocked(client.channels.fetch);
+    const mockSendFn = vi.fn();
+    mockFetch.mockResolvedValue({
+      isText: () => true,
+      send: mockSendFn
+    } as unknown as TextChannel);
+
+    await handleMessageCallback(mockMessage);
+
+    // Hunting gem is present (💎), but lucky (🍀) and empowering (⚔️) are missing.
+    // It should use lucky ('58') and empowering ('65') in a single command.
+    expect(mockSendFn).toHaveBeenCalledWith('owo use 58 65');
+    
+    // Cached items should be removed
+    expect(cache.lucky).toEqual(['59']);
+    expect(cache.empowering).toEqual(['66']);
+    expect(cache.hunting).toEqual(['51', '52']); // Hunting gem not used
+
+    loop.stop();
+  });
+
+  it('should trigger inventory sync when cache is depleted', async () => {
+    const settings = {
+      ...DEFAULT_FARMING_SETTINGS,
+      active: true,
+      autoGem: {
+        enabled: true,
+        preferredTiers: { hunting: 3, lucky: 3, empowering: 1 },
+        useSpecialGemsDuringEvents: true
+      }
+    };
+
+    const loop = new FarmingLoop(client, settings, 'channel123', '5');
+    loop.start();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // Cache is empty
+    const cache = (loop as any).inventoryCache;
+    cache.hunting = [];
+    cache.lucky = [];
+    cache.empowering = [];
+    (loop as any).lastInventorySync = 0; // Force sync bypass throttling
+
+    const mockMessage = {
+      author: { id: '408785106942164992' },
+      content: '**selfbot123** found a Common Animal!', // No active gems
+      channel: { id: 'channel123' },
+      embeds: [],
+      attachments: { size: 0 }
+    };
+
+    const mockFetch = vi.mocked(client.channels.fetch);
+    const mockSendFn = vi.fn();
+    mockFetch.mockResolvedValue({
+      isText: () => true,
+      send: mockSendFn
+    } as unknown as TextChannel);
+
+    await handleMessageCallback(mockMessage);
+
+    // Active gems are missing and cache is empty, should trigger owo inv
+    expect(mockSendFn).toHaveBeenCalledWith('owo inv');
 
     loop.stop();
   });

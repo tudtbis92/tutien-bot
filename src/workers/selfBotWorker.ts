@@ -37,6 +37,12 @@ export class FarmingLoop {
   private inventoryTimer: NodeJS.Timeout | null = null;
 
   private dbUserId: string;
+  private inventoryCache = {
+    hunting: [] as string[],
+    lucky: [] as string[],
+    empowering: [] as string[]
+  };
+  private lastInventorySync = 0;
 
   constructor(client: Client, settings: FarmingSettings | null, channelId: string | null, dbUserId: string) {
     this.client = client;
@@ -75,6 +81,11 @@ export class FarmingLoop {
     this.scheduleChecklist();
     this.scheduleEconomy();
     this.scheduleInventory();
+
+    // Trigger initial inventory sync on startup
+    if (this.settings.autoGem?.enabled) {
+      this.executeCommand('owo inv').catch(err => console.error('Failed to trigger initial inventory sync', err));
+    }
   }
 
   stop() {
@@ -108,6 +119,16 @@ export class FarmingLoop {
       console.error(`[${this.client.user?.id}] Failed to execute ${command}`, err);
     } finally {
       this.isCommandInProgress = false;
+    }
+  }
+
+  private async triggerInventorySync() {
+    const now = Date.now();
+    // Throttle inventory sync to once every 5 minutes to avoid spamming owo inv
+    if (now - this.lastInventorySync > 5 * 60 * 1000) {
+      console.log(`[${this.client.user?.id}] Inventory cache depleted or out of sync. Fetching owo inv...`);
+      this.lastInventorySync = now;
+      await this.executeCommand('owo inv');
     }
   }
 
@@ -331,6 +352,55 @@ export class FarmingLoop {
       await this.executeCommand('owo inv');
     }
 
+    // Parse owo hunt response to check active gems
+    const myUsername = this.client.user?.username?.toLowerCase();
+    const myNickname = message.guild?.members?.me?.nickname?.toLowerCase();
+    const isMyHunt = (content.includes('found') || content.includes('caught')) && 
+      ((myUsername && content.includes(myUsername)) || (myNickname && content.includes(myNickname)));
+
+    if (isMyHunt && this.settings.autoGem?.enabled) {
+      const foundIndex = content.indexOf('found');
+      const caughtIndex = content.indexOf('caught');
+      const index = foundIndex !== -1 ? foundIndex : caughtIndex;
+      
+      if (index !== -1) {
+        const prefix = content.substring(0, index);
+        const hasHunting = prefix.includes('💎');
+        const hasLucky = prefix.includes('🍀');
+        const hasEmpowering = prefix.includes('⚔️') || prefix.includes('⚡');
+        
+        const gemsToUse: string[] = [];
+        let needsSync = false;
+
+        if (!hasHunting && this.settings.autoGem.preferredTiers.hunting > 0) {
+          const id = this.inventoryCache.hunting.shift();
+          if (id) gemsToUse.push(id);
+          else needsSync = true;
+        }
+
+        if (!hasLucky && this.settings.autoGem.preferredTiers.lucky > 0) {
+          const id = this.inventoryCache.lucky.shift();
+          if (id) gemsToUse.push(id);
+          else needsSync = true;
+        }
+
+        if (!hasEmpowering && this.settings.autoGem.preferredTiers.empowering > 0) {
+          const id = this.inventoryCache.empowering.shift();
+          if (id) gemsToUse.push(id);
+          else needsSync = true;
+        }
+
+        if (gemsToUse.length > 0) {
+          console.log(`[${this.client.user?.id}] Active gems missing. Using gems: ${gemsToUse.join(' ')}`);
+          await this.executeCommand(`owo use ${gemsToUse.join(' ')}`);
+        }
+
+        if (needsSync) {
+          await this.triggerInventorySync();
+        }
+      }
+    }
+
     if (message.embeds.length > 0) {
       const title = message.embeds[0].title?.toLowerCase() || '';
       const desc = message.embeds[0].description?.toLowerCase() || '';
@@ -344,13 +414,30 @@ export class FarmingLoop {
       
       if (author.includes('inventory') || title.includes('inventory')) {
         if (this.settings.autoGem?.enabled) {
-          // Simple ID extraction: looking for common gem ids
-          const gemRegex = /`(5[0-9]{1,2}|6[0-9]{1,2}|7[0-9]{1,2})`/g;
+          const gemRegex = /`(5[1-9]|6[0-9]|7[0-1])`[ \t]*(?:x|:)?[ \t]*`?([0-9]+)?`?/g;
           const matches = [...desc.matchAll(gemRegex)];
-          if (matches.length > 0) {
-            const gemIds = matches.slice(0, 3).map(m => m[1]);
-            await this.executeCommand(`owo use ${gemIds.join(' ')}`);
+          
+          this.inventoryCache.hunting = [];
+          this.inventoryCache.lucky = [];
+          this.inventoryCache.empowering = [];
+          
+          for (const match of matches) {
+            const id = match[1];
+            const qtyStr = match[2];
+            const qty = qtyStr ? parseInt(qtyStr, 10) : 1;
+            const num = parseInt(id, 10);
+            
+            if (num >= 51 && num <= 57) {
+              for (let i = 0; i < qty; i++) this.inventoryCache.hunting.push(id);
+            } else if (num >= 58 && num <= 64) {
+              for (let i = 0; i < qty; i++) this.inventoryCache.lucky.push(id);
+            } else if (num >= 65 && num <= 71) {
+              for (let i = 0; i < qty; i++) this.inventoryCache.empowering.push(id);
+            }
           }
+          
+          this.lastInventorySync = Date.now();
+          console.log(`[${this.client.user?.id}] Inventory cache updated: hunting: ${this.inventoryCache.hunting.length}, lucky: ${this.inventoryCache.lucky.length}, empowering: ${this.inventoryCache.empowering.length}`);
         }
       }
     }
