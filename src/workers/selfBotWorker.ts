@@ -150,6 +150,7 @@ export class FarmingLoop {
     const now = Date.now();
     const hasLootboxes = this.lootboxCount > 0 || this.fabledLootboxCount > 0;
     
+    console.log(`[DEBUG] [SelfBot] triggerInventorySync called: force=${force}, lootboxCount=${this.lootboxCount}, fabledLootboxCount=${this.fabledLootboxCount}, elapsedSinceLastSync=${now - this.lastInventorySync}ms`);
     // Bypass throttle if forced or if we have lootboxes to open
     if (force || hasLootboxes || (now - this.lastInventorySync > 5 * 60 * 1000)) {
       this.lastInventorySync = now;
@@ -326,6 +327,12 @@ export class FarmingLoop {
 
     const content = message.content.toLowerCase();
     
+    // Detailed message debug log
+    console.log(`[DEBUG] [SelfBot] Incoming message in channel ${message.channel.id} from ${message.author.id} (username: ${message.author.username}): "${message.content}"`);
+    if (message.embeds.length > 0) {
+      console.log(`[DEBUG] [SelfBot] Embed title: "${message.embeds[0].title}", author: "${message.embeds[0].author?.name}", description snippet: "${message.embeds[0].description?.substring(0, 150)}..."`);
+    }
+    
     // CAPTCHA DETECTION
     let isCaptcha = false;
     if (content.includes('are you a human') || content.includes('solve the captcha') || content.includes('verify you are human') || content.includes('owobot.com/captcha')) {
@@ -420,12 +427,17 @@ export class FarmingLoop {
         (myDisplayName && content.includes(myDisplayName))
       );
 
+    console.log(`[DEBUG] [SelfBot] Hunt match check: actionIndex=${actionIndex}, myUsername="${myUsername}", myGlobalName="${myGlobalName}", myNickname="${myNickname}", myDisplayName="${myDisplayName}". isMyHunt=${isMyHunt}`);
+
     if (isMyHunt && this.settings.autoGem?.enabled) {
       if (actionIndex !== -1) {
         const prefix = content.substring(0, actionIndex);
         const hasHunting = prefix.includes('💎');
         const hasLucky = prefix.includes('🍀');
         const hasEmpowering = prefix.includes('⚔️') || prefix.includes('⚡');
+        
+        console.log(`[DEBUG] [SelfBot] Detected active gems in hunt prefix: hunting=${hasHunting}, lucky=${hasLucky}, empowering=${hasEmpowering} (prefix: "${prefix}")`);
+        console.log(`[DEBUG] [SelfBot] Current cache: hunting=[${this.inventoryCache.hunting.join(',')}], lucky=[${this.inventoryCache.lucky.join(',')}], empowering=[${this.inventoryCache.empowering.join(',')}]`);
         
         const gemsToUse: string[] = [];
         let needsSync = false;
@@ -454,6 +466,7 @@ export class FarmingLoop {
         }
 
         if (needsSync) {
+          console.log(`[DEBUG] [SelfBot] Gem cache depleted for missing active gems. Triggering inventory sync. force=false`);
           await this.triggerInventorySync();
         }
       }
@@ -470,6 +483,8 @@ export class FarmingLoop {
                           author.includes('清单') || title.includes('清单') ||
                           author.includes('任務') || title.includes('任務');
 
+      console.log(`[DEBUG] [SelfBot] Embed check: isChecklist=${isChecklist}, title="${title}", author="${author}"`);
+
       if (isChecklist) {
         if (desc.includes('❌') && desc.includes('daily')) {
           await this.executeCommand('owo daily');
@@ -481,6 +496,8 @@ export class FarmingLoop {
                           author.includes('hành trang') || title.includes('hành trang') ||
                           author.includes('背包') || title.includes('背包') ||
                           /`(49|50|5[1-9]|6[0-9]|7[0-1])`/.test(desc);
+
+      console.log(`[DEBUG] [SelfBot] Embed check: isInventory=${isInventory}, title="${title}", author="${author}"`);
 
       if (isInventory) {
         if (this.settings.autoGem?.enabled) {
