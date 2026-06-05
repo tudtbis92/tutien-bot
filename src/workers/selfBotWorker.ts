@@ -22,7 +22,8 @@ export class FarmingLoop {
   private client: Client;
   private settings: FarmingSettings;
   private channelId: string | null;
-  private isCommandInProgress: boolean = false;
+  private commandQueue: { command: string; resolve: () => void; reject: (err: any) => void }[] = [];
+  private isProcessingQueue: boolean = false;
   private isSleeping: boolean = false;
   private isStopped: boolean = false;
   
@@ -105,21 +106,39 @@ export class FarmingLoop {
     return Math.floor(Math.random() * (max - min + 1) + min) * 1000;
   }
 
-  private async executeCommand(command: string) {
-    if (this.isStopped || this.isSleeping || this.isCommandInProgress || !this.channelId) return;
-    
-    this.isCommandInProgress = true;
-    try {
-      const channel = await this.client.channels.fetch(this.channelId);
-      if (channel && channel.isText()) {
-        await (channel as TextChannel).send(command);
-        console.log(`[${this.client.user?.id}] Executing: ${command}`);
+  private executeCommand(command: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.commandQueue.push({ command, resolve, reject });
+      this.processQueue();
+    });
+  }
+
+  private async processQueue() {
+    if (this.isProcessingQueue || this.isStopped || this.isSleeping || !this.channelId) return;
+    this.isProcessingQueue = true;
+
+    while (this.commandQueue.length > 0) {
+      const item = this.commandQueue[0];
+      try {
+        const channel = await this.client.channels.fetch(this.channelId);
+        if (channel && channel.isText()) {
+          await (channel as TextChannel).send(item.command);
+          console.log(`[${this.client.user?.id}] Executing: ${item.command}`);
+        }
+        item.resolve();
+      } catch (err) {
+        console.error(`[${this.client.user?.id}] Failed to execute ${item.command}`, err);
+        item.reject(err);
       }
-    } catch (err) {
-      console.error(`[${this.client.user?.id}] Failed to execute ${command}`, err);
-    } finally {
-      this.isCommandInProgress = false;
+      this.commandQueue.shift();
+
+      if (this.commandQueue.length > 0 && !this.isStopped && !this.isSleeping) {
+        // Human-like delay between consecutive queued commands
+        await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+      }
     }
+
+    this.isProcessingQueue = false;
   }
 
   private async triggerInventorySync() {
@@ -135,7 +154,7 @@ export class FarmingLoop {
   private async runHuntBattleLoop() {
     if (this.isStopped) return;
     
-    if (!this.isSleeping && !this.isCommandInProgress) {
+    if (!this.isSleeping) {
       if (this.settings.commands.hunt) {
         await this.executeCommand('owo hunt');
       }
@@ -154,7 +173,7 @@ export class FarmingLoop {
   private async runPrayCurseLoop() {
     if (this.isStopped) return;
     
-    if (!this.isSleeping && !this.isCommandInProgress) {
+    if (!this.isSleeping) {
       const prayEnabled = this.settings.commands.pray?.enabled;
       const target = this.settings.commands.pray?.targetId ? ` <@${this.settings.commands.pray.targetId}>` : '';
       
@@ -190,7 +209,7 @@ export class FarmingLoop {
     
     const nextChatterIn = this.getRandomDelay(30 * 60, 90 * 60);
     this.chatterTimer = setTimeout(async () => {
-      if (!this.isSleeping && !this.isCommandInProgress) {
+      if (!this.isSleeping) {
         const phrase = SOCIAL_CHATTER_PHRASES[Math.floor(Math.random() * SOCIAL_CHATTER_PHRASES.length)];
         await this.executeCommand(phrase);
       }
@@ -203,7 +222,7 @@ export class FarmingLoop {
     
     const nextRotateIn = this.getRandomDelay(30 * 60, 60 * 60);
     this.teamRotateTimer = setTimeout(async () => {
-      if (!this.isSleeping && !this.isCommandInProgress) {
+      if (!this.isSleeping) {
         const team = Math.random() > 0.5 ? 1 : 2;
         await this.executeCommand(`owo setteam ${team}`);
       }
@@ -216,7 +235,7 @@ export class FarmingLoop {
     
     const nextCheckIn = this.getRandomDelay(30 * 60, 60 * 60);
     this.moneyTimer = setTimeout(async () => {
-      if (!this.isSleeping && !this.isCommandInProgress && this.settings.moneyTransfer?.enabled) {
+      if (!this.isSleeping && this.settings.moneyTransfer?.enabled) {
         await this.executeCommand(`owo cash`);
       }
       this.scheduleMoneyTransfer();
@@ -227,7 +246,7 @@ export class FarmingLoop {
     if (this.isStopped) return;
     const nextCheckIn = 6 * 60 * 60 * 1000 + this.getRandomDelay(10, 60);
     this.checklistTimer = setTimeout(async () => {
-      if (!this.isSleeping && !this.isCommandInProgress) {
+      if (!this.isSleeping) {
         await this.executeCommand('owo checklist');
       }
       this.scheduleChecklist();
@@ -238,7 +257,7 @@ export class FarmingLoop {
     if (this.isStopped) return;
     const nextCheckIn = 2 * 60 * 60 * 1000 + this.getRandomDelay(10, 60);
     this.economyTimer = setTimeout(async () => {
-      if (!this.isSleeping && !this.isCommandInProgress) {
+      if (!this.isSleeping) {
         // Sacrifice
         if (this.settings.economy?.sacrificeRanks) {
           for (const rank of this.settings.economy.sacrificeRanks) {
@@ -270,7 +289,7 @@ export class FarmingLoop {
     if (this.isStopped) return;
     const nextCheckIn = 60 * 60 * 1000 + this.getRandomDelay(10, 60);
     this.inventoryTimer = setTimeout(async () => {
-      if (!this.isSleeping && !this.isCommandInProgress && this.settings.autoGem?.enabled) {
+      if (!this.isSleeping && this.settings.autoGem?.enabled) {
         await this.executeCommand('owo inv');
       }
       this.scheduleInventory();
@@ -354,9 +373,17 @@ export class FarmingLoop {
 
     // Parse owo hunt response to check active gems
     const myUsername = this.client.user?.username?.toLowerCase();
+    const myGlobalName = (this.client.user as any)?.globalName?.toLowerCase();
     const myNickname = message.guild?.members?.me?.nickname?.toLowerCase();
+    const myDisplayName = message.guild?.members?.me?.displayName?.toLowerCase();
+    
     const isMyHunt = (content.includes('found') || content.includes('caught')) && 
-      ((myUsername && content.includes(myUsername)) || (myNickname && content.includes(myNickname)));
+      (
+        (myUsername && content.includes(myUsername)) || 
+        (myGlobalName && content.includes(myGlobalName)) || 
+        (myNickname && content.includes(myNickname)) || 
+        (myDisplayName && content.includes(myDisplayName))
+      );
 
     if (isMyHunt && this.settings.autoGem?.enabled) {
       const foundIndex = content.indexOf('found');
