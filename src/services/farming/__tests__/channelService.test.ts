@@ -87,10 +87,10 @@ describe('ChannelService', () => {
         type: expect.anything(),
         parent: '876543210987654321',
         permissionOverwrites: expect.arrayContaining([
-          { id: 'everyone-role-id', deny: expect.any(Array) },
-          { id: '898126643598606367', allow: expect.any(Array) },
-          { id: '999999999999999999', allow: expect.any(Array) },
-          { id: 'main-bot-id', allow: expect.any(Array) }
+          { id: 'everyone-role-id', deny: expect.any(Array), type: 0 },
+          { id: '898126643598606367', allow: expect.any(Array), type: 1 },
+          { id: '999999999999999999', allow: expect.any(Array), type: 1 },
+          { id: 'main-bot-id', allow: expect.any(Array), type: 1 }
         ])
       });
     });

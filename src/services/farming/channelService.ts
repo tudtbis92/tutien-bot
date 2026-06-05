@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Client, ChannelType, PermissionFlagsBits, type OverwriteData, ShardingManager } from 'discord.js';
+import { Client, ChannelType, PermissionFlagsBits, type OverwriteData, ShardingManager, OverwriteType } from 'discord.js';
 import { config } from '../../config.js';
 
 /**
@@ -57,14 +57,14 @@ export async function createFarmingChannel(client: Client, ownerId: string, self
         const READ_HISTORY = 65536n;
         const MANAGE_CHANNELS = 16n;
 
-        const overwrites: { id: string; deny?: bigint[]; allow?: bigint[] }[] = [
-          { id: guild.roles.everyone.id, deny: [VIEW_CHANNEL] },
-          { id: ownerId, allow: [VIEW_CHANNEL, READ_HISTORY] },
-          { id: c.user?.id ?? '', allow: [VIEW_CHANNEL, SEND_MESSAGES, MANAGE_CHANNELS] }
+        const overwrites: { id: string; deny?: bigint[]; allow?: bigint[]; type: number }[] = [
+          { id: guild.roles.everyone.id, deny: [VIEW_CHANNEL], type: 0 },
+          { id: ownerId, allow: [VIEW_CHANNEL, READ_HISTORY], type: 1 },
+          { id: c.user?.id ?? '', allow: [VIEW_CHANNEL, SEND_MESSAGES, MANAGE_CHANNELS], type: 1 }
         ];
 
         if (selfBotId && selfBotId !== ownerId) {
-          overwrites.push({ id: selfBotId, allow: [VIEW_CHANNEL, SEND_MESSAGES] });
+          overwrites.push({ id: selfBotId, allow: [VIEW_CHANNEL, SEND_MESSAGES], type: 1 });
         } else if (!selfBotId) {
           const ownerOverwrite = overwrites.find(o => o.id === ownerId);
           if (ownerOverwrite?.allow) {
@@ -103,13 +103,13 @@ export async function createFarmingChannel(client: Client, ownerId: string, self
     
     try {
       const overwrites: OverwriteData[] = [
-        { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
-        { id: ownerId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory] },
-        { id: client.user?.id ?? '', allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels] }
+        { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel], type: OverwriteType.Role },
+        { id: ownerId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory], type: OverwriteType.Member },
+        { id: client.user?.id ?? '', allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels], type: OverwriteType.Member }
       ];
 
       if (selfBotId && selfBotId !== ownerId) {
-        overwrites.push({ id: selfBotId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
+        overwrites.push({ id: selfBotId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages], type: OverwriteType.Member });
       } else {
         // Owner is self-bot or no self-bot ID provided
         const ownerOverwrite = overwrites.find(o => o.id === ownerId);
@@ -163,14 +163,14 @@ export async function createFarmingChannelFromManager(manager: ShardingManager, 
         const READ_HISTORY = 65536n;
         const MANAGE_CHANNELS = 16n;
 
-        const overwrites: { id: string; deny?: bigint[]; allow?: bigint[] }[] = [
-          { id: guild.roles.everyone.id, deny: [VIEW_CHANNEL] },
-          { id: ownerId, allow: [VIEW_CHANNEL, READ_HISTORY] },
-          { id: c.user?.id ?? '', allow: [VIEW_CHANNEL, SEND_MESSAGES, MANAGE_CHANNELS] }
+        const overwrites: { id: string; deny?: bigint[]; allow?: bigint[]; type: number }[] = [
+          { id: guild.roles.everyone.id, deny: [VIEW_CHANNEL], type: 0 },
+          { id: ownerId, allow: [VIEW_CHANNEL, READ_HISTORY], type: 1 },
+          { id: c.user?.id ?? '', allow: [VIEW_CHANNEL, SEND_MESSAGES, MANAGE_CHANNELS], type: 1 }
         ];
 
         if (selfBotId && selfBotId !== ownerId) {
-          overwrites.push({ id: selfBotId, allow: [VIEW_CHANNEL, SEND_MESSAGES] });
+          overwrites.push({ id: selfBotId, allow: [VIEW_CHANNEL, SEND_MESSAGES], type: 1 });
         } else if (!selfBotId) {
           const ownerOverwrite = overwrites.find(o => o.id === ownerId);
           if (ownerOverwrite?.allow) {
