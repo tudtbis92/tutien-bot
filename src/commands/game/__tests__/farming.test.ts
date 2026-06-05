@@ -170,7 +170,7 @@ describe('farming command — confirm buy handlers', () => {
   // TC-07-01 (7D)
   it('handleConfirmBuyWeekly: calls purchasePlan(userId, basic, 7) on success', async () => {
     const expiry = new Date('2026-06-12T00:00:00.000Z');
-    (db.where as any).mockResolvedValue([{ id: 1, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 1, locale: 'vi' }]);
     (FarmingSubscriptionService.purchasePlan as any).mockResolvedValue(expiry);
 
     const interaction = makeButtonInteraction();
@@ -183,7 +183,7 @@ describe('farming command — confirm buy handlers', () => {
   });
 
   it('handleConfirmBuyWeekly: shows insufficient_balance key on error', async () => {
-    (db.where as any).mockResolvedValue([{ id: 1, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 1, locale: 'vi' }]);
     (FarmingSubscriptionService.purchasePlan as any).mockRejectedValue(new Error('INSUFFICIENT_BALANCE'));
 
     const interaction = makeButtonInteraction();
@@ -199,7 +199,7 @@ describe('farming command — confirm buy handlers', () => {
   // TC-07-01 (30D)
   it('handleConfirmBuyMonthly: calls purchasePlan(userId, basic, 30) on success', async () => {
     const expiry = new Date('2026-07-05T00:00:00.000Z');
-    (db.where as any).mockResolvedValue([{ id: 2, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 2, locale: 'vi' }]);
     (FarmingSubscriptionService.purchasePlan as any).mockResolvedValue(expiry);
 
     const interaction = makeButtonInteraction();
@@ -212,7 +212,7 @@ describe('farming command — confirm buy handlers', () => {
   });
 
   it('handleConfirmBuyMonthly: shows insufficient_balance key on error', async () => {
-    (db.where as any).mockResolvedValue([{ id: 2, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 2, locale: 'vi' }]);
     (FarmingSubscriptionService.purchasePlan as any).mockRejectedValue(new Error('INSUFFICIENT_BALANCE'));
 
     const interaction = makeButtonInteraction();
@@ -228,7 +228,7 @@ describe('farming command — confirm buy handlers', () => {
   // VIP 50k button
   it('handleConfirmBuyVipMonthly: calls purchasePlan(userId, premium, 30) on success', async () => {
     const expiry = new Date('2026-07-05T00:00:00.000Z');
-    (db.where as any).mockResolvedValue([{ id: 3, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 3, locale: 'vi' }]);
     (FarmingSubscriptionService.purchasePlan as any).mockResolvedValue(expiry);
 
     const interaction = makeButtonInteraction();
@@ -241,7 +241,7 @@ describe('farming command — confirm buy handlers', () => {
   });
 
   it('handleConfirmBuyVipMonthly: shows insufficient_balance on error', async () => {
-    (db.where as any).mockResolvedValue([{ id: 3, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 3, locale: 'vi' }]);
     (FarmingSubscriptionService.purchasePlan as any).mockRejectedValue(new Error('INSUFFICIENT_BALANCE'));
 
     const interaction = makeButtonInteraction();
@@ -257,7 +257,7 @@ describe('farming command — confirm buy handlers', () => {
   // TC-07-02: Upgrade prorated
   it('handleConfirmUpgradeVIP: calls upgradePlan(userId) on success', async () => {
     const expiry = new Date('2026-06-20T00:00:00.000Z');
-    (db.where as any).mockResolvedValue([{ id: 4, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 4, locale: 'vi' }]);
     (FarmingSubscriptionService.upgradePlan as any).mockResolvedValue(expiry);
 
     const interaction = makeButtonInteraction();
@@ -270,7 +270,7 @@ describe('farming command — confirm buy handlers', () => {
   });
 
   it('handleConfirmUpgradeVIP: shows insufficient_balance on error', async () => {
-    (db.where as any).mockResolvedValue([{ id: 4, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 4, locale: 'vi' }]);
     (FarmingSubscriptionService.upgradePlan as any).mockRejectedValue(new Error('INSUFFICIENT_BALANCE'));
 
     const interaction = makeButtonInteraction();
@@ -291,7 +291,7 @@ describe('farming command — subscription status display (TC-07-04, TC-07-05)',
   });
 
   it('TC-07-04: /farming status reply contains subscription.status and subscription.expiry fields', async () => {
-    (db.where as any).mockResolvedValue([{ id: 5, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 5, locale: 'vi' }]);
     (db.query.farmingAccounts.findFirst as any).mockResolvedValue({
       userId: 5,
       status: 'active',
@@ -317,7 +317,7 @@ describe('farming command — subscription status display (TC-07-04, TC-07-05)',
   });
 
   it('TC-07-04: /farming status shows N/A when no subscription', async () => {
-    (db.where as any).mockResolvedValue([{ id: 6, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 6, locale: 'vi' }]);
     (db.query.farmingAccounts.findFirst as any).mockResolvedValue(null);
     (db.query.farmingSubscriptions.findFirst as any).mockResolvedValue(null);
 
@@ -331,7 +331,7 @@ describe('farming command — subscription status display (TC-07-04, TC-07-05)',
   });
 
   it('TC-07-05: /farming setup reply contains subscription.status and subscription.expiry fields', async () => {
-    (db.where as any).mockResolvedValue([{ id: 7, locale: 'vi' }]);
+    (db as any).where.mockResolvedValue([{ id: 7, locale: 'vi' }]);
     (db.query.farmingSubscriptions.findFirst as any).mockResolvedValue({
       userId: 7,
       planType: 'premium',

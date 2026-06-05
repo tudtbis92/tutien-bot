@@ -1,5 +1,5 @@
-/* eslint-disable i18next/no-literal-string */
-import { Client, ChannelType, PermissionFlagsBits } from 'discord.js';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Client, ChannelType, PermissionFlagsBits, type OverwriteData } from 'discord.js';
 import { config } from '../../config.js';
 
 /**
@@ -52,25 +52,28 @@ export async function createFarmingChannel(client: Client, ownerId: string, self
       if (existing) return existing.id;
       
       try {
-        const overwrites = [
-          { id: guild.roles.everyone.id, deny: ['1024'] }, // Deny View (@everyone)
-          { id: ownerId, allow: ['1024', '65536'] }, // View, Read History (Owner)
-          { id: c.user?.id || '', allow: ['3088'] } // View, Send, Manage (Main Bot)
+        const VIEW_CHANNEL = 1024n;
+        const SEND_MESSAGES = 2048n;
+        const READ_HISTORY = 65536n;
+        const MANAGE_CHANNELS = 16n;
+
+        const overwrites: { id: string; deny?: bigint[]; allow?: bigint[] }[] = [
+          { id: guild.roles.everyone.id, deny: [VIEW_CHANNEL] },
+          { id: ownerId, allow: [VIEW_CHANNEL, READ_HISTORY] },
+          { id: c.user?.id ?? '', allow: [VIEW_CHANNEL, SEND_MESSAGES, MANAGE_CHANNELS] }
         ];
 
         if (selfBotId && selfBotId !== ownerId) {
-          overwrites.push({ id: selfBotId, allow: ['1024', '2048'] }); // View, Send (Self-Bot)
+          overwrites.push({ id: selfBotId, allow: [VIEW_CHANNEL, SEND_MESSAGES] });
         } else if (!selfBotId) {
-          // If no selfBotId provided, assume owner is self-bot and needs Send perms
           const ownerOverwrite = overwrites.find(o => o.id === ownerId);
-          if (ownerOverwrite) {
-            ownerOverwrite.allow = ['1024', '2048', '65536']; // View, Send, Read History
+          if (ownerOverwrite?.allow) {
+            ownerOverwrite.allow = [VIEW_CHANNEL, SEND_MESSAGES, READ_HISTORY];
           }
         } else if (selfBotId === ownerId) {
-          // Owner is self-bot
           const ownerOverwrite = overwrites.find(o => o.id === ownerId);
-          if (ownerOverwrite) {
-            ownerOverwrite.allow = ['1024', '2048', '65536']; // View, Send, Read History
+          if (ownerOverwrite?.allow) {
+            ownerOverwrite.allow = [VIEW_CHANNEL, SEND_MESSAGES, READ_HISTORY];
           }
         }
 
@@ -78,7 +81,7 @@ export async function createFarmingChannel(client: Client, ownerId: string, self
           name: channelName,
           type: 0, // ChannelType.GuildText
           parent: categoryId,
-          permissionOverwrites: overwrites.filter(o => o.id !== '')
+          permissionOverwrites: overwrites.filter(o => o.id !== '') as any
         });
         return channel.id;
       } catch {
@@ -98,10 +101,10 @@ export async function createFarmingChannel(client: Client, ownerId: string, self
     if (existing) return existing.id;
     
     try {
-      const overwrites = [
+      const overwrites: OverwriteData[] = [
         { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
         { id: ownerId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory] },
-        { id: client.user?.id || '', allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels] }
+        { id: client.user?.id ?? '', allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels] }
       ];
 
       if (selfBotId && selfBotId !== ownerId) {
@@ -109,8 +112,8 @@ export async function createFarmingChannel(client: Client, ownerId: string, self
       } else {
         // Owner is self-bot or no self-bot ID provided
         const ownerOverwrite = overwrites.find(o => o.id === ownerId);
-        if (ownerOverwrite) {
-          ownerOverwrite.allow.push(PermissionFlagsBits.SendMessages);
+        if (ownerOverwrite?.allow && Array.isArray(ownerOverwrite.allow)) {
+          (ownerOverwrite.allow as bigint[]).push(PermissionFlagsBits.SendMessages);
         }
       }
 

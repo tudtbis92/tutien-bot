@@ -364,6 +364,34 @@ export async function handleFarmingBuyMonthlyButton(interaction: ButtonInteracti
   await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
 }
 
+export async function handleFarmingBuyVipMonthlyButton(interaction: ButtonInteraction): Promise<void> {
+  const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
+
+  if (!userRow) return;
+
+  const sub = await db.query.farmingSubscriptions.findFirst({
+    where: eq(farmingSubscriptions.userId, userRow.id),
+  });
+
+  const price = 50000n;
+  const embed = new EmbedBuilder()
+    .setTitle(t('game:farming.subscription.title'))
+    .setDescription(`**Gói VIP 30 Ngày / 30D VIP Plan**\nGiá / Price: ${price} Linh Thạch\n${t('game:profile.balance')}: ${userRow.balance}\n\n${sub ? t('game:farming.subscription.overwrite_warning') : ''}`)
+    .setColor(0xFFFF00);
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('farming:confirm_buy_vip_monthly')
+      // eslint-disable-next-line i18next/no-literal-string
+      .setLabel('Xác nhận / Confirm')
+      .setStyle(ButtonStyle.Success)
+  );
+
+  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+}
+
 export async function handleFarmingUpgradeVIPButton(interaction: ButtonInteraction): Promise<void> {
   const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
   const locale = resolveLocale(userRow?.locale, interaction.locale);
