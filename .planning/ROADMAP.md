@@ -52,9 +52,13 @@
 **Plans:** 1 plan
 - [x] 06.1-01-PLAN.md — Channel assignment logic & DB integration
 
-### Phase 7: Monetization & Subscription Commands
+### Phase 7: Monetization & Subscription Commands (Completed 2026-06-05)
 **Goal:** User flow cho việc mua/thuê gói dịch vụ bằng Linh Thạch, nạp VIP và các slash commands để quản lý self-bot cá nhân.  
-**Requirements:** FARM-02, FARM-05, MONET-01, MONET-04
+**Requirements:** FARM-02, FARM-05, FARM-07
+**Plans:** 3 plans
+- [x] 07-01-PLAN.md — Foundation & Core Service
+- [x] 07-02-PLAN.md — Interaction & Status UI
+- [x] 07-03-PLAN.md — Master Worker Integration & Testing
 
 ---
 

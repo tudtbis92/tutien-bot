@@ -2,13 +2,17 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction, ActionRowBuilder
 import { resolveLocale, getT } from '../../i18n/index.js';
 import { db } from '../../db/client.js';
 import { users } from '../../db/schema/users.js';
-import { farmingAccounts } from '../../db/schema/farming.js';
+import { farmingAccounts, farmingSubscriptions } from '../../db/schema/farming.js';
 import { EncryptionService } from '../../services/encryptionService.js';
 import { eq } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 import { isAuthorizedAdmin } from '../../utils/adminGuard.js';
 import { ProxyService } from '../../services/farming/proxyService.js';
-import { createFarmingChannel, deleteFarmingChannel } from '../../services/farming/channelService.js';
+import { createFarmingChannel, deleteFarmingChannel, getUserIdFromToken } from '../../services/farming/channelService.js';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc.js';
+
+dayjs.extend(utc);
 
 /* eslint-disable i18next/no-literal-string */
 export const data = new SlashCommandBuilder()
@@ -33,6 +37,11 @@ export const data = new SlashCommandBuilder()
     subcommand
       .setName('resume')
       .setDescription('Resume farming after solving a captcha')
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('buy')
+      .setDescription('Purchase or upgrade a farming subscription')
   );
 /* eslint-enable i18next/no-literal-string */
 
@@ -46,7 +55,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       return;
     }
 
-    const [userRow] = await db.select({ locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+    const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
     const locale = resolveLocale(userRow?.locale, interaction.locale);
     const t = getT(locale);
 
@@ -70,7 +79,37 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         .setCustomId('farming:buy_monthly')
         .setLabel(t('game:farming.setup.button_buy_monthly'))
         .setStyle(ButtonStyle.Primary)
-        .setEmoji('👑')
+        .setEmoji('👑'),
+      new ButtonBuilder()
+        .setCustomId('farming:buy_vip_monthly')
+        // eslint-disable-next-line i18next/no-literal-string
+        .setLabel('Mua Gói VIP (30 Ngày)')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('🌟')
+    );
+
+    const sub = await db.query.farmingSubscriptions.findFirst({
+      where: eq(farmingSubscriptions.userId, userRow.id),
+    });
+
+    if (sub?.planType === 'basic' && sub.expiresAt) {
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId('farming:upgrade_vip')
+          // eslint-disable-next-line i18next/no-literal-string
+          .setLabel('Nâng cấp VIP / Upgrade VIP')
+          .setStyle(ButtonStyle.Success)
+          .setEmoji('💎')
+      );
+    }
+
+    const planName = sub ? t(`game:farming.subscription.types.${sub.planType}`) : t('game:farming.subscription.types.free');
+    // eslint-disable-next-line i18next/no-literal-string
+    const expiryStr = sub?.expiresAt ? dayjs.utc(sub.expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') : 'N/A';
+    
+    embed.addFields(
+      { name: t('game:farming.subscription.status'), value: planName, inline: true },
+      { name: t('game:farming.subscription.expiry'), value: expiryStr, inline: true }
     );
 
     await interaction.reply({ embeds: [embed], components: [row] });
@@ -91,19 +130,24 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       }
     });
     
-    if (!account) {
-      await interaction.reply({ content: t('game:farming.errors.no_account'), ephemeral: true });
-      return;
-    }
-    
+    const sub = await db.query.farmingSubscriptions.findFirst({
+      where: eq(farmingSubscriptions.userId, userRow.id),
+    });
+
+    const planName = sub ? t(`game:farming.subscription.types.${sub.planType}`) : t('game:farming.subscription.types.free');
+    // eslint-disable-next-line i18next/no-literal-string
+    const expiryStr = sub?.expiresAt ? dayjs.utc(sub.expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') : 'N/A';
+
     const embed = new EmbedBuilder()
       .setTitle(t('game:farming.status.title'))
       .addFields(
-        { name: t('game:farming.status.state'), value: String(account.status), inline: true },
-        { name: t('game:farming.status.proxy'), value: account.proxy ? account.proxy.url : 'None', inline: true },
-        { name: t('game:farming.status.worker'), value: String(account.workerId || 'Unassigned'), inline: true }
+        { name: t('game:farming.status.state'), value: account ? String(account.status) : 'No Account', inline: true },
+        { name: t('game:farming.status.proxy'), value: account?.proxy ? account.proxy.url : 'None', inline: true },
+        { name: t('game:farming.status.worker'), value: account?.workerId ? String(account.workerId) : 'Unassigned', inline: true },
+        { name: t('game:farming.subscription.status'), value: planName, inline: true },
+        { name: t('game:farming.subscription.expiry'), value: expiryStr, inline: true }
       )
-      .setColor(account.status === 'active' ? 0x00FF00 : (account.status === 'captcha_waiting' ? 0xFF0000 : 0xFFFF00));
+      .setColor(account?.status === 'active' ? 0x00FF00 : (account?.status === 'captcha_waiting' ? 0xFF0000 : 0xFFFF00));
       
     await interaction.reply({ embeds: [embed], ephemeral: true });
   } else if (subcommand === 'resume') {
@@ -172,6 +216,65 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     
     // eslint-disable-next-line i18next/no-literal-string
     await interaction.reply({ content: t('game:farming.status.state') + ': stopped', ephemeral: true });
+  } else if (subcommand === 'buy') {
+    const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
+    const locale = resolveLocale(userRow?.locale, interaction.locale);
+    const t = getT(locale);
+    
+    if (!userRow) {
+      await interaction.reply({ content: t('game:farming.errors.not_registered'), ephemeral: true });
+      return;
+    }
+
+    const sub = await db.query.farmingSubscriptions.findFirst({
+      where: eq(farmingSubscriptions.userId, userRow.id),
+    });
+
+    const planName = sub ? t(`game:farming.subscription.types.${sub.planType}`) : t('game:farming.subscription.types.free');
+    // eslint-disable-next-line i18next/no-literal-string
+    const expiryStr = sub?.expiresAt ? dayjs.utc(sub.expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') : 'N/A';
+
+    const embed = new EmbedBuilder()
+      .setTitle(t('game:farming.subscription.title'))
+      .setDescription(t('game:farming.setup.description'))
+      .addFields(
+        { name: t('game:profile.balance'), value: String(userRow.balance), inline: true },
+        { name: t('game:farming.subscription.status'), value: planName, inline: true },
+        { name: t('game:farming.subscription.expiry'), value: expiryStr, inline: true }
+      )
+      .setColor(0x00AAFF);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('farming:buy_weekly')
+        .setLabel(t('game:farming.setup.button_buy_weekly'))
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🎫'),
+      new ButtonBuilder()
+        .setCustomId('farming:buy_monthly')
+        .setLabel(t('game:farming.setup.button_buy_monthly'))
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('👑'),
+      new ButtonBuilder()
+        .setCustomId('farming:buy_vip_monthly')
+        // eslint-disable-next-line i18next/no-literal-string
+        .setLabel('Mua Gói VIP (30 Ngày)')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('🌟')
+    );
+
+    if (sub?.planType === 'basic' && sub.expiresAt) {
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId('farming:upgrade_vip')
+          // eslint-disable-next-line i18next/no-literal-string
+          .setLabel('Nâng cấp VIP / Upgrade VIP')
+          .setStyle(ButtonStyle.Success)
+          .setEmoji('💎')
+      );
+    }
+
+    await interaction.reply({ embeds: [embed], components: [row] });
   }
 }
 
@@ -204,19 +307,98 @@ export async function handleFarmingStartButton(interaction: ButtonInteraction): 
 }
 
 export async function handleFarmingBuyWeeklyButton(interaction: ButtonInteraction): Promise<void> {
-  const [userRow] = await db.select({ locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+  const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
   const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);
 
-  await interaction.reply({ content: t('game:farming.setup.buy_under_development'), ephemeral: true });
+  if (!userRow) return;
+
+  const sub = await db.query.farmingSubscriptions.findFirst({
+    where: eq(farmingSubscriptions.userId, userRow.id),
+  });
+
+  const price = 10000n;
+  const embed = new EmbedBuilder()
+    .setTitle(t('game:farming.subscription.title'))
+     
+    .setDescription(`**Gói 7 Ngày / Weekly Plan**\nGiá / Price: ${price} Linh Thạch\n${t('game:profile.balance')}: ${userRow.balance}\n\n${sub ? t('game:farming.subscription.overwrite_warning') : ''}`)
+    .setColor(0xFFFF00);
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('farming:confirm_buy_weekly')
+      // eslint-disable-next-line i18next/no-literal-string
+      .setLabel('Xác nhận / Confirm')
+      .setStyle(ButtonStyle.Success)
+  );
+
+  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
 }
 
 export async function handleFarmingBuyMonthlyButton(interaction: ButtonInteraction): Promise<void> {
-  const [userRow] = await db.select({ locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+  const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
   const locale = resolveLocale(userRow?.locale, interaction.locale);
   const t = getT(locale);
 
-  await interaction.reply({ content: t('game:farming.setup.buy_under_development'), ephemeral: true });
+  if (!userRow) return;
+
+  const sub = await db.query.farmingSubscriptions.findFirst({
+    where: eq(farmingSubscriptions.userId, userRow.id),
+  });
+
+  const price = 35000n;
+  const embed = new EmbedBuilder()
+    .setTitle(t('game:farming.subscription.title'))
+     
+    .setDescription(`**Gói 30 Ngày / Monthly Plan**\nGiá / Price: ${price} Linh Thạch\n${t('game:profile.balance')}: ${userRow.balance}\n\n${sub ? t('game:farming.subscription.overwrite_warning') : ''}`)
+    .setColor(0xFFFF00);
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('farming:confirm_buy_monthly')
+      // eslint-disable-next-line i18next/no-literal-string
+      .setLabel('Xác nhận / Confirm')
+      .setStyle(ButtonStyle.Success)
+  );
+
+  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+}
+
+export async function handleFarmingUpgradeVIPButton(interaction: ButtonInteraction): Promise<void> {
+  const [userRow] = await db.select({ id: users.id, locale: users.locale, balance: users.balance }).from(users).where(eq(users.discordId, interaction.user.id));
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
+
+  if (!userRow) return;
+
+  const sub = await db.query.farmingSubscriptions.findFirst({
+    where: eq(farmingSubscriptions.userId, userRow.id),
+  });
+
+  if (!sub || sub.planType !== 'basic' || !sub.expiresAt) {
+    // eslint-disable-next-line i18next/no-literal-string
+    await interaction.reply({ content: 'Invalid upgrade state.', ephemeral: true });
+    return;
+  }
+
+  const { FarmingSubscriptionService } = await import('../../services/farming/subscriptionService.js');
+  const fee = FarmingSubscriptionService.calculateUpgradeFee(sub.expiresAt);
+
+  const embed = new EmbedBuilder()
+    .setTitle(t('game:farming.subscription.title'))
+     
+    .setDescription(`**Nâng cấp VIP / Upgrade VIP**\n${t('game:farming.subscription.upgrade_fee', { fee: fee.toString() })}\n${t('game:profile.balance')}: ${userRow.balance}`)
+    .setColor(0xFFFF00);
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('farming:confirm_upgrade_vip')
+      // eslint-disable-next-line i18next/no-literal-string
+      .setLabel('Xác nhận / Confirm')
+      .setStyle(ButtonStyle.Success)
+  );
+
+  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
 }
 
 export async function handleFarmingTokenModal(interaction: ModalSubmitInteraction): Promise<void> {
@@ -307,4 +489,100 @@ export async function handleFarmingTokenModal(interaction: ModalSubmitInteractio
   }
 
   await interaction.reply({ content: t('game:farming.success.token_saved'), ephemeral: true });
+}
+
+export async function handleConfirmBuyWeekly(interaction: ButtonInteraction): Promise<void> {
+  const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
+  if (!userRow) return;
+
+  const { FarmingSubscriptionService } = await import('../../services/farming/subscriptionService.js');
+  try {
+    const expiresAt = await FarmingSubscriptionService.purchasePlan(userRow.id, 'basic', 7);
+    if (process.send) {
+      process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
+    }
+    await interaction.update({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
+      await interaction.update({ content: t('game:farming.subscription.insufficient_balance', { required: '10000', current: '?' }), embeds: [], components: [] });
+    } else {
+      logger.error('Farming', 'Failed to purchase weekly plan', error);
+      // eslint-disable-next-line i18next/no-literal-string
+      await interaction.update({ content: 'Transaction failed.', embeds: [], components: [] });
+    }
+  }
+}
+
+export async function handleConfirmBuyMonthly(interaction: ButtonInteraction): Promise<void> {
+  const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
+  if (!userRow) return;
+
+  const { FarmingSubscriptionService } = await import('../../services/farming/subscriptionService.js');
+  try {
+    const expiresAt = await FarmingSubscriptionService.purchasePlan(userRow.id, 'basic', 30);
+    if (process.send) {
+      process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
+    }
+    await interaction.update({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
+      await interaction.update({ content: t('game:farming.subscription.insufficient_balance', { required: '35000', current: '?' }), embeds: [], components: [] });
+    } else {
+      logger.error('Farming', 'Failed to purchase monthly plan', error);
+      // eslint-disable-next-line i18next/no-literal-string
+      await interaction.update({ content: 'Transaction failed.', embeds: [], components: [] });
+    }
+  }
+}
+
+export async function handleConfirmBuyVipMonthly(interaction: ButtonInteraction): Promise<void> {
+  const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
+  if (!userRow) return;
+
+  const { FarmingSubscriptionService } = await import('../../services/farming/subscriptionService.js');
+  try {
+    const expiresAt = await FarmingSubscriptionService.purchasePlan(userRow.id, 'premium', 30);
+    if (process.send) {
+      process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
+    }
+    await interaction.update({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
+      await interaction.update({ content: t('game:farming.subscription.insufficient_balance', { required: '50000', current: '?' }), embeds: [], components: [] });
+    } else {
+      logger.error('Farming', 'Failed to purchase VIP monthly plan', error);
+      // eslint-disable-next-line i18next/no-literal-string
+      await interaction.update({ content: 'Transaction failed.', embeds: [], components: [] });
+    }
+  }
+}
+
+export async function handleConfirmUpgradeVIP(interaction: ButtonInteraction): Promise<void> {
+  const [userRow] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.discordId, interaction.user.id));
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
+  if (!userRow) return;
+
+  const { FarmingSubscriptionService } = await import('../../services/farming/subscriptionService.js');
+  try {
+    const expiresAt = await FarmingSubscriptionService.upgradePlan(userRow.id);
+    if (process.send) {
+      process.send({ type: 'FARMING_ACCOUNT_UPDATED', userId: interaction.user.id });
+    }
+    await interaction.update({ content: t('game:farming.subscription.success', { expiry: dayjs.utc(expiresAt).format('YYYY-MM-DD HH:mm:ss [UTC]') }), embeds: [], components: [] });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
+      await interaction.update({ content: t('game:farming.subscription.insufficient_balance', { required: '?', current: '?' }), embeds: [], components: [] });
+    } else {
+      logger.error('Farming', 'Failed to upgrade VIP plan', error);
+      // eslint-disable-next-line i18next/no-literal-string
+      await interaction.update({ content: 'Transaction failed.', embeds: [], components: [] });
+    }
+  }
 }

@@ -297,6 +297,20 @@
     },
     "success": {
       "token_saved": "✅ Token của bạn đã được mã hóa và lưu an toàn. Worker farming sẽ kết nối trong giây lát."
+    },
+    "subscription": {
+      "title": "Gói Dịch Vụ / Subscription Plan",
+      "status": "Trạng thái / Status",
+      "expiry": "Hết hạn / Expiry",
+      "types": {
+        "free": "Miễn phí / Free",
+        "basic": "Cơ bản / Basic",
+        "premium": "VIP / Premium"
+      },
+      "upgrade_fee": "Phí nâng cấp: {{fee}} Linh Thạch",
+      "success": "Mua gói thành công! Hạn dùng đến {{expiry}}.",
+      "insufficient_balance": "Không đủ Linh Thạch. Cần {{required}}, hiện có {{current}}.",
+      "overwrite_warning": "⚠️ Mua gói mới sẽ thay thế gói hiện tại. Bạn có chắc chắn?"
     }
   }
 }

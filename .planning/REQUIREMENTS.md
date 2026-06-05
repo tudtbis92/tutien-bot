@@ -237,11 +237,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FARM-03 | Phase 6: Farming Logic & Captcha Handling | ✅ Complete |
 | FARM-04 | Phase 6: Farming Logic & Captcha Handling | ✅ Complete |
 | FARM-07 | Phase 6: Farming Logic & Captcha Handling | ✅ Complete |
-| FARM-02 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
-| FARM-05 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
-| MONET-01 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
-| MONET-04 | Phase 7: Monetization & Subscription Commands | ░░ Pending |
+| FARM-02 | Phase 7: Monetization & Subscription Commands | ✅ Complete |
+| FARM-05 | Phase 7: Monetization & Subscription Commands | ✅ Complete |
+| MONET-01 | — | ⏸️ Deferred (out of Phase 7 scope) |
+| MONET-04 | — | ⏸️ Deferred (out of Phase 7 scope) |
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-06-04 — Milestone v2 traceability and FARM-08 added*
+*Last updated: 2026-06-05 — Fixed MONET-01/MONET-04 traceability (deferred, not Phase 7)*
+

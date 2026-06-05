@@ -3,10 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { ShardingManager } from 'discord.js';
 import type { FarmingSettings } from '../types/farming.js';
 import { db } from '../db/client.js';
-import { farmingAccounts, proxies } from '../db/schema/farming.js';
+import { farmingAccounts, proxies, farmingSubscriptions } from '../db/schema/farming.js';
 import { eq } from 'drizzle-orm';
 import { EncryptionService } from '../services/encryptionService.js';
 import { logger } from '../utils/logger.js';
+import { FarmingSubscriptionService } from '../services/farming/subscriptionService.js';
 
 interface WorkerAssignment {
   worker: ChildProcess;
@@ -78,29 +79,45 @@ export class SelfBotMaster {
         .select({
           account: farmingAccounts,
           proxy: proxies,
+          subscription: farmingSubscriptions,
         })
         .from(farmingAccounts)
         .leftJoin(proxies, eq(farmingAccounts.proxyId, proxies.id))
+        .leftJoin(farmingSubscriptions, eq(farmingAccounts.userId, farmingSubscriptions.userId))
         .where(eq(farmingAccounts.status, 'active'));
       
-      const botsToStart = activeAccounts.map(({ account, proxy }) => {
+      const botsToStart = activeAccounts.map(({ account, proxy, subscription }) => {
         try {
+          if (!subscription || subscription.planType === 'free') {
+            return null;
+          }
+
+          if (subscription.expiresAt && subscription.expiresAt.getTime() <= Date.now()) {
+            return null;
+          }
+
           const decryptedToken = EncryptionService.decrypt(
             account.encryptedToken,
             account.iv,
             account.tag,
             account.keyVersion
           );
+
+          let finalSettings = account.settings as FarmingSettings | null;
+          if (finalSettings && subscription.planType !== 'premium') {
+            finalSettings = FarmingSubscriptionService.sanitizeFarmingSettings(finalSettings, subscription.planType);
+          }
+
           return {
             id: String(account.userId),
             token: decryptedToken,
             proxy: proxy?.url || account.proxyUrl || undefined,
             workerId: account.workerId,
             channelId: account.channelId,
-            settings: account.settings as FarmingSettings | null,
+            settings: finalSettings,
           };
         } catch (error) {
-          logger.error('SelfBotMaster', `Failed to decrypt token for user ${account.userId}`, error);
+          logger.error('SelfBotMaster', `Failed to process bot for user ${account.userId}`, error);
           return null;
         }
       }).filter((bot): bot is { id: string, token: string, proxy: string | undefined, workerId: number | null, channelId: string | null, settings: FarmingSettings | null } => bot !== null);
@@ -129,8 +146,19 @@ export class SelfBotMaster {
         const workerId = workerIds[workerIdx];
         const assignment = this.workers.get(workerId)!;
         
+        // Find bots that were in this worker but are no longer in the batch
+        const newBotIds = new Set(batch.map(b => b.id));
+        const botsToStop = Array.from(assignment.botIds).filter(id => !newBotIds.has(id));
+        
+        if (botsToStop.length > 0) {
+          assignment.worker.send({
+            type: 'STOP_BOTS',
+            payload: botsToStop
+          });
+        }
+        
         // Update assignment
-        assignment.botIds = new Set(batch.map(b => b.id));
+        assignment.botIds = newBotIds;
         
         assignment.worker.send({
           type: 'START_BOTS',

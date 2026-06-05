@@ -16,7 +16,7 @@ import { buildRecipesPage } from '../ui/embeds/buildRecipesEmbed.js';
 import { buildBagPage } from '../commands/game/bag.js';
 import { handlePredictResult, handlePredictButtonMarket, handlePredictModalSubmit } from '../components/predictions/index.js';
 import { buildHistoryPage } from '../commands/predictions/predictions.js';
-import { handleFarmingStartButton, handleFarmingTokenModal, handleFarmingBuyWeeklyButton, handleFarmingBuyMonthlyButton } from '../commands/game/farming.js';
+import { handleFarmingStartButton, handleFarmingTokenModal, handleFarmingBuyWeeklyButton, handleFarmingBuyMonthlyButton, handleFarmingUpgradeVIPButton, handleConfirmBuyWeekly, handleConfirmBuyMonthly, handleConfirmUpgradeVIP, handleFarmingBuyVipMonthlyButton, handleConfirmBuyVipMonthly } from '../commands/game/farming.js';
 
 export const name = Events.InteractionCreate;
 
@@ -98,6 +98,60 @@ export async function execute(interaction: Interaction): Promise<void> {
         await handleFarmingBuyMonthlyButton(interaction);
       } catch (err) {
         logger.error('InteractionCreate', 'Error in handleFarmingBuyMonthlyButton', err);
+      }
+      return;
+    }
+
+    if (customId === 'farming:buy_vip_monthly') {
+      try {
+        await handleFarmingBuyVipMonthlyButton(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleFarmingBuyVipMonthlyButton', err);
+      }
+      return;
+    }
+
+    if (customId === 'farming:upgrade_vip') {
+      try {
+        await handleFarmingUpgradeVIPButton(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleFarmingUpgradeVIPButton', err);
+      }
+      return;
+    }
+
+    if (customId === 'farming:confirm_buy_weekly') {
+      try {
+        await handleConfirmBuyWeekly(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleConfirmBuyWeekly', err);
+      }
+      return;
+    }
+
+    if (customId === 'farming:confirm_buy_monthly') {
+      try {
+        await handleConfirmBuyMonthly(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleConfirmBuyMonthly', err);
+      }
+      return;
+    }
+
+    if (customId === 'farming:confirm_buy_vip_monthly') {
+      try {
+        await handleConfirmBuyVipMonthly(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleConfirmBuyVipMonthly', err);
+      }
+      return;
+    }
+
+    if (customId === 'farming:confirm_upgrade_vip') {
+      try {
+        await handleConfirmUpgradeVIP(interaction);
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in handleConfirmUpgradeVIP', err);
       }
       return;
     }

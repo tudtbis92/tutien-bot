@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp, pgEnum, bigint, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, text, timestamp, pgEnum, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.js';
 import type { FarmingSettings } from '../../types/farming.js';
@@ -36,9 +36,11 @@ export const farmingAccounts = pgTable('farming_accounts', {
 
 export const farmingSubscriptions = pgTable('farming_subscriptions', {
   id: serial('id').primaryKey(),
-  userId: bigint('user_id', { mode: 'bigint' }).notNull(), // Assuming bigint in plan
+  userId: integer('user_id').references(() => users.id).notNull().unique(),
   planType: farmingPlanEnum('plan_type').notNull().default('free'),
   expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 export const farmingAccountsRelations = relations(farmingAccounts, ({ one }) => ({
