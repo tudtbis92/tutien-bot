@@ -107,8 +107,21 @@ export class FootballApiClient {
   /**
    * Fetch scoreboard for a league.
    */
-  public async getScoreboard(leagueSlug: string, ttlMinutes = 60): Promise<unknown> {
-    return this.fetch(leagueSlug, {}, ttlMinutes);
+  public async getScoreboard(
+    leagueSlug: string,
+    paramsOrTtl: Record<string, string> | number = {},
+    ttlMinutes = 60
+  ): Promise<unknown> {
+    let params: Record<string, string> = {};
+    let ttl = ttlMinutes;
+
+    if (typeof paramsOrTtl === 'number') {
+      ttl = paramsOrTtl;
+    } else {
+      params = paramsOrTtl;
+    }
+
+    return this.fetch(leagueSlug, params, ttl);
   }
 
   /**

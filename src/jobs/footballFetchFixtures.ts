@@ -44,11 +44,31 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
   let totalUpdated = 0;
   let newFixturesIn24h = 0;
 
+  const now = new Date();
+  const startDate = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
+  const endDate = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000);   // 8 days in the future
+
+  const formatDateUTC = (d: Date): string => {
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return `${yyyy}${mm}${dd}`;
+  };
+
+  const datesParam = `${formatDateUTC(startDate)}-${formatDateUTC(endDate)}`;
+
   for (const league of CURATED_LEAGUES) {
     try {
-      logger.info('FootballFetchFixtures', `Fetching fixtures for ${league.name} (Slug: ${league.id})`);
+      logger.info(
+        'FootballFetchFixtures',
+        `Fetching fixtures for ${league.name} (Slug: ${league.id}) in range ${datesParam}`
+      );
 
-      const data = (await apiClient.getScoreboard(league.id, 60)) as { events?: EspnEvent[] }; // Cache for 1 hour
+      const data = (await apiClient.getScoreboard(
+        league.id,
+        { dates: datesParam },
+        60
+      )) as { events?: EspnEvent[] }; // Cache for 1 hour
 
       if (!data.events || !Array.isArray(data.events)) {
         continue;
