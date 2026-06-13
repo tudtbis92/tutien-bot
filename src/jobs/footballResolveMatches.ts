@@ -105,8 +105,26 @@ export async function runFootballResolveMatches(job: Job): Promise<void> {
 
   for (const match of matchesToResolve) {
     try {
+      const kickoff = new Date(match.kickoffAt);
+      const start = new Date(kickoff.getTime() - 1 * 24 * 60 * 60 * 1000);
+      const end = new Date(kickoff.getTime() + 1 * 24 * 60 * 60 * 1000);
+
+      const formatDateUTC = (d: Date): string => {
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        return `${yyyy}${mm}${dd}`;
+      };
+
+      const datesParam = `${formatDateUTC(start)}-${formatDateUTC(end)}`;
+
       // Query direct result from ESPN
-      const resultObj = (await apiClient.getFixtureResult(match.fixtureId, match.leagueId, 0)) as EspnEvent; // Bypass cache for resolving
+      const resultObj = (await apiClient.getFixtureResult(
+        match.fixtureId,
+        match.leagueId,
+        { dates: datesParam },
+        0
+      )) as EspnEvent; // Bypass cache for resolving
       
       if (!resultObj) {
         logger.warn('FootballResolveMatches', `Could not fetch API result for match ID ${match.id} (Fixture: ${match.fixtureId})`);

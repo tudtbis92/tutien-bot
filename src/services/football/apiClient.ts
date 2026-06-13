@@ -138,11 +138,24 @@ export class FootballApiClient {
   /**
    * Legacy method mapping: getFixtureScores now uses scoreboard for active leagues.
    */
-  public async getFixtureScores(leagueIds: string[], ttlMinutes = 5): Promise<unknown[]> {
+  public async getFixtureScores(
+    leagueIds: string[],
+    paramsOrTtl: Record<string, string> | number = {},
+    ttlMinutes = 5
+  ): Promise<unknown[]> {
+    let params: Record<string, string> = {};
+    let ttl = ttlMinutes;
+
+    if (typeof paramsOrTtl === 'number') {
+      ttl = paramsOrTtl;
+    } else {
+      params = paramsOrTtl;
+    }
+
     const results: unknown[] = [];
     for (const slug of leagueIds) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = (await this.getScoreboard(slug, ttlMinutes)) as any;
+      const data = (await this.getScoreboard(slug, params, ttl)) as any;
       if (data.events) {
         results.push(...data.events);
       }
@@ -153,19 +166,34 @@ export class FootballApiClient {
   /**
    * Fetch a single match's latest data.
    */
-  public async getFixtureResult(fixtureId: string, leagueSlug: string, ttlMinutes = 15): Promise<unknown | null> {
+  public async getFixtureResult(
+    fixtureId: string,
+    leagueSlug: string,
+    paramsOrTtl: Record<string, string> | number = {},
+    ttlMinutes = 15
+  ): Promise<unknown | null> {
+    let params: Record<string, string> = {};
+    let ttl = ttlMinutes;
+
+    if (typeof paramsOrTtl === 'number') {
+      ttl = paramsOrTtl;
+    } else {
+      params = paramsOrTtl;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (await this.getScoreboard(leagueSlug, ttlMinutes)) as any;
+    const data = (await this.getScoreboard(leagueSlug, params, ttl)) as any;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return data.events?.find((e: any) => e.id === fixtureId) || null;
   }
 
-  /**
-   * Fetch odds (Moneyline) for a fixture from ESPN.
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async getFixtureOdds(fixtureId: string, leagueSlug: string, ttlMinutes = 60): Promise<any | null> {
-    return this.getFixtureResult(fixtureId, leagueSlug, ttlMinutes);
+  public async getFixtureOdds(
+    fixtureId: string,
+    leagueSlug: string,
+    paramsOrTtl: Record<string, string> | number = {},
+    ttlMinutes = 60
+  ): Promise<unknown | null> {
+    return this.getFixtureResult(fixtureId, leagueSlug, paramsOrTtl, ttlMinutes);
   }
 }
 

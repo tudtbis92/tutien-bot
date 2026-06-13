@@ -67,9 +67,22 @@ export async function runFootballPollScores(job: Job): Promise<void> {
 
   // Group matches by league to optimize API calls
   const leagueIds = Array.from(new Set(matchesToPoll.map((m) => m.leagueId)));
+
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const formatDateUTC = (d: Date): string => {
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return `${yyyy}${mm}${dd}`;
+  };
+  const datesParam = `${formatDateUTC(twentyFourHoursAgo)}-${formatDateUTC(tomorrow)}`;
   
   try {
-    const allLiveEvents = (await apiClient.getFixtureScores(leagueIds, 0)) as EspnEvent[]; // Bypass cache
+    const allLiveEvents = (await apiClient.getFixtureScores(
+      leagueIds,
+      { dates: datesParam },
+      0
+    )) as EspnEvent[]; // Bypass cache
 
     let updatedCount = 0;
 
