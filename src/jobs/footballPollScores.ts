@@ -36,7 +36,6 @@ export async function runFootballPollScores(job: Job): Promise<void> {
   
   const apiClient = new FootballApiClient();
   const now = new Date();
-  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
   // ESPN scoreboard only returns matches for the current day/window.
   // NS matches older than 6h won't appear in scoreboard response — resolveMatches handles those.
   const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
@@ -49,7 +48,7 @@ export async function runFootballPollScores(job: Job): Promise<void> {
       or(
         and(
           inArray(footballMatches.status, ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE']),
-          gt(footballMatches.kickoffAt, twoHoursAgo)
+          gt(footballMatches.kickoffAt, sixHoursAgo)
         ),
         and(
           eq(footballMatches.status, 'NS'),
