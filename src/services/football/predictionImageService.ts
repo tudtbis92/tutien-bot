@@ -19,7 +19,7 @@ export class PredictionImageService {
 
   private getCacheKey(match: FootballMatch): string {
     if (match.status !== 'NS' && match.homeScore !== null && match.awayScore !== null) {
-      return `${match.id}-${match.homeScore}-${match.awayScore}`;
+      return `${match.id}-${match.status}-${match.homeScore}-${match.awayScore}`;
     }
     return `${match.id}-ns`;
   }
