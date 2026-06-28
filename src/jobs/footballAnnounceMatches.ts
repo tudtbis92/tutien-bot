@@ -6,6 +6,15 @@ import { postPredictionEmbed } from '../services/football/matchLifecycleService.
 import { logger } from '../utils/logger.js';
 
 /**
+ * Detects placeholder team names from ESPN that indicate a team slot
+ * has not yet been filled (e.g. knockout brackets before qualifiers finish).
+ * Returns true if the name matches known placeholder patterns.
+ */
+function hasPlaceholderTeamName(name: string): boolean {
+  return /^(Group\s+[A-H]|Winner\s+(of|Group)|Runner[\s-]?up|TBD)\b/i.test(name);
+}
+
+/**
  * Job to announce matches that are starting within the next 24 hours.
  * Calls the lifecycle service which handles channel filtering and persistence.
  */
@@ -28,15 +37,26 @@ export async function runFootballAnnounceMatches(job: Job): Promise<void> {
       )
     );
 
-  if (matchesToAnnounce.length === 0) {
-    logger.info('FootballAnnounceMatches', 'No matches in the 24h window.');
+  // Filter out matches with placeholder team names (e.g. "Group A 2nd Place", "Winner of...")
+  // Keep them in the DB so the fetch-fixtures upsert can update them when real names arrive.
+  const validMatches = matchesToAnnounce.filter(
+    (m) => !hasPlaceholderTeamName(m.homeTeamName) && !hasPlaceholderTeamName(m.awayTeamName)
+  );
+
+  const skippedCount = matchesToAnnounce.length - validMatches.length;
+  if (skippedCount > 0) {
+    logger.info('FootballAnnounceMatches', `Skipped ${skippedCount} match(es) with placeholder team names (waiting for real names).`);
+  }
+
+  if (validMatches.length === 0) {
+    logger.info('FootballAnnounceMatches', 'No valid matches in the 24h window.');
     return;
   }
 
-  logger.info('FootballAnnounceMatches', `Checking announcements for ${matchesToAnnounce.length} matches...`);
+  logger.info('FootballAnnounceMatches', `Checking announcements for ${validMatches.length} matches...`);
 
   let processedCount = 0;
-  for (const match of matchesToAnnounce) {
+  for (const match of validMatches) {
     try {
       await postPredictionEmbed(match);
       processedCount++;
