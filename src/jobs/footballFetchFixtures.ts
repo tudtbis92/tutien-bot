@@ -151,6 +151,8 @@ export async function runFootballFetchFixtures(job: Job): Promise<void> {
                   ELSE excluded.status
                 END`,
                 kickoffAt: sql`excluded.kickoff_at`,
+                homeTeamName: sql`excluded.home_team_name`,
+                awayTeamName: sql`excluded.away_team_name`,
                 homeOdds: sql`COALESCE(excluded.home_odds, football_matches.home_odds)`,
                 drawOdds: sql`COALESCE(excluded.draw_odds, football_matches.draw_odds)`,
                 awayOdds: sql`COALESCE(excluded.away_odds, football_matches.away_odds)`,
