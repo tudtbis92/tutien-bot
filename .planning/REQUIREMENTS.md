@@ -272,32 +272,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TQC-01 | — | Pending |
-| TQC-02 | — | Pending |
-| TQC-03 | — | Pending |
-| TQC-04 | — | Pending |
-| TQC-05 | — | Pending |
-| TQC-06 | — | Pending |
-| TQC-07 | — | Pending |
-| TQC-08 | — | Pending |
-| TQC-09 | — | Pending |
-| TQC-10 | — | Pending |
-| TQC-11 | — | Pending |
-| TQC-12 | — | Pending |
-| TQC-13 | — | Pending |
-| TQC-14 | — | Pending |
-| TQC-15 | — | Pending |
-| TQC-16 | — | Pending |
-| TQC-17 | — | Pending |
-| TQC-18 | — | Pending |
-| TQC-19 | — | Pending |
-| TQC-20 | — | Pending |
-| TQC-21 | — | Pending |
+| TQC-01 | Phase 8: Foundation, Economy Budget & Content Infrastructure | Pending |
+| TQC-02 | Phase 8: Foundation, Economy Budget & Content Infrastructure | Pending |
+| TQC-03 | Phase 8: Foundation, Economy Budget & Content Infrastructure | Pending |
+| TQC-04 | Phase 8: Foundation, Economy Budget & Content Infrastructure | Pending |
+| TQC-05 | Phase 8: Foundation, Economy Budget & Content Infrastructure | Pending |
+| TQC-06 | Phase 9: Travel & Encounters | Pending |
+| TQC-07 | Phase 9: Travel & Encounters | Pending |
+| TQC-08 | Phase 9: Travel & Encounters | Pending |
+| TQC-09 | Phase 9: Travel & Encounters | Pending |
+| TQC-10 | Phase 10: Battle & Capture | Pending |
+| TQC-11 | Phase 10: Battle & Capture | Pending |
+| TQC-12 | Phase 10: Battle & Capture | Pending |
+| TQC-13 | Phase 10: Battle & Capture | Pending |
+| TQC-14 | Phase 11: Progression, Chemistry & Economy Depth | Pending |
+| TQC-15 | Phase 11: Progression, Chemistry & Economy Depth | Pending |
+| TQC-16 | Phase 11: Progression, Chemistry & Economy Depth | Pending |
+| TQC-17 | Phase 11: Progression, Chemistry & Economy Depth | Pending |
+| TQC-18 | Phase 12: Anti-Abuse, Monitoring & Marketplace Gating | Pending |
+| TQC-19 | Phase 12: Anti-Abuse, Monitoring & Marketplace Gating | Pending |
+| TQC-20 | Phase 12: Anti-Abuse, Monitoring & Marketplace Gating | Pending |
+| TQC-21 | Phase 12: Anti-Abuse, Monitoring & Marketplace Gating | Pending |
 
 **Coverage:**
 - v3 requirements: 21 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21
+- Unmapped: 0 ✓
 
 ---
 
