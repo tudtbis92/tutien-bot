@@ -8,6 +8,18 @@ Discord bot RPG thể loại tu tiên (xianxia), hoạt động trên nhiều se
 
 Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi phút voice, mỗi reaction đều âm thầm xây dựng hành trình tu tiên của người chơi.
 
+## Current Milestone: v3.0 Tam Quốc Collection
+
+**Goal:** Xây dựng game sưu tầm Tam Quốc (kiểu Pokemon) hoạt động như một game con tách biệt — dùng chung Linh thạch (users.balance) làm tiền tệ, dữ liệu hero/bản đồ riêng.
+
+**Target features:**
+- Di chuyển trên bản đồ mốc địa danh (thời gian thực, trả Linh thạch theo khoảng cách) + encounter dọc hành trình
+- Auto-battle có lịch sử lượt: solo battle (1 hero) + quân đoàn battle (3 chủ lực + 9 hero buff hệ)
+- Thu phục hero sau trận theo tỉ lệ % (độ hiếm + HP + item)
+- Progression kiểu Pokemon Go: IV 6 chỉ số, duplicate → hồn ngọc, level 20 → t1, level 50 → t2, t3 khóa chờ event
+- Item hỗ trợ (mua menu + drop từ boss); hero hiển thị qua emoji Discord (assets sẵn có)
+- Boss server + PvP để phase sau
+
 ## Requirements
 
 ### Validated
@@ -28,7 +40,8 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 - [ ] PvE và PvP combat
 - [ ] Hỗ trợ đa ngôn ngữ (i18n) từ đầu
 - [ ] Multi-shard architecture
-- [ ] Nạp/mua linh thạch (monetization)
+- [ ] Hệ thống nạp/mua linh thạch (monetization)
+- [ ] Game sưu tầm Tam Quốc (bản đồ di chuyển + encounter + battle + thu phục hero + progression)
 
 ### Out of Scope
 
@@ -111,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-04 after Phase 06.1 (Farming Channel Management) complete*
+*Last updated: 2026-08-10 after Milestone v3.0 (Tam Quốc Collection) started*

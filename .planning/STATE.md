@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: OwO Farming Service
-status: IN_PROGRESS
-last_updated: "2026-06-28T23:16:41.265Z"
+milestone: v3.0
+milestone_name: Tam Quốc Collection
+status: planning
+last_updated: "2026-08-10T06:59:26.363Z"
+last_activity: 2026-08-10
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
-  percent: 80
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # State: TuTien Bot
@@ -21,20 +22,10 @@ progress:
 
 ## Current Position
 
-Phase: Phase 07 [Monetization & Subscription Commands] — COMPLETED
-Status: Subscription system with basic/premium tiers, prorated upgrades, and automated enforcement is fully implemented and verified via automated tests.
-
-```
-Progress: [██████████] 100%
-
-Phase 05 [Self-bot Infra]                █████ COMPLETED
-Phase 05.1 [Proxy Pool]                  █████ COMPLETED
-Phase 06 [Farming & Captcha]             █████ COMPLETED
-Phase 06.1 [Farming Channel]             █████ COMPLETED
-Phase 07 [Monetization & Commands]       █████ COMPLETED
-```
-
----
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-08-10 — Milestone v3.0 started
 
 ## Phase Registry (Milestone v2)
 
