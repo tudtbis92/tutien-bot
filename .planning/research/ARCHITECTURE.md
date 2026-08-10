@@ -1,697 +1,370 @@
-# Architecture Patterns: TuTien Bot
+# Architecture Research: Tam Quốc Collection Integration
 
-**Domain:** Multi-shard Discord RPG bot (xianxia progression, global marketplace, event-driven)
-**Researched:** 2026-04-11
-**Confidence:** HIGH (verified against discord.js official docs, discord-hybrid-sharding source, production patterns)
+**Domain:** Pokemon-style hero-collection minigame (real-time travel, encounters, auto-battle, capture, IV progression) integrated into an existing multi-shard Discord RPG bot (TuTien Bot)
+**Researched:** 2026-08-10
+**Confidence:** HIGH (all integration-surface facts verified by direct read of the current codebase; external patterns cross-checked via web research)
 
 ---
 
-## Recommended Architecture
+## 1. System Overview (Actual Implemented Architecture + New Game)
 
-### System Overview
+The current codebase (verified 2026-08-10) differs from the 2026-04-11 research plan in important ways: it uses discord.js **built-in** ShardingManager (not hybrid sharding), pg-boss workers/crons run **only in the manager process** (shards are send-only), money operations use **atomic `UPDATE ... WHERE balance >= X` guards** (no separate ledger table exists), and i18n uses per-feature namespaces (`common, game, combat, marketplace, admin, football`). The new game must integrate with what actually exists.
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│                        Discord Gateway                             │
-│         (WebSocket connections, ~1000 guilds per shard)            │
-└──────────┬───────────────────────┬──────────────────┬─────────────┘
-           │                       │                  │
-    ┌──────▼──────┐         ┌──────▼──────┐    ┌──────▼──────┐
-    │  Cluster 0  │   ...   │  Cluster N  │    │ (auto-scale)│
-    │ Shards 0–1  │         │ Shards 2N–  │    │             │
-    └──────┬──────┘         └──────┬──────┘    └─────────────┘
-           │  activity events      │
-           │  (messageCreate,      │
-           │   voiceState,         │
-           │   reactionAdd)        │
-           └───────────┬───────────┘
-                       │
-              ┌────────▼────────┐
-              │  pg-boss Queues │◄──── PostgreSQL (job tables)
-               │                 │
-               │ activity-events │
-               │ marketplace     │
-               │ scheduler       │
-               │ notifications   │
-              └────────┬────────┘
-                       │
-       ┌───────────────┼───────────────────┐
-       │               │                   │
-┌──────▼──────┐ ┌──────▼──────┐   ┌────────▼────────┐
-│  Activity   │ │ Marketplace │   │   Scheduler     │
-│  Worker(s)  │ │   Worker    │   │    Worker       │
-│(horizontal) │ │ (singleton) │   │ (single/cron)   │
-└──────┬──────┘ └──────┬──────┘   └────────┬────────┘
-       │               │                    │
-       └───────┬────────┘────────────────────┘
-               │
-       ┌───────▼────────────────────────┐
-       │         PostgreSQL             │
-       │   (single global database)     │
-       └───────────────┬────────────────┘
-                       │ reads (hot path)
-               ┌───────▼───────┐
-               │     Redis     │
-               │  (cooldowns,  │
-               │  VWAP cache,  │
-               │  sessions)    │
-               └───────────────┘
-
-       ┌────────────────────────────────┐
-       │   HTTP Service (standalone)    │
-       │   Payment Webhook Receiver     │
-       │   (Stripe / payment provider)  │
-       └───────────────┬────────────────┘
-                       │
-                PostgreSQL (linhhthach_transactions)
+│  bot.ts — ShardingManager (ONE process)                            │
+│    preflight (DB/Redis ping) → registerCommands() → initI18n()     │
+│    → initPgBoss() [workers + crons + supervise + migrate]          │
+│    → health server → manager.spawn()                               │
+├────────────────────────────────────────────────────────────────────┤
+│  shard.ts × N — per-shard processes (discord.js Client)            │
+│    initI18n() → initPgBossForShard() [SEND-ONLY] → loadCommands     │
+│    → loadEvents → client.login()                                   │
+│    interactionCreate.ts routes slash commands + customIds          │
+├────────────────────────────────────────────────────────────────────┤
+│  NEW: src/commands/sanguo/ + src/components/sanguo/                │
+│    map · travel · heroes · battle · capture · shop · bag           │
+│    customId prefix: "sanguo:" (registry-dispatched)                │
+├────────────────────────────────────────────────────────────────────┤
+│  NEW: src/services/sanguo/  (pure services, like breakthrough.ts)  │
+│    travelService · battleEngine · captureService · shopService     │
+│  SHARED NEW: src/services/wallet.ts  (deduct/credit balance)       │
+├────────────────────────────────────────────────────────────────────┤
+│  NEW: src/jobs/sanguoTick.ts — pg-boss cron in MANAGER only        │
+│    travel-encounter tick: scan due encounters + arrivals            │
+│    → battleEngine → write results → notify via REST (no shard)     │
+├────────────────────────────────────────────────────────────────────┤
+│  Stores                                                             │
+│  PostgreSQL (source of truth): users · heroes · user_heroes ·      │
+│    map_nodes · player_travel_state · sanguo_battles ·              │
+│    sanguo_items/user_sanguo_items · encounter_runs                 │
+│  Redis (L1 cache ONLY — never truth): travel cooldowns, map view   │
+│    cache, capture cooldowns                                        │
+│  Static: src/assets/sanguoEmojis.ts (GENERATED from emojis.json)   │
+└────────────────────────────────────────────────────────────────────┘
 ```
+
+**Non-negotiables inherited from the codebase:**
+- Currency is `users.balance` (bigint). **Never `number`** for money (`mode: 'bigint'`, display via `formatBalance()`).
+- DB is source of truth; Redis is L1 cache only — the codebase states this invariant explicitly (`characters.ts`: "DB-backed cooldown state — survives shard restarts (Redis is L1 cache only)").
+- All jobs/crons registered in `pgBoss.ts registerJobs()` (manager only). Shards call `boss.send()` fire-and-forget.
+- Zero hardcoded user-facing strings (ESLint `i18next/no-literal-string` enforced).
 
 ---
 
-## Component Boundaries
+## 2. Integration Decisions (Answers to the 6 Key Concerns)
 
-| Component | Responsibility | Does NOT touch | Communicates With |
-|-----------|---------------|----------------|-------------------|
-| **Cluster Manager** | Spawns/supervises shard clusters; forwards IPC | Business logic | Cluster processes (IPC) |
-| **Shard Cluster** (N clusters) | Receives Discord Gateway events; dispatches slash command responses; sends interaction replies | DB directly for events | pg-boss (enqueue), PostgreSQL (read for slash commands), Redis (cooldown check) |
-| **Activity Worker** | Dequeues activity events; awards tu vi; updates character; enforces per-user cooldowns | Discord Gateway | PostgreSQL (write), Redis (cooldown keys) |
-| **Marketplace Worker** | Order submission, matching (buy ≥ sell price), VWAP recalculation, balance ledger, fee burn | Discord Gateway | PostgreSQL (ACID transactions), Redis (VWAP cache) |
-| **Scheduler Worker** | Season reset, hourly VWAP cron, announcement triggers | Discord Gateway | PostgreSQL (season table), pg-boss (notification queue), Redis (cache bust) |
-| **Notification Worker** | Sends DM/channel messages for async outcomes (order filled, season reset) | Business logic | Discord REST API (via @discordjs/rest, no gateway needed) |
-| **Payment Webhook Receiver** | Receives external payment callbacks; credits linhhthach | All Discord | PostgreSQL (linhhthach_transactions), Redis (idempotency key) |
+### 2.1 New DB Schemas — FK to `users.id`, NOT `characters.id`
+
+**Decision: All new player-owned tables reference `users.id`.** Precedent already in the codebase: `footballBets.userId → users.id`, `farmingAccounts.userId → users.id`. The new game is explicitly "data-separate" — `characters` is the xianxia progression row and the two games must not be coupled. `users.balance` is the only shared surface (the wallet).
+
+**Catalog vs instance split (like items / character_items):**
+- `heroes` — static catalog (seeded idempotently, precedent: `seed.ts` / `gather_pool_items`): `code` (e.g. `'abt'`, matches emojis.json key prefix), `nameI18nKey` (`sanguo:heroes.abt.name`), `rarity` (capture-rate tier), `baseStats` jsonb (template stats), `emojiKeyPrefix`.
+- `user_heroes` — per-player instances: `userId → users.id`, `heroId → heroes.id`, `ivs` jsonb (6 stats, 0–31 each), `level`, `tier` (0→1 @20, 1→2 @50, 3 event-gated), `isStar` (star variant), `captureCount` (duplicates → hồn ngọc), `capturedAt`.
+
+New files in `src/db/schema/`, exported from `schema/index.ts` under a `// Phase 07: Tam Quốc Collection` comment (existing grouping convention): `heroes.ts`, `user_heroes.ts`, `map_nodes.ts`, `player_travel_state.ts`, `sanguo_battles.ts`, `sanguo_items.ts` (+ `user_sanguo_items.ts`), `encounter_runs.ts`. Migrations via `drizzle-kit generate/migrate` (uses `DATABASE_URL_DIRECT`; runtime uses PgBouncer `DATABASE_URL`).
+
+### 2.2 Travel + Encounter State — DB Rows are the Truth, Redis is Read-Cache
+
+**Decision: `player_travel_state` row per player with derived timestamps; a periodic pg-boss tick processes due events. Redis holds only display/cooldown caches.**
+
+```typescript
+// src/db/schema/player_travel_state.ts (sketch)
+export const travelState = pgTable('player_travel_state', {
+  userId: integer('user_id').primaryKey().references(() => users.id),
+  status: travelStatusEnum('status').notNull().default('idle'), // idle | traveling
+  fromNodeId: integer('from_node_id').references(() => mapNodes.id),
+  toNodeId: integer('to_node_id').references(() => mapNodes.id),
+  departedAt: timestamp('departed_at', { withTimezone: true }),
+  arrivalAt: timestamp('arrival_at', { withTimezone: true }),
+  nextEncounterAt: timestamp('next_encounter_at', { withTimezone: true }),
+  encounterCount: smallint('encounter_count').notNull().default(0),
+  travelCost: bigint('travel_cost', { mode: 'bigint' }).notNull().default(sql`0`),
+}, (table) => [
+  check('arrival_after_departure', sql`${table.arrivalAt} IS NULL OR ${table.departedAt} IS NULL OR ${table.arrivalAt} > ${table.departedAt}`),
+  index('travel_due_idx').on(table.status, table.nextEncounterAt),
+]);
+// DB-enforced single active travel per user (partial unique index — run in migration):
+// CREATE UNIQUE INDEX IF NOT EXISTS one_active_travel
+//   ON player_travel_state(user_id) WHERE status = 'traveling';
+```
+
+**Why timestamps, not "in-progress" flags:**
+- `nextEncounterAt` / `arrivalAt` are computed at departure. Everything is derivable — a crash/restart cannot corrupt or strand a player; the tick simply picks up where time says it should be. This is exactly how the codebase already thinks (activity worker uses DB timestamps as cooldown truth).
+- **Encounter processing = periodic tick, not per-player delayed jobs.** pg-boss `sendAfter` jobs cannot be cancelled (player cancels travel → the job still fires) and create job sprawl at scale. A tick that scans `WHERE status='traveling' AND next_encounter_at <= now() AND arrival_at > now()` (with `travel_due_idx`) is cancel-safe (cancel = `UPDATE ... SET status='idle'`; the tick only sees active rows) and restart-safe.
+- **Row claiming:** use `.for('update', { skipLocked: true })` (precedent: `resolveMatchBets` in `matchLifecycleService.ts`) so multiple workers can never double-process the same encounter. Workers only run in the manager, but claiming still protects against overlap across tick invocations.
+- **Startup:** no data repair needed (state is timestamp-derived). Optionally warm the Redis position cache. Precedent for startup sweeps: `clearOrphanedVoiceSessions()` — only needed because voice sessions have no timestamps; travel does.
+- Cron granularity: pg-boss cron expressions are minute-granular. `*/1 * * * *` (precedent: `football-poll-scores`) with encounter intervals ≥ 60s is correct for v1. If sub-minute encounters are ever needed, process in batches per tick with a time-window filter.
+
+### 2.3 Auto-Battle Engine — Pure Service Function, NOT a Background Job
+
+**Decision: `src/services/sanguo/battleEngine.ts` — pure, synchronous, no discord.js deps (pattern: `services/breakthrough.ts`, which is fully unit-tested).**
+
+- Battles are deterministic-ish simulations (seeded RNG): solo (1 hero) and legion (3 mains + 9 supports) both complete in-memory in milliseconds. There is nothing to "wait" for — a background job adds durability/queueing for zero benefit and blocks manager throughput.
+- Two invocation paths:
+  1. **Player-initiated** (`/sanguo battle`, travel-arrival auto-battle): called from the interaction handler (pattern: `gather.ts execute()`).
+  2. **Encounter-initiated** (from the travel tick): the tick calls `battleEngine`, writes the result row, then **notifies via REST** — precedent: `matchLifecycleService.ts` posts/patches channel messages from the manager process using `new REST().setToken(...)`; no shard/gateway needed. DM via REST create-DM or post to the guild channel where travel started.
+- `sanguo_battles` table stores the turn-by-turn log (`rounds` jsonb) + outcome + participants — battle history is data, not live state.
+
+### 2.4 i18n — New `sanguo` Namespace
+
+**Decision: add `'sanguo'` to the `ns` array in `src/i18n/index.ts` (the ONLY registration point; `preload: SUPPORTED_LOCALES` loads everything at startup) and create `locales/{vi,en,zh-cn}/sanguo.json`.** This mirrors the `football` namespace exactly (ns per feature area, all 3 locales, `fallbackNS: 'common'`). Hero names/titles use `sanguo:heroes.{code}.name` keys (pattern: `items.nameI18nKey`). All 3 locale files ship from day one (milestone constraint: VI default, EN + ZH-CN together).
+
+### 2.5 Emoji Mapping — Checked-in Generated Registry, not Runtime File Reads
+
+**Verified manifest:** `E:/Saeth/sanguo_assets/assets/emojis.json` is an app-emoji manifest: `{ applicationId, applicationName, uploadedAt, total, failed, emojis, failures }` where `emojis` maps **1056 keys** (`{code}_t{tier}[_star]`, e.g. `abt_t0`, `abt_t0_star`, … `abt_t3_star`) → Discord emoji snowflake IDs. 132 heroes × 4 tiers × 2 star-variants.
+
+**Decision:** Discord supports up to 2,000 **application-owned emojis** usable anywhere on Discord; they render in embeds via `<:name:id>` (verified: Discord official emoji resource + discord.py 2.5 `fetch_application_emojis`; MEDIUM-HIGH confidence, cross-referenced).
+
+1. Generate a checked-in TS module `src/assets/sanguoEmojis.ts` from the manifest (a small generator script; **never read the sibling repo path at runtime** — the Oracle VM won't have it).
+2. Validate the JSON with Zod at build/load; render helper:
+```typescript
+export function heroEmoji(code: string, tier: number, star: boolean): string {
+  const key = `${code}_t${tier}${star ? '_star' : ''}`;
+  const id = SANGO_EMOJIS[key];
+  return id ? `<:${key}:${id}>` : EMOJI.WARNING; // fallback never hardcodes an ID
+}
+```
+3. **Startup check:** assert `manifest.applicationId === config.CLIENT_ID`; if mismatch, log FATAL (emojis are bound to the bot's own application). Add to bot.ts preflight.
+4. This extends the existing `src/assets/emojis.ts` typed-registry convention — generated data instead of hand-maintaining 1056 entries. `heroEmoji` returns a plain string so embeds and components both use it.
+
+### 2.6 Money Sinks — Reuse the Atomic Deduct Pattern via a Shared Wallet Service
+
+The pattern currently inlined in `gather.ts` (and repeated in farming/predictions):
+```typescript
+// The WHERE clause is the atomic race guard; DB check `balance_non_negative` is the backstop.
+const res = await tx.update(users)
+  .set({ balance: sql`${users.balance} - ${amount}` })
+  .where(and(eq(users.discordId, discordId), sql`${users.balance} >= ${amount}`));
+if ((res.rowCount ?? 0) === 0) throw new Error('INSUFFICIENT_BALANCE');
+```
+
+**Decision: extract `src/services/wallet.ts` first** — `deductBalance(tx, userId, amount)` (guard + rowCount check + typed `InsufficientBalanceError`) and `creditBalance(tx, userId, amount)` (plain `balance + X`). The new game adds many sinks (travel cost, item shop, battle entry, capture items), and copy-pasting the guard invites drift. Refactor existing call sites (`gather.ts`, farming purchases) to the shared service in the same phase — small, safe, and makes the new commands uniform. Travel cost is deducted **in the same transaction** that writes the `player_travel_state` row (atomic: pay → travel, or neither).
 
 ---
 
-## Data Flow
-
-### 1. Activity Event → Tu Vi Award
-
-```
-Discord Gateway
-  └─ messageCreate fires on shard that owns the guild
-       │
-       ├─ [Shard] Guard checks:
-       │     - author.bot? → drop
-       │     - channel allowed? → check Redis guild config cache
-       │     - user cooldown key in Redis? → drop (spam guard)
-       │
-        └─ Enqueue job to pg-boss `activity-events` queue:
-             { userId, guildId, eventType, timestamp }
-                  │
-                  ▼
-          [Activity Worker]
-            1. Acquire Redis lock key: `cooldown:{userId}:{eventType}`
-               SET NX EX 60 → if already set, discard (duplicate guard)
-            2. Fetch character row from PostgreSQL: SELECT ... WHERE user_id=$1
-               (upsert if first activity)
-            3. Calculate tu vi delta:
-               message: +base × profession_multiplier
-               voice: calculated per minute via voiceState intervals
-               reaction: +small_base
-            4. UPDATE characters SET tu_vi = tu_vi + $delta, ...
-            5. Check realm threshold → if tu vi crossed → trigger realm-up
-               (enqueue notification job)
-```
-
-### 2. Slash Command → Immediate Response
-
-```
-Discord Interaction (slash command)
-  └─ Arrives on the shard serving that guild
-       │
-       └─ [Shard] Command handler:
-             1. Defer reply (3-second window)
-             2. Read character/market data from PostgreSQL directly
-                (slash commands are user-initiated; direct DB read is fine)
-             3. Build embed response
-             4. Edit deferred reply with result
-```
-
-**Rationale:** Activity events (fire-and-forget) go through pg-boss. Interactive slash commands respond directly from the shard, reading from DB. This keeps slash commands responsive while protecting DB from event storms.
-
-### 3. Marketplace Order Flow
-
-```
-User: /market sell <item> <qty> <price>
-  └─ [Shard] Validates:
-        - price <= 2.5 × VWAP (read from Redis VWAP cache, fallback DB)
-        - user owns item in sufficient quantity
-        - price >= 1 linhhthach (min)
-       Enqueue to pg-boss `marketplace` queue:
-          { type: 'LIMIT_SELL', userId, itemId, qty, price, timestamp }
-
-User: /market buy <item> <qty>            (instant buy at 1.2 × VWAP)
-   └─ [Shard] Enqueue: { type: 'INSTANT_BUY', ... }
-
-[Marketplace Worker — concurrency: 1 per queue]
-  1. BEGIN TRANSACTION
-  2. SELECT FOR UPDATE on order book rows (prevent race)
-  3. Matching logic:
-     - Find best sell order where sell_price <= buy_price
-     - Execute match: transfer item, debit/credit linhhthach
-     - Apply 10% seller fee → burn (subtract from supply, not credited to anyone)
-     - INSERT into trades table: { item_id, price, qty, buyer_id, seller_id, matched_at }
-     - DELETE / UPDATE matched orders
-  4. COMMIT
-  5. Enqueue notification jobs for buyer + seller
-  6. If no immediate match: persist limit order to `market_orders` table
-```
-
-### 4. VWAP Recalculation
-
-```
-pg-boss Scheduler (cron job, every 1 hour via `boss.schedule()`)
-  └─ [Scheduler Worker]
-       1. Query PostgreSQL:
-          SELECT SUM(price * qty) / SUM(qty) AS vwap
-          FROM trades
-          WHERE item_id = $itemId
-            AND matched_at > NOW() - INTERVAL '1 hour'
-          GROUP BY item_id
-       2. If no trades in window → keep previous VWAP unchanged
-       3. SET Redis key: `vwap:{itemId}` = { price, computed_at }
-          TTL: 75 minutes (ensures valid until next recalc)
-       4. UPDATE market_items SET market_price = $vwap WHERE item_id = $itemId
-```
-
-### 5. Season Reset Flow
-
-```
-pg-boss Scheduler (cron job at season boundary via `boss.schedule()`)
-  └─ [Scheduler Worker]
-       1. INSERT new season row: { season_id, name, realm_names[], start_at }
-       2. BEGIN TRANSACTION
-          a. TRUNCATE characters_progression (or bulk UPDATE all to lv1)
-          b. Preserve: items flagged as carry_over=true in inventory
-          c. Preserve: linhhthach balances (paid currency - NEVER reset)
-          d. INSERT season_archive snapshot of top players
-       3. COMMIT
-       4. Redis FLUSHDB relevant keyspaces (invalidate all character caches)
-       5. Enqueue announcement jobs:
-          - Fetch all guild_ids from DB (all active guilds)
-          - POST to announcement channels via Discord REST
-```
-
-### 6. i18n Locale Resolution
-
-```
-Per event/interaction:
-  1. Check user.locale_override in DB (user explicitly set /lang)
-     → If set, use this. Highest priority.
-  2. Check guild_settings.language in Redis cache (keyed by guild_id)
-     → If cache miss → fetch from PostgreSQL guild_settings table → cache
-  3. Fall back to message.guild.preferredLocale (Discord-native guild locale)
-  4. Default: 'vi' (Vietnamese — this bot's primary audience)
-
-Translation files: i18next JSON files bundled in the bot source.
-  - /locales/vi/translation.json  (primary)
-  - /locales/en/translation.json  (secondary)
-  - /locales/zh/translation.json  (future)
-  
-All strings go through t('key', { vars }) — ZERO hardcoded strings.
-```
-
----
-
-## Shard Communication Strategy
-
-### Principle: Database-First, Not Shard-to-Shard
-
-| Problem | Wrong Approach | Correct Approach |
-|---------|---------------|-----------------|
-| "What is user X's tu vi?" | broadcastEval across shards | Read from PostgreSQL directly |
-| "Does user X exist?" | broadcastEval | PostgreSQL upsert |
-| "Global marketplace state" | Shard 0 owns it | Centralized marketplace worker + DB |
-| "Total tu vi for leaderboard" | broadcastEval aggregate | PostgreSQL GROUP BY query |
-| "User's cooldown expired?" | Shard-local Map | Redis key with TTL |
-
-**broadcastEval is for Discord cache queries only** (member count, guild list, online status). Business data lives in PostgreSQL.
-
-### What broadcastEval IS Used For
-
-```javascript
-// Example: Check if a user is currently online (Discord presence)
-// This is genuinely shard-distributed data
-const presences = await client.cluster.broadcastEval(
-  (c, { userId }) => {
-    return c.users.cache.get(userId)?.presence?.status ?? null;
-  },
-  { context: { userId } }
-);
-```
-
-### Cluster Architecture (discord-hybrid-sharding)
-
-```
-ClusterManager (index.js)
-  ├── Cluster 0 → [Shard 0, Shard 1] (handles guilds 0–1999)
-  ├── Cluster 1 → [Shard 2, Shard 3] (handles guilds 2000–3999)
-  └── Cluster N → [Shard 2N, Shard 2N+1]
-
-Recommended ratios:
-  - 2 internal shards per cluster process
-  - ~1000 guilds per shard
-  - Upgrade to 3–5 shards/cluster when memory allows
-  
-Rate limits: Shard rate limits are per-gateway-connection.
-  - Use a REST proxy (nirn-proxy or @discordjs/rest with rate limit handling)
-    so all clusters share a single rate limit window.
-```
-
----
-
-## Database Schema Approach
-
-### Single Global PostgreSQL Database
-
-All shards and workers share one database. **Never per-shard databases** — this would make global features (marketplace, characters) impossible without a data synchronization layer.
-
-### Key Tables
-
-```sql
--- Users (global character — same across all servers)
-users (
-  user_id        BIGINT PRIMARY KEY,      -- Discord user ID
-  locale_override VARCHAR(10),            -- user's /lang preference
-  linhhthach      BIGINT DEFAULT 0,        -- paid currency (NEVER reset)
-  created_at     TIMESTAMPTZ
-)
-
--- Characters (global progression)
-characters (
-  user_id        BIGINT PRIMARY KEY REFERENCES users,
-  season_id      INT REFERENCES seasons,
-  tu_vi          BIGINT DEFAULT 0,
-  realm_level    SMALLINT DEFAULT 0,      -- index into seasons.realm_names
-  profession     VARCHAR(50),
-  skill_points   JSONB,                   -- { gathering: 3, crafting: 1, ... }
-  updated_at     TIMESTAMPTZ
-)
-
--- Guild settings (per-server config, cached in Redis)
-guild_settings (
-  guild_id       BIGINT PRIMARY KEY,      -- Discord guild ID
-  language       VARCHAR(10) DEFAULT 'vi',
-  announcement_channel_id BIGINT,
-  active_channels BIGINT[],              -- channels where tu vi is earned
-  created_at     TIMESTAMPTZ
-)
-
--- Market orders (global order book)
-market_orders (
-  order_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id        BIGINT REFERENCES users,
-  item_id        INT REFERENCES items,
-  order_type     VARCHAR(10),             -- 'LIMIT_BUY' | 'LIMIT_SELL' | 'INSTANT_*'
-  qty            INT,
-  price          BIGINT,                 -- in linhhthach (integer, no floats)
-  status         VARCHAR(10) DEFAULT 'OPEN',  -- OPEN | FILLED | CANCELLED
-  created_at     TIMESTAMPTZ
-)
-
--- Trades (executed matches — VWAP source of truth)
-trades (
-  trade_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  item_id        INT REFERENCES items,
-  buy_order_id   UUID,
-  sell_order_id  UUID,
-  buyer_id       BIGINT,
-  seller_id      BIGINT,
-  qty            INT,
-  price          BIGINT,                 -- execution price
-  fee_burned     BIGINT,                 -- 10% of price * qty
-  matched_at     TIMESTAMPTZ            -- INDEX on (item_id, matched_at) for VWAP
-)
-
--- Market items (catalog + VWAP cache)
-market_items (
-  item_id        INT PRIMARY KEY,
-  name_key       VARCHAR(100),           -- i18n key, not raw string
-  base_price     BIGINT,                 -- floor price
-  market_price   BIGINT,                 -- last computed VWAP (denormalized)
-  updated_at     TIMESTAMPTZ
-)
-
--- Seasons
-seasons (
-  season_id      SERIAL PRIMARY KEY,
-  name_key       VARCHAR(100),           -- i18n key
-  realm_names    TEXT[],                 -- e.g. ['Luyện Khí','Trúc Cơ','Kim Đan',...]
-  starts_at      TIMESTAMPTZ,
-  ends_at        TIMESTAMPTZ,
-  active         BOOLEAN DEFAULT false   -- only one active at a time
-)
-
--- Payment transactions (audit log)
-linhhthach_transactions (
-  tx_id          UUID PRIMARY KEY,
-  user_id        BIGINT REFERENCES users,
-  amount         BIGINT,
-  type           VARCHAR(20),            -- 'PURCHASE' | 'SPEND' | 'FEE_BURN'
-  reference_id   VARCHAR(100),           -- payment provider ref
-  created_at     TIMESTAMPTZ
-)
-```
-
-### Index Strategy
-
-```sql
--- VWAP queries (hot path, runs every hour per item)
-CREATE INDEX idx_trades_item_time ON trades (item_id, matched_at DESC);
-
--- Character lookups (activity worker hot path)
--- user_id is already PK, so covered
-
--- Open order matching (marketplace worker)
-CREATE INDEX idx_orders_matching ON market_orders (item_id, order_type, price, status)
-  WHERE status = 'OPEN';
-
--- Guild settings lookup (cached in Redis, but DB fallback)
--- guild_id is already PK
-```
-
-### Currency as Integer
-
-All linhhthach amounts stored as `BIGINT` integers. No floating point. Fee calculation: `FLOOR(price * qty * 0.1)` with `MIN(1)` enforced at application level.
-
----
-
-## Marketplace Engine Placement
-
-**Decision: Centralized Marketplace Worker Process — NOT on any shard.**
-
-### Why Not on a Shard
-
-- Shards are stateless Discord event processors; they can restart, rebalance
-- Order matching requires serialized execution (single writer) to prevent double-fills
-- ACID transaction spanning order matching + balance update + trade recording cannot safely span shard restarts
-
-### Why Not Embedded in DB (Triggers/Stored Procedures)
-
-- PostgreSQL triggers can enforce constraints but matching logic is complex and iterative
-- Debugging, versioning, and testing stored procedures is harder
-- Business logic belongs in application code
-
-### Marketplace Worker Design
-
-```
-pg-boss Queue: 'marketplace'
-  - concurrency: 1  ← SINGLE WORKER, no parallel matching
-  - FIFO ordering guaranteed by pg-boss (ordered by created_at ASC)
-  - Durable: PostgreSQL persistence (ACID, survives restarts without extra config)
-
-Job types processed:
-  PLACE_LIMIT_SELL   → validate, persist order, attempt match
-  PLACE_LIMIT_BUY    → validate, persist order, attempt match
-  INSTANT_BUY        → buy at 1.2× VWAP, deduct balance immediately
-  INSTANT_SELL       → sell at 0.7× VWAP - 10% fee, credit immediately
-  CANCEL_ORDER       → mark order CANCELLED, unfreeze held items
-
-Matching algorithm (PLACE events):
-  1. Find best counter-order: highest buy for sell, lowest sell for buy
-     WHERE item_id = $item AND status = 'OPEN' AND price >= $price (for sells)
-  2. If match found → execute in transaction
-  3. Repeat until no more matches or order fully filled
-```
-
----
-
-## Event Processing Pipeline
-
-### Activity Event Ingestion
-
-```
-Discord event (per shard):
-  messageCreate     → { userId, guildId, channelId, type: 'MESSAGE' }
-  voiceStateUpdate  → { userId, guildId, action: 'JOIN'|'LEAVE', type: 'VOICE' }
-  messageReactionAdd → { userId, guildId, messageId, type: 'REACTION' }
-
-Shard-side filtering (before enqueue — keeps queue clean):
-  ✗ author.bot or system message
-  ✗ channel NOT in guild_settings.active_channels (Redis cache hit)
-  ✗ Redis cooldown key exists: `tuvi:cooldown:{userId}:{type}` (SET NX EX {ttl})
-     MESSAGE: 60s cooldown
-     REACTION: 30s cooldown
-     VOICE: tracked via voiceState intervals (enter/leave timestamps)
-
-On passing all guards → enqueue to pg-boss 'activity-events'
-```
-
-### Tu Vi Calculation
-
-```
-Activity Worker:
-  MESSAGE:  tu_vi_delta = BASE_MESSAGE_REWARD × profession_bonus(profession)
-  REACTION: tu_vi_delta = BASE_REACTION_REWARD
-  VOICE:    tu_vi_delta = BASE_VOICE_REWARD_PER_MINUTE × minutes_in_voice
-            (calculated from voiceState join/leave pairs stored in Redis)
-
-Profession bonuses (example):
-  Scholar: +20% message tu vi
-  Warrior: +20% combat tu vi (PvP/PvE)
-  Merchant: +10% marketplace sale proceeds
-  Gatherer: +20% gathering yield
-
-Update path:
-  UPDATE characters
-  SET tu_vi = tu_vi + $delta,
-      updated_at = NOW()
-  WHERE user_id = $userId AND season_id = $currentSeasonId
-  RETURNING tu_vi, realm_level, (SELECT realm_names FROM seasons WHERE active=true) AS realm_names
-
-  → If new tu_vi >= realm_threshold[realm_level + 1]:
-    UPDATE characters SET realm_level = realm_level + 1
-    Enqueue notification: 'REALM_UP'
-```
-
-### Voice State Tracking
-
-Voice is continuous; Discord events are only JOIN/LEAVE, not per-minute ticks.
-
-```
-On voiceStateUpdate JOIN:
-  Redis SET `voice:session:{userId}:{guildId}` = { joinedAt: unixTimestamp }
-  TTL: 6 hours (max reasonable session)
-
-On voiceStateUpdate LEAVE (or bot disconnect):
-  GET `voice:session:{userId}:{guildId}`
-  minutes = (now - joinedAt) / 60
-  minutes = MIN(minutes, 60)  // cap at 60min per session (anti-afk)
-  DEL `voice:session:{userId}:{guildId}`
-  Enqueue activity event with calculated minutes
-```
-
----
-
-## i18n Architecture
-
-### Where Translations Live
+## 3. Recommended Project Structure
 
 ```
 src/
-  locales/
-    vi/
-      common.json      -- shared strings (errors, buttons, confirmations)
-      progression.json -- realm names, tu vi, cultivation terms
-      marketplace.json -- market-specific strings
-      combat.json
-    en/
-      ... (mirror structure)
+├── commands/sanguo/            # NEW — flat files (commandLoader traverses exactly ONE level)
+│   ├── map.ts                  #   /sanguo map — node list + current position
+│   ├── travel.ts               #   /sanguo travel <destination> — pay + set ETA
+│   ├── heroes.ts               #   /sanguo heroes — collection view
+│   ├── battle.ts               #   /sanguo battle — solo battle + history
+│   ├── capture.ts              #   /sanguo capture — post-battle capture (item bonuses)
+│   ├── shop.ts                 #   /sanguo shop — support items (money sinks)
+│   └── bag.ts                  #   /sanguo bag — support items inventory
+├── components/sanguo/          # NEW — customId handlers
+│   ├── registry.ts             #   customId prefix → handler map (see 4.5)
+│   ├── travelCancel.ts         #   sanguo:travel:cancel
+│   └── battleActions.ts        #   sanguo:battle:attack|item|flee
+├── services/
+│   ├── wallet.ts               # NEW shared — deductBalance/creditBalance
+│   └── sanguo/                 # NEW — pure logic, unit-testable
+│       ├── travelService.ts    #   ETA/cost calc + state transitions (pure)
+│       ├── battleEngine.ts     #   simulateBattle(team, enemy, rng?) → BattleResult
+│       ├── captureService.ts   #   captureChance(hero.rarity, hp%, itemBonus) → roll
+│       └── shopService.ts      #   purchase validation + inventory grants
+├── jobs/sanguoTick.ts          # NEW — pg-boss travel-encounter tick
+├── assets/sanguoEmojis.ts      # NEW — GENERATED registry + heroEmoji() helper
+├── db/schema/                  # NEW files (see 2.1) + index.ts exports
+└── utils/commandContext.ts     # EXTEND — add fetchUserContext (sanguo needs users row, not characters)
 ```
 
-### Locale Resolution — 4-Level Priority Chain
-
-```typescript
-async function resolveLocale(ctx: {
-  userId?: string;
-  guildId?: string;
-  interactionLocale?: string;
-}): Promise<string> {
-  // 1. User override (explicit /lang setting stored in DB)
-  if (ctx.userId) {
-    const override = await redis.get(`locale:user:${ctx.userId}`);
-    if (override) return override;
-  }
-  // 2. Guild bot language (set by /settings language)
-  if (ctx.guildId) {
-    const guildLang = await redis.get(`locale:guild:${ctx.guildId}`);
-    if (guildLang) return guildLang;
-  }
-  // 3. Discord's native interaction locale (slash commands only)
-  if (ctx.interactionLocale) return ctx.interactionLocale;
-  // 4. Default
-  return 'vi';
-}
-```
-
-### i18next Configuration
-
-- Load all locale files at process startup
-- Use `i18next-fs-backend` for file-based loading
-- Namespace per feature area (progression, marketplace, combat)
-- Interpolation variables for dynamic content: `t('realm.advance', { realm: '金丹' })`
-- Season realm names stored in DB but translated via i18n key pattern: `t(`realm.${realmKey}`)`
+**Structure rationale:**
+- `commands/sanguo/` is auto-discovered by `commandLoader.ts`/`registerCommands.ts` — **no registration code needed**, but files must stay flat (`collectCommandFilePaths` only reads `commands/{folder}/*.js` — do NOT nest deeper).
+- Services are pure by convention (no discord.js imports) → trivially unit-tested (existing `services/*/__tests__` layout).
+- Jobs live in `src/jobs/` and are wired in `pgBoss.ts registerJobs()` — never registered from a shard.
+- The assets registry is generated, so it can't drift from the manifest; the generator script lives in `scripts/`.
 
 ---
 
-## Suggested Build Order
+## 4. Architectural Patterns
 
-Ordered by dependency. Each phase builds on the previous.
+### 4.1 Atomic Deduct with WHERE Guard (wallet)
+**What:** `UPDATE users SET balance = balance - X WHERE id = $1 AND balance >= X` inside a transaction; `rowCount === 0` ⇒ insufficient funds; DB `balance_non_negative` CHECK as final backstop.
+**When:** Every money sink (travel, shop, battle fees).
+**Trade-offs:** Single round-trip, race-proof without row locks on hot wallet rows; requires callers to roll back the transaction on error.
 
+### 4.2 Timestamp-Derived Async State (travel)
+**What:** Store only `departedAt / arrivalAt / nextEncounterAt`; never an "in progress" boolean. Current position = pure function of (from, to, departedAt, arrivalAt, now).
+**When:** Any real-time-with-ETA mechanic.
+**Trade-offs:** Deterministic and restart-proof; requires a periodic tick for side effects (encounters) — "when" is derived, "what happens" is tick-driven.
+
+### 4.3 Tick + FOR UPDATE SKIP LOCKED Claim
+**What:** A pg-boss cron (`*/1 * * * *`, precedent `football-poll-scores`) selects due rows and claims them with `.for('update', { skipLocked: true })` (precedent `resolveMatchBets`).
+**When:** Background processing where jobs are cancellable/derived from state.
+**Trade-offs:** Up to 60s latency; scales to thousands of active travels with the `travel_due_idx` partial index; simpler and safer than per-entity delayed jobs.
+
+### 4.4 Pure Engine + Thin I/O Shell
+**What:** `simulateBattle()` is a pure function (seeded RNG injected); the interaction handler and the tick job are thin shells that load rows, call the engine, persist `sanguo_battles`, and format embeds (pattern: `breakthrough.ts` — pure `rollBreakthrough` + DB `apply*` functions).
+**When:** Any combat/RNG logic.
+**Trade-offs:** Trivially testable (deterministic with seeded RNG); needs explicit separation so no discord.js types leak into the engine.
+
+### 4.5 Prefix-Namespaced customId Registry
+**What:** Replace extending the 477-line if-chain in `interactionCreate.ts` with a small `customIdPrefix → handler` map in `components/sanguo/registry.ts`, imported once in `interactionCreate.ts` (customIds `sanguo:*`).
+**When:** New feature families add many buttons/modals.
+**Trade-offs:** Small refactor of existing routing (only the new prefix is routed via the registry; existing `predict:`/`farming:` chains stay untouched) — prevents the file from becoming unmaintainable.
+
+---
+
+## 5. Data Flow
+
+### 5.1 Travel Lifecycle
 ```
-Phase 1: Foundation
-  ├── PostgreSQL schema (users, characters, guild_settings, seasons)
-  ├── Redis setup (connection pool, key conventions documented)
-   ├── pg-boss queue setup (activity-events, marketplace, scheduler, notifications)
-  ├── Cluster Manager (discord-hybrid-sharding, 1 cluster dev / auto prod)
-  └── i18n scaffold (i18next, vi + en locale files, locale resolver)
+/sanguo travel <node>
+  → fetchUserContext (users row: balance, locale)
+  → travelService.computeCost(from, to)  [pure: distance × rate]
+  → db.transaction:
+       deductBalance(tx, userId, cost)   [guard → INSUFFICIENT_BALANCE]
+       upsert player_travel_state {status:'traveling', from, to,
+         departedAt=now, arrivalAt=now+ETA, nextEncounterAt=now+firstEncounter}
+  → editReply (ETA + cost + route, emoji-rendered nodes)
 
-Phase 2: Bot Shell + Guild Setup
-  ├── Shard client skeleton (event handlers registered, command loader)
-  ├── /start command (creates user + character, upsert)
-  ├── Guild settings (active channels, language config via /settings)
-  ├── Guild settings Redis cache (warm on bot join, invalidate on update)
-  └── Health check endpoint (liveness probe for deployment)
+[every 1 min] sanguoTick (manager process)
+  → SELECT ... WHERE status='traveling' AND next_encounter_at <= now
+       AND arrival_at > now  FOR UPDATE SKIP LOCKED
+  → per row: roll encounter → battleEngine (auto-resolve) → insert encounter_runs
+             → update nextEncounterAt (+ encounterCount)
+  → rows where arrival_at <= now: status → 'idle', position := toNodeId
+  → notify player (REST DM / guild channel): encounter result / arrival
+```
 
-Phase 3: Activity Event Pipeline (Core Loop)
-  ├── messageCreate handler → guard → enqueue
-  ├── voiceStateUpdate handler → Redis session tracking → enqueue on leave
-  ├── messageReactionAdd handler → guard → enqueue
-  ├── Activity Worker (tu vi delta, cooldown lock, DB update)
-  ├── Realm advancement check (threshold table in config)
-  └── /profile command (show character, tu vi, realm)
+### 5.2 Battle & Capture
+```
+Encounter roll → enemy template (rarity-scaled)
+  → simulateBattle(team, enemy, seededRng) → BattleResult (rounds, winner, hp)
+  → insert sanguo_battles {rounds, winner, heroIds, enemyRef, rewards}
+  → if won → captureService.captureChance(hero.rarity, enemyHpRemaining%, itemBonus)
+        → roll → insert user_heroes (roll IVs 6×0-31, captureCount++ on dup
+          → soul-gem credit) or capture fail
+  → embed via REST: winner, rounds summary, capture outcome (emoji-rendered)
+```
 
-Phase 4: Profession + Progression System
-  ├── Profession selection (/profession choose)
-  ├── Skill point tree (JSONB column, skill effect multipliers)
-  ├── Gathering system (resource nodes, gather command, cooldowns)
-  ├── Crafting system (recipes table, /craft command)
-  └── Inventory management (/inventory, item transfer)
-
-Phase 5: Marketplace Engine
-  ├── Market items catalog + base prices
-  ├── Marketplace Worker (concurrency 1, FIFO)
-  ├── VWAP calculation (hourly cron via Scheduler Worker)
-  ├── VWAP Redis cache (read path for validation)
-  ├── Limit sell order (/market sell, price cap validation)
-  ├── Limit buy order (/market buy)
-  ├── Instant buy/sell (/market instant-buy, /market instant-sell)
-  ├── Order book view (/market book)
-  └── Transaction history (/market history)
-
-Phase 6: Combat System
-  ├── PvE: dungeon/mob encounters (stat-based resolution, no real-time)
-  ├── PvP: challenge system (/challenge @user), async resolution
-  ├── Combat stat derivation from character (realm → base stats + profession mod)
-  └── Combat rewards (tu vi, items, linhhthach)
-
-Phase 7: Season System
-  ├── Season definition table + active season management
-  ├── Season reset job (Scheduler Worker, transaction-safe)
-  ├── Carry-over item flags
-  ├── Season leaderboard archive
-  └── Season announcement (Notification Worker → guild announcement channels)
-
-Phase 8: Monetization
-  ├── HTTP Payment Webhook Receiver (isolated Express/Fastify service)
-  ├── Idempotency (Redis key per payment provider ref)
-  ├── linhhthach_transactions ledger
-  ├── /balance command
-  └── /purchase flow (Discord interaction → payment link generation)
+### 5.3 Money Sink (travel cost — atomic with state)
+```
+shard handler
+  └─ db.transaction:
+       ├─ UPDATE users SET balance=balance-$cost WHERE id=$1 AND balance>=$cost
+       │    (rowCount 0 → rollback → "không đủ linh thạch")
+       └─ INSERT/UPDATE player_travel_state (traveling)
 ```
 
 ---
 
-## Anti-Patterns to Avoid
+## 6. Scaling Considerations
 
-### Anti-Pattern 1: Shard-Local Business State
-**What:** Storing user data, character state, or order book in process memory on a shard.
-**Why bad:** Shard restarts (Discord gateway reconnects happen regularly) wipe all state. Cross-shard queries via broadcastEval are slow and unreliable for business data.
-**Instead:** PostgreSQL for durable state, Redis for hot transient state (cooldowns, sessions).
+| Concern | 0–1k players | 1k–10k players | 10k+ players |
+|---------|--------------|----------------|--------------|
+| Travel tick | 1 min cron, few hundred rows/scan | `travel_due_idx` partial index; batch ≤ 500 rows/tick | Split by time-window batches; increase tick rate; keep `skipLocked` |
+| Encounter processing | Inline in tick | Same; keep per-tick work bounded | Consider a dedicated `sanguo-encounter` queue with localConcurrency ≥ 2 (claiming already safe) |
+| Wallet writes | Fine | Fine (single UPDATE per op) | Monitor PgBouncer pool (max 5/shard) |
+| Emoji rendering | Static generated registry (no cost) | Same | Same — never fetch emojis at runtime |
+| i18n | 1 ns × 3 locales, preloaded | Same | Same (files are small) |
 
-### Anti-Pattern 2: Marketplace on Multiple Workers
-**What:** Running multiple concurrent marketplace worker instances against the same queue.
-**Why bad:** Order matching requires serialization. Two workers can both "see" the same open order and double-fill it, corrupting balances.
-**Instead:** pg-boss marketplace queue with `concurrency: 1` (via `boss.work('marketplace', { batchSize: 1 }, handler)`). Single worker, sequential processing.
-
-### Anti-Pattern 3: Floating-Point Currency
-**What:** Storing linhhthach as `FLOAT` or `DECIMAL` and doing arithmetic in JavaScript.
-**Why bad:** Floating-point rounding errors accumulate. Users end up with fractional currency that breaks downstream logic.
-**Instead:** Store as `BIGINT` (integer linhhthach). All arithmetic in SQL with `FLOOR()` for fees.
-
-### Anti-Pattern 4: Synchronous Event Processing on Shard
-**What:** `await db.query(updateTuVi(...))` inside the `messageCreate` handler.
-**Why bad:** At scale (thousands of messages/second across all guilds), this blocks the shard's event loop and delays Discord heartbeats, causing gateway disconnects.
-**Instead:** Fire-and-forget enqueue to pg-boss. Shard only validates and enqueues; workers do DB writes.
-
-### Anti-Pattern 5: VWAP Computed at Query Time on Every Request
-**What:** Running the VWAP window query every time a user checks market price or places an order.
-**Why bad:** Expensive query over trades table on every interaction. Bottleneck as trade volume grows.
-**Instead:** Pre-computed by Scheduler Worker every hour, stored in Redis (`vwap:{itemId}`) and denormalized into `market_items.market_price`.
-
-### Anti-Pattern 6: Season Realm Names Hardcoded
-**What:** `const REALMS = ['Luyện Khí', 'Trúc Cơ', ...]` in source code.
-**Why bad:** Season 2 might use a completely different realm aesthetic. Hardcoding ties game content to deployment.
-**Instead:** Realm names stored in `seasons.realm_names TEXT[]`. Displayed through i18n keys or direct DB values.
-
-### Anti-Pattern 7: i18n Strings Hardcoded in Bot Code
-**What:** `interaction.reply('Bạn đã đạt cảnh giới Kim Đan!')`
-**Why bad:** Impossible to add English/Chinese support without grep+replace across the entire codebase.
-**Instead:** All user-facing strings through `t('progression.realm_advance', { realm })` from day one.
+**First bottleneck:** the travel tick doing battle simulations inline inside the manager process (competes with existing football/activity jobs). Mitigate by keeping the tick fast (batch cap) and pushing battle execution into a worker queue only if profiling demands it — do not preemptively build this.
 
 ---
 
-## Scalability Considerations
+## 7. Anti-Patterns
 
-| Concern | At 1K guilds | At 10K guilds | At 100K guilds |
-|---------|-------------|--------------|----------------|
-| Sharding | 1 cluster, 1 shard | 10 shards / 5 clusters | 100 shards / 25+ clusters |
-| Activity events/sec | Direct DB writes OK (< 100/s) | pg-boss queue required (< 1K/s) | pg-boss + horizontal workers |
-| Marketplace | Single worker sufficient | Single worker sufficient (serialized by design) | DB read replicas for order book views |
-| VWAP | Hourly cron sufficient | Hourly cron, add Redis cache TTL buffer | Consider per-5-min sampling |
-| PostgreSQL | Single instance, connection pool (pg-pool, max 20) | Read replica for queries, primary for writes | PgBouncer, read replicas |
-| i18n | In-process, all locales in RAM | Same | Same (translation files are small) |
+### 7.1 Redis as Travel State Source of Truth
+**What:** Storing the player's travel row / ETA in Redis keys.
+**Why wrong:** Redis flush or restart = stranded players and lost encounters; violates the codebase's explicit "DB truth, Redis L1" invariant.
+**Instead:** `player_travel_state` row; Redis only for cooldowns and the current-position display cache (recomputable).
+
+### 7.2 Per-Player Delayed pg-boss Jobs for Encounters
+**What:** `boss.sendAfter('sanguo-encounter', data, delay)` per encounter.
+**Why wrong:** Cannot be cancelled on travel-cancel (the job fires anyway and must re-validate), job sprawl at scale, and a failed job strands the sequence.
+**Instead:** Tick-scan of timestamp-derived rows; cancel = row update.
+
+### 7.3 Runtime Reads from the Sibling Assets Repo
+**What:** `fs.readFile('E:/Saeth/sanguo_assets/...')` or a path config pointing at the repo.
+**Why wrong:** The Oracle VM deployment has no such path; the bot would crash or render bare IDs in production.
+**Instead:** Generated, checked-in `sanguoEmojis.ts` (+ generator script); no runtime dependency on the assets repo.
+
+### 7.4 FK to `characters.id` for Sanguo Data
+**What:** `userHeroes.characterId → characters.id`.
+**Why wrong:** Couples the two games; the milestone mandates data separation ("currency-shared" is the only shared surface). `characters` is 1:1 and tied to xianxia progression.
+**Instead:** `user_heroes.userId → users.id` (matches `footballBets`/`farmingAccounts` precedent).
+
+### 7.5 Extending the interactionCreate.ts If-Chain
+**What:** Adding 20 more `if (customId.startsWith('sanguo:'))` blocks.
+**Why wrong:** The file is already 477 lines; it becomes unmaintainable and review-hostile.
+**Instead:** One registry import per feature family, keyed by prefix.
+
+### 7.6 Number-typed Money (inherited rule)
+**What:** `const cost = 1500.5` or `balance: number` mode in Drizzle.
+**Why wrong:** Float drift + BigInt/Number overflow at 2^53; the codebase already treats this as CRITICAL (`users.ts` comment).
+**Instead:** `bigint` mode everywhere; `formatBalance()` for display; never interpolate BigInt into strings directly.
 
 ---
 
-## Deployment Environment
+## 8. Concrete Build Order
 
-**Confirmed 2026-04-11 via SSH connection test.**
+**Phase A — Foundation (nothing user-visible yet):**
+1. Extract `src/services/wallet.ts` (`deductBalance` / `creditBalance`); refactor `gather.ts` + farming purchase sites to use it. Add `fetchUserContext` to `commandContext.ts`.
+2. New schemas (`heroes`, `user_heroes`, `map_nodes`, `player_travel_state`, `sanguo_battles`, `sanguo_items`, `user_sanguo_items`, `encounter_runs`) → `drizzle-kit generate` + `migrate` (via `DATABASE_URL_DIRECT`) + partial unique index migration. Idempotent seed for hero catalog + map nodes (`ON CONFLICT DO UPDATE`, precedent `seed.ts`).
+3. i18n: add `'sanguo'` to `ns` array; create 3 locale files; hero name keys.
+4. Emoji: generator script → `sanguoEmojis.ts` + `heroEmoji()` + startup `applicationId === CLIENT_ID` check.
+5. Command scaffold: `commands/sanguo/map.ts` (read-only, emoji-rendered) + `components/sanguo/registry.ts` wired into `interactionCreate.ts`.
 
-| Property | Value |
-|----------|-------|
-| Provider | Oracle Cloud Infrastructure (OCI) |
-| VM type | ARM64 / aarch64 (Ampere A1) |
-| OS | Ubuntu 24.04.4 LTS ("Noble") |
-| Kernel | 6.17.0-1007-oracle |
-| Public IP | 168.138.8.160 |
-| SSH user | `ubuntu` (không phải `opc`) |
-| SSH key | `.ssh/oracle-vm.key` (gitignored) |
-| Git remote | https://github.com/genZVN2021/tutien-bot.git |
+**Phase B — Travel loop (the real-time core):**
+6. `travelService` (pure ETA/cost/transitions) + `/sanguo travel` (atomic deduct + state row, partial unique index guard) + `/sanguo travel cancel` (component).
+7. `sanguoTick` job: register in `pgBoss.ts` (`*/1 * * * *`), claim with `skipLocked`, arrival transitions, encounter scheduling.
+8. Encounter resolution: roll table → outcome (battle | drop | none); write `encounter_runs`; REST notifications.
 
-### ARM64 Implications
+**Phase C — Battle + capture:**
+9. `battleEngine` (pure, seeded RNG) + `sanguo_battles` write + solo battle from encounters; player-initiated `/sanguo battle` (history view).
+10. `captureService` (capture % = f(rarity, HP, item bonus)) + capture flow; IV roll on capture.
 
-- **Docker images:** Phải dùng `linux/arm64` hoặc `linux/arm64/v8` variant. Không dùng `linux/amd64`.
-  - PostgreSQL: `postgres:16` — multi-arch, tự động chọn ARM64 ✓
-  - Redis: `redis:7-alpine` — multi-arch ✓  
-  - Node.js: `node:22-alpine` — multi-arch ✓
-- **Native addons:** Nếu có npm package dùng native C++ bindings (e.g., `bcrypt`, `sharp`), cần build trên ARM64 hoặc chọn pure-JS alternative.
-- **Cross-compile:** Không cần — Oracle Cloud ARM64 có đủ resource để build trực tiếp.
+**Phase D — Progression + economy (money sinks):**
+11. Collection view `/sanguo heroes`; duplicate → hồn ngọc; level/tier-up (20→t1, 50→t2; t3 event-gated).
+12. Support-item shop (`/sanguo shop` + drops from boss encounters) — all sinks via `wallet.deductBalance`.
+13. Legion battle (3 mains + 9 system-buff heroes) — extends `battleEngine`.
 
-### SSH Connection
+**Phase E (later milestone, out of scope now):** server boss, PvP.
 
-```bash
-ssh -i .ssh/oracle-vm.key ubuntu@168.138.8.160
-```
+**Ordering rationale:** wallet + schema + i18n + emoji are the shared infrastructure every other step consumes; the travel loop is the time-based core that encounters depend on; battle/capture sit on top of encounters; progression/economy close the loop and only make sense once capture exists. Each phase ships a playable vertical slice (map → travel → encounter → battle → capture → collection).
+
+---
+
+## 9. Integration Points
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| Shard handler ↔ wallet | `deductBalance/creditBalance` (tx) | Must be called inside `db.transaction`; throws `InsufficientBalanceError` |
+| SanguoTick (manager) ↔ Discord | REST (`new REST().setToken()`) | Precedent `matchLifecycleService.ts`; never use a shard client from jobs |
+| InteractionCreate ↔ components/sanguo | registry `sanguo:` prefix | One import in `interactionCreate.ts` |
+| Shard ↔ pg-boss | `boss.send()` (fire-and-forget) | Only for future event-driven jobs; the travel tick is cron-driven |
+| Bot repo ↔ sanguo_assets | **build-time only** (generator script) | No runtime dependency |
+| New game ↔ users table | `users.id` FK + `users.balance` wallet | The single shared surface by design |
 
 ---
 
 ## Sources
 
-- discord-hybrid-sharding GitHub (HIGH confidence): https://github.com/meister03/discord-hybrid-sharding
-- discord.js sharding guide (HIGH confidence): https://discordjs.guide/legacy/sharding
-- Space-Node multi-server architecture (MEDIUM confidence): https://space-node.net/blog/discord-multi-server-bot-architecture-2026
-- @commandkit/i18n docs (HIGH confidence): https://commandkit.dev/docs/guide/official-plugins/commandkit-i18n
-- pg-boss docs (HIGH confidence): https://github.com/timgit/pg-boss
-- SkynetBot Redis IPC pattern (MEDIUM confidence): https://skynetbot.net/blog/5667a59a7431713aca0a204a/scale-your-discord-bot-understanding-sharding-performance
-- discord-cross-hosting npm (MEDIUM confidence): https://www.npmjs.com/discord-cross-hosting
+**Codebase (HIGH — direct read 2026-08-10):**
+- `src/db/schema/users.ts` — balance bigint, `balance_non_negative` CHECK
+- `src/db/schema/characters.ts` — "Redis is L1 cache only" invariant; FK convention
+- `src/db/schema/footballBets.ts`, `farming.ts` — `userId → users.id` precedent
+- `src/commands/game/gather.ts` — atomic deduct pattern (WHERE guard + rowCount)
+- `src/services/football/matchLifecycleService.ts` — `FOR UPDATE SKIP LOCKED`; REST posting from manager process
+- `src/workers/pgBoss.ts`, `src/workers/activityWorker.ts` — job registration (manager-only), `localConcurrency`, per-user serialization via row locks
+- `src/bot.ts`, `src/shard.ts` — process layout (manager = workers; shards = send-only)
+- `src/i18n/index.ts` — `ns` array registration; `src/utils/commandLoader.ts` — one-level traversal constraint
+- `src/services/breakthrough.ts` — pure-service pattern
+- `E:/Saeth/sanguo_assets/assets/emojis.json` — manifest structure (1056 keys, `applicationId`)
+
+**External (MEDIUM — cross-checked):**
+- Discord official emoji resource (application emojis): https://docs.discord.com/developers/resources/emoji
+- discord.py 2.5 API — `fetch_application_emojis()`: https://discordpy.readthedocs.io/en/latest/api.html
+- "Persistent multiplayer state without chaos" (PG truth + Redis fast-work): https://packagemain.tech/p/persistent-multiplayer-state-without
+- Redis/PostgreSQL hybrid consensus: https://www.alongside.team/blog/redis-and-postgresql-for-ai-agents
+
+**Confidence notes:** Codebase facts are HIGH (verified by direct read today). App-emoji rendering and PG-truth/Redis-cache patterns are MEDIUM (multiple independent web sources agree; worth one deployment smoke-test of the emoji render before Phase B depends on it).
+
+---
+*Architecture research for: TuTien Bot — Milestone v3.0 Tam Quốc Collection*
+*Researched: 2026-08-10*

@@ -1,247 +1,232 @@
-# Feature Landscape: TuTien Bot
+# Feature Landscape: Tam Quốc Collection (Milestone v3.0)
 
-**Domain:** Discord RPG / Idle Progression Bot (Xianxia / Tu Tiên theme)
-**Researched:** 2026-04-11
-**Confidence:** HIGH (primary sources: DaoVerse official site, top.gg ecosystem survey, EPIC RPG documentation, academic idle-game research, peer-reviewed player psychology)
+**Domain:** Pokemon-style collection / monster-catching mini-game trên Discord bot (sưu tầm hero Tam Quốc, travel map, auto-battle, capture)
+**Researched:** 2026-08-10
+**Confidence:** MEDIUM (cross-checked: Pokétwo docs/ToS, Bulbapedia + Pokemon Fandom + Pokebattler catch formula, EA FC chemistry guides, GameGrowthAdvisor/Machinations economy, idle-game retention research)
 
 ---
 
-## Table Stakes
+## Executive Position
 
-> Features users expect from a Discord RPG/idle bot. **Missing = players leave immediately or feel the bot is "unfinished."**
+Tam Quốc Collection là một **collection game kiểu Pokemon** chạy trên Discord — không phải gacha roll (Mudae/Karuta), không phải chat-spawn race (Pokétwo). Mô hình tham chiếu gần nhất: **Pokemon GO** (travel + encounter + capture + IV + candy) phủ lên **EA FC chemistry** (team building) và gắn vào **kinh tế Linh thạch chung** của TuTien Bot. Điểm khác biệt lớn nhất so với mọi Discord collection bot hiện có: **encounter sinh ra từ hành động travel có chi phí (Linh thạch sink), không phải từ chat activity** — đây vừa là chống-bot tự nhiên, vừa là sink kinh tế chủ động.
+
+---
+
+## Feature Landscape
+
+### Table Stakes (Users Expect These)
+
+Người chơi đã quen thuộc với thể loại (Pokétwo/PokéMeow/Pokemon GO) sẽ mặc định kỳ vọng các feature sau. Thiếu = cảm giác "game chưa xong".
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Character registration / profile creation** | Every RPG bot entry-point. Players need an identity anchor before anything else matters. | Low | `/register` or `/bắt đầu`; store display_name, spiritual_root (ngũ linh căn), created_at. First impression. |
-| **Profile / stats display** | Players need to check their own state constantly. Core to the feedback loop. "How am I doing?" | Low | `/profile [@user]`; show cảnh giới, tu vi, linh thạch, profession level, season rank. Embed with avatar. |
-| **Passive XP accumulation** | **This is TuTien Bot's core value proposition.** Every Discord RPG bot now has some activity tracking. It is expected. | Medium | Cooldown-bucketed awards for chat (per channel, per window), voice (per minute), reactions. Anti-farm rate-limits essential. |
-| **Cảnh giới (realm/level) progression** | Fundamental to xianxia genre AND to any RPG bot. "Level up" is the most addictive core mechanic. | Medium | Hard thresholds of tu vi per cảnh giới. Manual breakthrough command with a pass/fail element (e.g., bottleneck failure chance). |
-| **Daily rewards / claim** | Present in 100% of successful Discord economy bots (Dank Memer, OwO, EPIC RPG, Tatsu). Drives daily active users. | Low | `/điểm_danh` or `/daily`; tiered reward based on cảnh giới or streak. Streak multiplier increases retention significantly. |
-| **Leaderboard** | Creates social competition. Without it the game feels single-player and pointless. EPIC RPG, OwO, Tatsu all lead with this. | Low–Med | `/bảng_xếp_hạng` — global by tu vi, by season rank, by linh thạch. Pagination required for large player bases. |
-| **Help / command reference** | Highest-volume support question for every bot without good help. Reduces abandonment. | Low | `/help [topic]`; organized by category (cultivation, marketplace, combat, profession). Context-sensitive is best. |
-| **Basic economy: linh thạch balance** | All successful bots have a visible currency. Players need to know what they have before engaging any economy feature. | Low | `/ví` or embedded in `/profile`. Show bank vs. liquid balance if applicable. |
-| **Cooldown notifications / reminders** | EPIC RPG has a massive secondary ecosystem (reminder bots) because the base bot lacks good reminders. Players forget = churn. | Low–Med | DM or channel ping when tu vi accumulation cycle resets, when breakthrough is ready, when marketplace order fills. Opt-in. |
-| **Onboarding flow (first-time user experience)** | 2025 Discord meta: servers that activate new members 2× outperform those that don't. First 5 minutes determines retention. | Medium | Auto-DM with `/bắt đầu` tutorial, or an interactive embed walkthrough. Explain cảnh giới progression in plain language. |
-| **Anti-farming protection** | Message-spam farming is the #1 economy-breaking exploit. Without it, the economy collapses and honest players leave. | Medium | Per-channel cooldown bucket (e.g., 1 award per 60s per channel), minimum message length threshold, bot-message exclusion. |
-| **Basic PvE combat** | Present in EPIC RPG, IdleRPG, DaoVerse, Infinite Ascension. Players expect something to "fight" to spend stamina/energy. | Medium | `/săn_bắt` (hunt) or `/tu_luyện` with encounter vs. mob; loot drops, exp rewards. |
-| **Slash command interface** | Discord deprecated prefix commands; slash commands are mandatory UX standard as of 2022. Bots using `!` feel dated. | Low | discord.js v14+ slash commands with autocomplete. All interactions via components (buttons, selects) where possible. |
-| **Season / reset announcement system** | Players need advance warning before a hard reset. Surprise resets cause outrage and mass uninstalls. | Low | Announce season end 7 days, 24 hours, 1 hour before. Post season summary (top 10 leaderboard) before wipe. |
+| **Chọn starter miễn phí** | Mọi game Pokemon-style đều bắt đầu bằng chọn starter (Pokétwo `p!pick`, GO chọn 3). Entry-point bắt buộc. | LOW | 3–5 hero starter miễn phí, chỉ số IV random lần đầu. Đây là faucet duy nhất được phép — miễn phí, có chủ đích. |
+| **Bản đồ + di chuyển có thời gian thực** | Core loop của game. Travel-time tạo "clock" async — người chơi đặt lộ trình rồi quay lại, không bị ép session dài (idle-game retention research: async clocks giữ chân tốt hơn energy walls). | MEDIUM | Mốc địa danh (nodes), chọn đích → timer thực → arrival. Trả Linh thạch theo khoảng cách. Redis timer + pg-boss nếu cần cross-shard. |
+| **Encounter dọc hành trình** | Không thể có collection game nếu không có "wild spawn". Pacing: mỗi chặng travel có ~30–50% chance encounter; cap ~20 encounter/giờ/user để chống farm. | MEDIUM | Roll RNG theo vùng (hero region) + boss thường. Rarity distribution: common ~60% / uncommon ~25% / rare ~10% / epic ~4% / legendary ~1%. |
+| **Hiển thị % bắt trước khi catch** | Pokemon hiện sốc % bắt khi ném bóng; Pokétwo/PokéMeow đều có feedback rõ. Nhìn thấy % = hiểu vì sao fail, giảm frustrate. | LOW | Show base chance + HP modifier + item bonus ngay trên embed trước nút bắt. |
+| **Capture sau trận với % (rarity + HP + item)** | Công thức catch chuẩn của Pokemon (cross-checked Bulbapedia/Pokebattler): base rate theo rarity × HP factor (HP càng thấp càng dễ — term `3×maxHP − 2×curHP`) × item multiplier (Razz 1.5× / Golden Razz 2.5× analog). | MEDIUM | Dùng đúng mô hình này: hero còn ít HP + xài bùa → % cao hơn. Feedback fail = "hero phá khóa" (shake analog), hero chạy sau N lần fail. |
+| **Bộ sưu tập / pokedex theo vùng** | Bản chất game sưu tầm — người chơi cần xem đã bắt được gì, thiếu gì. Động lực quay lại vùng cũ. | MEDIUM | `/tq collection` — emoji hero + tier + IV, filter theo faction/vùng/đã bắt/chưa bắt. |
+| **Leveling + duplicate → hồn ngọc** | Pokemon GO: mỗi catch cho species candy, dupe chuyển thành currency nâng cấp. Duplicate = không bao giờ vô dụng. | MEDIUM | Dupe hero → hồn ngọc (candy analog). Giá trị dupe **scale theo tier** — bắt trùng hero đã tiến hóa cho nhiều ngọc hơn (GO: evolved pokemon cho nhiều candy hơn). |
+| **Tiến hóa theo level (L20 → t1, L50 → t2)** | Evolution là table stake của Pokemon-style game (Pokétwo evolve, GO candy evolution). | LOW–MED | Level-gate đúng thiết kế đã chốt. Spritesheet 4 bậc đã có sẵn (tiers.json). |
+| **Quản lý đội hình (3 chủ lực + 9 slot buff)** | Design đã chốt legion battle. Users expect team management trong collection game (PokéMeow teams, EA FC squads). | MEDIUM | Chemistry tính khi chọn đội hình; hiển thị tổng chemistry + buff đang active. |
+| **Item shop (bùa bắt, hồi máu)** | Item hỗ trợ là sink tùy chọn chuẩn — Pokétwo shop (Rare Candy, XP boosters), Pokemon ball/berry. | LOW | Mua bằng Linh thạch. Bùa tăng % bắt (Razz analog), vật hồi máu, vật thoát boss. |
+| **i18n VI/EN/ZH-CN** | Đã là constraint của project (zero hardcoded string). | LOW | Hạ tầng i18next có sẵn — chỉ thêm namespace `tamquoc`. |
+| **Help / guide commands** | Mọi game bot thành công đều có help tốt; hệ sinh thái reminder bot của EPIC RPG tồn tại vì thiếu hướng dẫn. | LOW | `/tq help` — giải thích travel, encounter, catch %, chemistry. |
 
----
+### Differentiators (Competitive Advantage)
 
-## Differentiators
-
-> Features that set TuTien Bot apart from DaoVerse, Dao, EPIC RPG, and Tatsu. Not universally expected, but create competitive moat.
+Điểm khiến Tam Quốc Collection khác biệt so với Pokétwo/PokéMeow/Mudae — đây là nơi cạnh tranh, align với Core Value và lợi thế hạ tầng sẵn có.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Activity-driven passive tu vi** | Unlike DaoVerse/EPIC RPG where you have to actively run commands, TuTien awards tu vi for just *being* on Discord. Zero-friction entry. Speaks directly to the "mọi hoạt động đều có ý nghĩa" core value. | Medium | The hook: new players join, chat normally, and discover they're already cultivating. Viral potential. |
-| **Global cross-server economy (marketplace)** | Most bots are per-server. TuTien's global marketplace with VWAP pricing is a genuine industry differentiator — more liquidity, fairer prices, richer economy. Comparable only to Eve Online's cross-region markets. | High | VWAP 1h window, instant buy/sell, limit orders, GTC. Requires careful economic balancing. Unique competitive advantage. |
-| **Dynamic VWAP price discovery** | No other Discord bot has been found to use VWAP for item pricing. Typically bots use fixed shop prices or simple supply/demand ratios. | High | base_price floor + 1h VWAP market_price. Instant buy at 1.2×, instant sell at 0.7×. Order cap at 2.5× market. Professional-grade economics in a game bot. |
-| **Professions with skill trees (gathering + crafting)** | EPIC RPG has flat work commands. DaoVerse has alchemy. Neither has a branching skill tree. Skill trees create long-term specialization identity. | High | 2 professions at launch: gathering (herbs, ore, wood) + crafting (pills, equipment, formations). Skill point allocation per level. |
-| **Hard season reset with partial persistence** | Seasonal resets exist in other bots but typically reset everything. TuTien's model (reset cảnh giới + some persistence) is nuanced — veterans keep *something* while new players can compete. Comparable to Path of Exile leagues. | Medium | Design what persists carefully: cosmetics, title history, a small "heirloom" linh thạch amount? Never core progression stats. |
-| **Season identity / theming** | Each season has a different xianxia story theme and different realm names (Season 1: Luyện Khí classic, Season 2: could be a different cultivation path). Creates collectible seasons. | Low–Med | Per-season cosmetics (profile frame, title) that persist as trophies. Season 1 badge becomes exclusive. |
-| **Vietnamese-first i18n** | Almost no cultivation bot targets Vietnamese speakers natively. Massive underserved market. EPIC RPG supports EN/ES/PT. DaoVerse is English only. | Medium | Vietnamese as primary; simplified Chinese (ZH-CN) as strong secondary. English as tertiary. i18n architecture from day 1. |
-| **Voice activity cultivation** | Rare in Discord RPG bots. Rewards players who spend time in voice channels, not just text. Creates a natural integration with gaming/study communities. | Medium | Requires GUILD_VOICE_STATES intent. Per-minute award with diminishing returns after ~60 min/day to prevent AFK farming. |
-| **Realm breakthrough failure / bottleneck** | In xianxia fiction, breakthrough failure is narratively central (and terrifying). Most bots make it trivial. A chance of failure at major realm boundaries (e.g., Kim Đan) with retry cooldown creates authentic tension and viral "I failed my breakthrough" stories. | Medium | Configurable failure chance at major realm transitions. Failure → lose some tu vi, retry in 24h. Can spend linh thạch to reduce failure chance (monetization hook). |
-| **Global character identity (cross-server)** | Players' cultivation progress is tied to Discord identity, not a single server. Encourages multi-server join, increases bot's network effect. DaoVerse also does this — it works. | Medium | Requires careful data model (global user_id = Discord snowflake, not guild-scoped). Covered in ARCHITECTURE.md. |
-| **Reaction cultivation rewards** | Rewarding reactions (emoji) is very rare. Creates an incentive to engage with others' content meaningfully. | Low | Award small tu vi for unique reactions given (not received), with daily cap. |
+| **Chemistry 9-slot kiểu EA FC** | Không Discord collection bot nào có team-building depth này. 3 chủ lực đánh + 9 slot buff hệ theo faction/role. Thu thập đa faction trở thành động lực sưu tầm (muốn buff mạnh → phải có đủ hero các phe). | MEDIUM | EA FC lessons (cross-checked): **bonus only, 0 chemistry = không phạt**; FC26 bỏ adjacency — link bất kỳ thành viên nào với bất kỳ ai, chỉ cần cùng nation/league/club. Tương ứng: cùng faction / cùng role / không link. Đừng làm adjacency math phức tạp. |
+| **Encounter gắn travel có chi phí = sink kinh tế chủ động** | Khác biệt cấu trúc so với Pokétwo (chat activity) và Mudae (roll miễn phí + premium). Mỗi lần travel trả Linh thạch — encounter có giá, capture có giá. Tích hợp chặt với kinh tế TuTien hiện có. | MEDIUM | Xem phần Economy. Đây là lý do tồn tại của game trong hệ sinh thái. |
+| **IV 6 chỉ số** | Pokemon GO dùng 3 chỉ số (~4000 tổ hợp) — mỗi catch đã unique. 6 chỉ số (0–31 mỗi cái = ~1 tỷ tổ hợp) làm **mọi hero bắt được là độc nhất**, dupe luôn có giá trị so sánh, chase IV đẹp thành endgame content. | LOW–MED | Lưu JSON `{atk,def,hp,spd,crit,res}` per hero instance. Hiển thị tổng IV% để dễ so sánh. |
+| **Star variant + 4-tier sprites (visual prestige)** | Shiny-analog. 132 heroes × 4 tiers × normal/star = 1056 emoji **đã upload sẵn** — asset cost đã trả, đây là bragging right thị giác không bot nào có (hero hiển thị bằng emoji Discord riêng). | LOW | Mapping `{hero_id}_{t0..t3}[_star]` từ `assets/emojis.json` — chỉ cần lookup table. |
+| **t3 khóa sau event/item đặc biệt** | Scarcity thiết kế: t1/t2 là con đường chính, t3 là long-term goal gắn event — giữ game fresh sau khi player chạm trần. GO: XL candy gate 40–50 tạo endgame tương tự. | MEDIUM | Cần hệ thống event flag + special item inventory. Defer t3 event thực tế đến v1.x, nhưng **thiết kế schema phải có ngay** từ v1. |
+| **Auto-battle có turn history** | Khác Pokétwo (battle abstract), khác GO (real-time). Turn log dạng text share được, spectator-friendly — người xem trong server thấy được trận đấu hay. | MEDIUM | Log lượt: tấn công/defend/buff, damage số. Lưu vòng đời ngắn (Redis) để share lại. |
+| **Boss drop = ITEM không phải tiền** | Faucet an toàn: boss rơi item (bùa, vật liệu) chứ không rơi Linh thạch — không bơm currency vào hệ kinh tế chung (xem Economy). | MEDIUM | Boss thường (v1) như encounter hero solo; boss server để phase sau theo design note. |
 
----
+### Anti-Features (Commonly Requested, Often Problematic)
 
-## Anti-Features
-
-> Features to **deliberately NOT build in v1**. Explicit scope decisions, not omissions.
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| **Guild / sect system (môn phái)** | Requires significant additional complexity: member management, shared resources, territory, sect wars. DaoVerse built this — it's a v2+ feature requiring community validation first. | Build solo progression fully. Add "Sect/Guild" as Season 2 target after validating player base. |
-| **Web dashboard / admin panel** | Engineering cost is high (separate frontend, auth, hosting). Slash commands cover 95% of admin needs in v1. Premature optimization. | Slash commands with admin permission checks. Consider Prometheus metrics endpoint instead for ops. |
-| **Gacha / card collection system** | DaoVerse uses gacha for spiritual roots — tempting but creates pay-to-win perception and regulatory risk in some jurisdictions (especially EU). | Spiritual root randomized at registration (not purchasable), purely cosmetic/flavor. Avoid gacha loops that require premium currency. |
-| **Minigames (gambling: slots, blackjack)** | Dank Memer, OwO already own this space. Gambling mechanics attract the wrong audience for a cultivation RPG and create drama. TuTien's identity is *cultivation*, not casino. | Small luck element in breakthrough failure/success is sufficient. No standalone gambling commands. |
-| **Mobile app / separate platform** | Out of scope per PROJECT.md. Dilutes focus. Discord is the entire platform. | — |
-| **Real-time chat / voice integration beyond rewards** | Project explicitly scopes this out. Discord is the platform, not the product. | Activity tracking only (read voice state, count messages). Never intercept or relay chat. |
-| **Complex PvP ranking / ELO ladder** | Complex ranked systems require matchmaking infrastructure, season rebalancing, and enormous design effort. Easy to make unfair. | Simple opt-in PvP duel with win/loss outcomes and a rough leaderboard. No MMR v1. |
-| **Automated dungeon raids (multi-player)** | Coordination features (scheduling, party formation) add massive scope. IdleQuest built this and it's their most complex feature. | Solo PvE hunting is sufficient for v1. Raid content is Season 2. |
-| **Custom server economy (per-guild currency)** | UnbelievaBoat owns this space. Fragmenting the economy per server kills liquidity in the global marketplace. | Global linh thạch only. Servers customize *channels* where bot is active, not the economy itself. |
-| **Selling cosmetics via NFT or blockchain** | Regulatory and community toxicity risk. Discord community strongly negative on crypto/NFT bots. Reputational damage risk far outweighs potential revenue. | Traditional IAP: buy linh thạch with fiat via Stripe. Cosmetics as direct purchase, not tokenized assets. |
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Trading hero giữa người chơi (v1)** | Pokétwo/Mudae đều có trade — users sẽ yêu cầu ngay. | RMT (bán hero lấy tiền thật), botting để farm hero hiếm bán, rò rỉ giá trị ra ngoài game. Trade = kênh faucet không kiểm soát được. | **Defer to v2+**. v1 tập trung capture; nếu cần, chỉ cho "release hero → hoàn lại hồn ngọc" (sink thêm, không tạo kênh trao đổi). |
+| **PvP trong v1** | Collection game "phải có đánh nhau với người chơi". | Balance nightmare: 6 IV × chemistry × tier × items — chưa có dữ liệu meta để cân. PvP sớm = meta vỡ, người chơi bỏ. | Defer (design note đã chốt: PvP phase sau). v1 có boss thường + legion battle PvE để test balance. |
+| **Server boss race real-time toàn server** | Boss server = sự kiện cộng đồng hấp dẫn. | Race cross-server đầu tiên-được (first-come) → latency/race conditions giữa shards, complexity cao ngay từ đầu. | v1: boss thường (encounter cá nhân). Server boss → phase sau khi hạ tầng shard đã chắc (design note đã chốt). |
+| **Mua hero trực tiếp bằng Linh thạch / tiền thật** | "Tôi muốn Lữ Bố ngay". | Giết chết capture loop (mua thì cần gì bắt?), biến game thành pay-to-win, vi phạm tinh thần collection. | Không bao giờ bán hero trực tiếp. Chỉ bán **cơ hội**: item tăng % bắt, vé travel nhanh, item mở vùng. |
+| **Energy system cứng (daily cap năng lượng)** | "Cần giới hạn chơi để cân bằng". | Idle-game research: người chơi **phạt** punishing energy walls ("come back in 4 hours"), churn ngay. | Travel-time + chi phí Linh thạch là clock async tự nhiên — không cần energy cap nhân tạo. |
+| **Encounter từ chat activity (mô hình Pokétwo)** | "Mọi hoạt động Discord đều có ý nghĩa" (Core Value). | Farmable bằng spam/selfbot — Pokétwo phải cấm auto-catcher + anti-spam vì lý do này. Xung đột với travel loop có chi phí. | Giữ Core Value ở main game (tu vi passive). Tam Quốc encounter chỉ từ travel — hành động có chi phí thật. |
+| **Bảo đảm bắt 100% sau N lần fail (pity quá mạnh)** | "Tôi fail 10 lần rồi, cho tôi bắt được đi". | Kill tension — % bắt trở thành trò đùa, item bùa mất giá trị, động lực mua bùa chết. | Chain/streak nhẹ (mỗi lần fail cùng hero vùng đó +1% nhỏ, cap ~10%) — giữ tension, thưởng kiên trì. |
+| **Leaderboard toàn cục v1** | "Cần cạnh tranh". | Khuyến khích botting/multi-account để farm collection (Dank Memer/EPIC RPG bài học). | Defer đến khi anti-bot vững. v1 chỉ có pokedex cá nhân + "đã bắt được hero này chưa" (thu thập xã hội nhẹ). |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Registration → ALL other features (nothing works without a character)
+[Chọn starter]
+    └──requires──> [Hero instance schema + emoji mapping]
 
-Passive tu vi accumulation
-  → Anti-farm rate limiting (must co-ship; one is useless without the other)
-  → Cooldown notifications (enhances retention but not blocking)
+[Travel bản đồ]
+    └──requires──> [Bản đồ nodes + giá Linh thạch + Redis timer]
+    └──generates──> [Encounter roll]
+                       └──requires──> [Rarity table + region-hero mapping]
 
-Cảnh giới progression
-  → Breakthrough mechanic (tu vi threshold + optional failure chance)
-  → Leaderboard (rank by cảnh giới)
-  → Marketplace unlock gates (higher cảnh giới unlocks more item types)
+[Encounter] ──triggers──> [Auto-battle]
+                             ├──requires──> [Hero stats + skill (solo 1 hero)]
+                             └──requires──> [Chemistry system (legion 3+9)]
 
-Marketplace (global VWAP)
-  → Professions (supply side: crafters list items)
-  → Linh thạch economy (demand side: buyers spend currency)
-  → Season reset (prices and order books reset per season)
+[Auto-battle] ──victory──> [Capture]
+                             └──requires──> [Catch formula: rarity × HP × item]
+                                                └──requires──> [Item shop (bùa bắt)]
 
-Professions (gathering + crafting)
-  → PvE combat (loot drops → crafting inputs)
-  → Marketplace (output → listing items for sale)
+[Capture] ──adds──> [Collection/pokedex]
+                       └──requires──> [Hero instance lưu DB (IV, level, tier)]
 
-Season system
-  → All progression features (defines scope of reset)
-  → Leaderboard (season-scoped ranking)
-  → Hard reset → careful "what persists" design required early
+[Collection] ──generates──> [Duplicate → hồn ngọc]
+                                └──requires──> [Soul gem system + tier-scaled dupe value]
 
-Monetization (linh thạch purchase)
-  → Economy balance (must be designed with fiat entry in mind from day 1)
-  → VWAP pricing (premium currency influx affects market prices)
-  → Breakthrough failure reduction (natural monetization hook without P2W)
+[Hồn ngọc + Level] ──enables──> [Tiến hóa L20→t1, L50→t2]
+                                   └──requires──> [Level system + XP từ battle]
 
-i18n (all strings externalized)
-  → ALL features (must be wired before any user-facing text is written)
-  → Cannot be retrofitted cheaply after v1 ships
+[Tiến hóa] ──extends──> [t3 (khóa)]
+                            └──requires──> [Event/special item flag (schema từ v1)]
+
+[Chemistry 3+9] ──requires──> [Sở hữu đa faction heroes] ──drives──> [Collection depth]
+
+[Boss drop item] ──feeds──> [Item inventory] (không chạm users.balance)
 ```
 
----
+### Dependency Notes
 
-## Xianxia / Cultivation Theme: Resonant Features
-
-> Features that specifically resonate with xianxia readers (Chinese, Vietnamese, and diaspora audiences).
-
-| Feature | Xianxia Resonance | Implementation Notes |
-|---------|-------------------|---------------------|
-| **Cảnh giới names (realm names)** | Core to genre identity. Vietnamese terms: Luyện Khí → Trúc Cơ → Kim Đan → Nguyên Anh → Hóa Thần → Luyện Hư → Hợp Thể → Đại Thừa → Độ Kiếp → Tiên Nhân. Classical names that readers recognize immediately. | Season 1 uses classic sequence. Season 2 can introduce alternate path (e.g., body refinement path: Thể Tu). |
-| **Spiritual roots / ngũ linh căn** | The "talent system" from xianxia fiction. 5 elemental affinities (Kim, Mộc, Thủy, Hỏa, Thổ). Higher-grade roots = better tu vi multipliers. Creates identity differentiation without P2W. | Randomly assigned at registration (bell curve: most players get common roots, rare chance at Thiên Linh Căn). Purely cosmetic/multiplier, not purchasable. |
-| **Tu vi as cultivation points** | The genre-native term for progression points. "XP" would feel wrong. "Tu vi" is immediately understood by target audience. | Use tu vi everywhere in Vietnamese UI. English UI: "cultivation qi" or "cultivation points." |
-| **Breakthrough ceremony** | In novels, breakthroughs are events — vision sequences, heavenly tribulation, realm shaking. Implement as a narrative embed with flavor text per realm. | `/đột_phá` command triggers an embed with realm-appropriate narrative text. Failed breakthroughs get a different dramatic narrative. |
-| **Pills and alchemy (đan dược)** | A core xianxia system. Pills are the primary crafted items. Examples: Tụ Linh Đan (gather spirit), Hồi Linh Đan (restore), Đột Phá Đan (assist breakthrough). | Alchemy is the primary crafting profession. Ingredient types match xianxia herbalism: tinh thảo (spirit herbs), linh dược (spirit medicines). |
-| **Spirit beasts / yêu thú in PvE** | Genre-standard antagonists. Players "hunt" spirit beasts for resources and tu vi. | PvE enemies are yêu thú (spirit beasts), not generic "monsters." Tiered by cảnh giới equivalence. |
-| **Linh thạch (spirit stones) as currency** | Genre-native term. "Coins" or "gold" would feel entirely wrong for this theme. | Single currency. Linh thạch. Sub-unit potential: Hạ Phẩm / Trung Phẩm / Thượng Phẩm Linh Thạch for large denominations (like item stacks). |
-| **Tiên hiệp flavor text** | All system messages, errors, confirmations use genre language. "Your cultivation has been disrupted" (rate limit) instead of "You're on cooldown." | i18n keys contain both the functional message and the thematic wrapper. Flavor is part of the i18n value, not hardcoded. |
-| **Heaven and Earth prestige narrative** | Season resets framed as "Ascending to a higher plane" or "A great calamity reset the mortal realm." Season end is not a boring admin wipe but a narrative event. | Pre-season-end announcement has lore narrative. Season 2 start has new realm naming and new flavor text. |
+- **Travel → Encounter → Battle → Capture → Collection → Progression** là chuỗi tuyến tính bắt buộc. Phase 1 của game phải dựng nguyên chuỗi này dưới dạng thin slice (MVP vertical), không dựng từng module rời.
+- **[Capture] requires [battle victory]:** quyết định thiết kế — capture chỉ sau chiến thắng (hoặc sau battle kết thúc dù thua, tỉ lệ thấp hơn). Đơn giản nhất v1: chỉ capture sau thắng. Tránh trạng thái "bắt được hero khi thua trận" gây confusion.
+- **[Chemistry] requires [sở hữu ≥9 hero đa faction]:** đây chính là động lực sưu tầm vòng 2 — sau khi có đội hình đầu, người chơi bị kéo đi bắt thêm để fill slot buff. Không tách rời được chemistry khỏi collection.
+- **[Soul gem] requires [duplicate]:** dupe là nguồn ngọc duy nhất (v1) → cần đảm bảo tỉ lệ gặp lại hero hợp lý (không quá hiếm để không bao giờ dupe, không quá phổ biến để nhàm).
+- **[t3] requires [event system]:** khóa t3 nhưng **schema phải có cột tier/tier_locked từ ngày đầu** — thêm sau là migration đau.
+- **[Item shop] conflicts với [energy system]:** bùa bắt/ hồi máu là sink tùy chọn; đừng biến chúng thành "energy refill" (xem Anti-Features).
 
 ---
 
-## i18n Considerations
+## MVP Definition
 
-> Language priority for the xianxia/tu tiên audience.
+### Launch With (v1)
 
-| Language | Priority | Rationale | Notes |
-|----------|----------|-----------|-------|
-| **Tiếng Việt (vi)** | PRIMARY | Core target audience. "Tu tiên" is the Vietnamese term for the genre. Large, underserved Discord community. No existing bot targets this segment natively. | All UI strings must be natural Vietnamese, not machine-translated Chinese. Must consult with Vietnamese native speaker for term choices. |
-| **中文简体 (zh-CN)** | SECONDARY | Xianxia originates in Chinese internet fiction (web novel culture). Chinese Discord users are significant. DaoVerse (English-only) misses this segment entirely. | Genre terms in Chinese are canonical — verify correct simplified Chinese for each realm name. |
-| **English (en)** | TERTIARY | International reach, diaspora, non-Vietnamese/Chinese xianxia fans (the genre has huge English-reading fandom via Wuxiaworld, WebNovel). | Should be polished but not the primary focus. English UI can use translated terms (e.g., "Foundation Building" for Trúc Cơ). |
-| **中文繁體 (zh-TW)** | QUATERNARY (v2) | Traditional Chinese for Taiwan/HK audience. Same genre interest. Can derive from zh-CN with term adjustments. | Defer to v2. Avoid blocking v1 on a 4th locale. |
+Phạm vi v1 theo design note: **core loop + legion battle**. Mọi thứ dưới đây là P1.
 
-**Implementation rule:** Every single user-facing string goes through the i18n system from the first line of code. No exceptions. Retrofitting i18n later costs 3-5× the initial implementation effort (confirmed by every major bot team that has done it). Use a well-structured JSON locale file hierarchy.
+- [x] **Chọn starter** — 3–5 hero miễn phí, IV random lần đầu (onboarding của game)
+- [ ] **Bản đồ travel** — nodes, chọn đích, timer thực, trả Linh thạch theo khoảng cách (sink bắt buộc)
+- [ ] **Encounter roll** — hero theo vùng + boss thường; rarity distribution theo vùng
+- [ ] **Auto-battle turn history** — solo (1 hero) + legion (3 chủ lực + 9 slot chemistry)
+- [ ] **Capture** — công thức % (rarity × HP × item), hiển thị % trước khi bắt, hero chạy sau N fail
+- [ ] **Collection/pokedex** — emoji hero + tier + IV, filter theo vùng/faction/đã bắt
+- [ ] **Duplicate → hồn ngọc** — tier-scaled, dùng nâng level
+- [ ] **Level + tiến hóa L20→t1, L50→t2** — t3 khóa (schema sẵn, unlock v1.x)
+- [ ] **Item shop** — bùa bắt (Razz analog), hồi máu; mua Linh thạch
+- [ ] **Boss drop item** — boss thường rơi item (không rơi tiền)
+- [ ] **i18n VI/EN/ZH-CN** + `/tq help`
 
----
+### Add After Validation (v1.x)
 
-## Player Psychology: Retention Drivers
+- [ ] **t3 event unlock** — trigger: event theo season (tận dụng season system sẵn có của TuTien)
+- [ ] **Star variant chase** — bản `_star` emoji đã có sẵn; thêm tỉ lệ star riêng (1/4096 analog nhưng thấp hơn, ~1/512)
+- [ ] **Chain/streak catch** — fail cùng vùng tăng nhẹ % (anti-frustration, giữ tension)
+- [ ] **Daily quest Tam Quốc** — "đi đến X", "bắt Y hero phe Thục" → thưởng item (không thưởng tiền)
+- [ ] **Server boss event** — boss toàn server theo lịch pg-boss, reward item pool
 
-> What keeps players engaged long-term. Informs feature prioritization and design choices.
+### Future Consideration (v2+)
 
-### The Idle Game Retention Loop
-
-Based on academic research (Hwang 2025, UC Santa Cruz) and community observation:
-
-```
-Player opens Discord → Checks tu vi gained passively → Small dopamine hit
-  → Sees they're close to next cảnh giới → Goal is visible (near completion)
-    → Engages actively: hunt, craft, marketplace → Bigger reward
-      → Level up / breakthrough → Large dopamine hit + narrative moment
-        → Shows off on leaderboard / tells server → Social validation
-          → Returns tomorrow for daily reward + passive accumulation → Loop repeats
-```
-
-**Key insights:**
-1. **Passive accumulation is the re-engagement hook** — players return because they know something has happened while they were away. Design tu vi gain to always have *something* waiting (never zero gain after 8+ hours of normal Discord use).
-2. **Near-miss psychology for breakthroughs** — show players exactly how much tu vi they need for the next realm. The "I'm 87% of the way there" feeling is more motivating than abstract XP bars.
-3. **Daily streaks beat daily flat rewards** — a streak multiplier (day 7 = 3× reward) drives more daily returns than a flat daily claim. OwO bot demonstrates this clearly with its daily streak system.
-4. **Social triggers beat timers** — "Player X just broke through to Kim Đan" in a server announcement channel is more motivating than a personal cooldown reminder. Broadcast major achievements.
-5. **Cooldown reminders prevent churn** — EPIC RPG spawned an entire ecosystem of reminder bots because the base bot doesn't DM players. Players who don't know their cooldown is up simply stop playing. Build reminders in natively.
-6. **Prestige/season resets retain veterans, not beginners** — veterans love resets because it restores challenge. New players don't feel the "veteran dominance" problem yet. Design resets primarily for veterans. The "what persists" must feel meaningful to a veteran.
-7. **Economic participation drives long-term engagement** — players with items in the marketplace check back to see if orders filled. Economy = external engagement driver beyond just progression.
-
-### Anti-Patterns (what causes churn)
-
-| Anti-Pattern | Why It Causes Churn | Mitigation |
-|-------------|---------------------|------------|
-| **Invisible progress** | If players don't know how much tu vi they've accumulated or need, they disengage. "I don't know what I'm doing" = quit. | Always show current tu vi, needed tu vi for next realm, percentage in profile/check command. |
-| **Veteran dominance** | If top-realm players crush new players in PvP or dominate the economy irreversibly, new players quit immediately. | Season resets handle this. PvP should be realm-gated (can only attack ±1 realm). |
-| **Surprise resets without warning** | Losing progress unexpectedly = rage quit and negative word-of-mouth. | Announce season end 7 days, 24h, 1h in advance. Post end-of-season hall of fame. |
-| **Opaque marketplace** | If players can't see current prices, they won't trade. | Market price feed command. Show recent transaction history. |
-| **Overly grindy active play requirement** | EPIC RPG's weakness: optimal play requires checking every few minutes. Discourages casual players. | TuTien's passive accumulation is the solution. Design so casual players feel meaningful progress. |
-| **Spam farming detection that feels arbitrary** | If players get rate-limited unexpectedly with no explanation, they feel punished for normal behavior. | Clear messaging: "Tu vi đang hồi phục... (30s còn lại)" with thematic language. Never a cold "rate limited" error. |
+- [ ] **PvP arena** — cần dữ liệu balance từ v1 legion battle; meta phải đủ chín
+- [ ] **Trading hero (gated)** — sau khi anti-bot + kinh tế vững; trade fee burn để không thành kênh faucet
+- [ ] **Leaderboard / achievements** — sau khi anti-bot solid
+- [ ] **Guild/legion war** — phụ thuộc hệ guild (đang out of scope main game v2)
 
 ---
 
-## MVP Feature Recommendation
+## Feature Prioritization Matrix
 
-### Phase 1: Foundation (must ship together)
-1. Registration + character creation (spiritual root, name)
-2. Passive tu vi accumulation (chat + voice + reaction) with anti-farming
-3. Cảnh giới progression (Luyện Khí → Trúc Cơ → Kim Đan → Nguyên Anh initially)
-4. Breakthrough mechanic (manual `/đột_phá` with failure chance at major realms)
-5. Profile display (`/profile`)
-6. Linh thạch balance and daily reward (`/điểm_danh`)
-7. i18n infrastructure (vi primary)
-8. Help system (`/help`)
-9. Cooldown notifications (opt-in DM when passive tu vi is ready to collect)
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Starter choice | HIGH (entry) | LOW | P1 |
+| Map travel + Linh thạch cost | HIGH (core loop + sink) | MEDIUM | P1 |
+| Encounter roll | HIGH (core loop) | MEDIUM | P1 |
+| Auto-battle turn history (solo) | HIGH (core loop) | MEDIUM | P1 |
+| Legion battle 3+9 chemistry | HIGH (differentiator) | MEDIUM | P1 |
+| Capture formula + % display | HIGH (satisfaction) | MEDIUM | P1 |
+| Collection/pokedex | HIGH (collection identity) | MEDIUM | P1 |
+| Duplicate → hồn ngọc | HIGH (retention) | MEDIUM | P1 |
+| Evolution L20/L50 + t3 lock | HIGH (progression goal) | LOW–MED | P1 |
+| Item shop (bùa bắt, heal) | MEDIUM (sink tùy chọn) | LOW | P1 |
+| Boss drop item | MEDIUM (faucet an toàn) | MEDIUM | P1 |
+| i18n + help | HIGH (platform constraint) | LOW | P1 |
+| t3 event unlock | MEDIUM (endgame) | MEDIUM | P2 |
+| Star variant | MEDIUM (prestige) | LOW–MED | P2 |
+| Chain/streak catch | MEDIUM (anti-frustration) | LOW | P2 |
+| Daily quest | MEDIUM (retention) | MEDIUM | P2 |
+| Server boss | HIGH (community) | HIGH | P2 (phase sau) |
+| PvP | HIGH (long-term) | HIGH | P3 |
+| Trading | MEDIUM (economy risk) | HIGH | P3 |
 
-### Phase 2: Economy
-10. Marketplace (listings, instant buy/sell, VWAP)
-11. Basic professions (gathering inputs)
-12. Crafting (alchemy: 3–5 pill types)
-
-### Phase 3: Combat
-13. PvE hunting (yêu thú encounters)
-14. PvP dueling (opt-in, realm-gated)
-15. Season leaderboard (by tu vi, by cảnh giới)
-
-### Phase 4: Monetization + Season
-16. Linh thạch purchase (Stripe integration)
-17. Season end mechanics (announcement, reset, persistence logic)
-18. Season 2 launch
-
-### Defer to v2
-- Guild/sect system
-- Web dashboard
-- Traditional Chinese (zh-TW) locale
-- Multi-player raids / dungeons
-- Gacha mechanics
-- ELO ranked PvP
+**Priority key:**
+- P1: Bắt buộc cho v1 — MVP vertical slice của core loop
+- P2: Sau khi core loop hoạt động và có dữ liệu người chơi
+- P3: Cần hạ tầng chín + dữ liệu balance
 
 ---
 
-## Competitive Landscape Summary
+## Competitor Feature Analysis
 
-| Bot | Servers | Theme | Tu vi Auto-Gain | Global Economy | Seasonal | i18n | Notes |
-|-----|---------|-------|----------------|----------------|----------|------|-------|
-| **DaoVerse** | ~238 | Xianxia EN | ❌ (active commands) | ❌ (per-server) | ❌ | EN only | Closest competitor. Lacks passive accumulation and global market. |
-| **EPIC RPG** | 3M+ | Generic fantasy | ❌ (cooldown commands) | ❌ (per-server) | ✅ (time travel/prestige) | EN/ES/PT | Largest RPG bot. No xianxia theme. Cooldown-based, not passive. |
-| **Tatsu** | Large | Anime/general | ✅ (chat XP) | ❌ (per-server) | ❌ | Limited | Has chat XP but no cultivation theme, no global market. |
-| **Dank Memer** | 9M+ | Meme/economy | ❌ | ❌ (per-server) | ❌ | Limited | Different genre. Economy driven but no RPG depth. |
-| **OwO Bot** | 4M+ | Anime/animals | ❌ | ❌ | ❌ | Limited | No RPG progression beyond collecting. |
-| **TuTien Bot** | 0 (new) | Vietnamese xianxia | ✅ **core mechanic** | ✅ **VWAP** | ✅ **hard** | **vi/zh-CN/en** | Unique position in underserved market. |
+| Feature | Pokétwo | Pokemon GO | Mudae/Karuta | Tam Quốc Collection (our approach) |
+|---------|---------|------------|--------------|--------------------------------------|
+| Encounter source | Chat activity (1 spawn / ~24 msgs) | Real-world GPS travel | Roll command (gacha) | **Travel map trả Linh thạch** — có chi phí, chống bot tự nhiên |
+| Capture | Gõ tên nhanh nhất (race) | Ném bóng + berry/curve/medal | N/A (roll thẳng vào collection) | **% sau trận (rarity × HP × item)** — skill qua battle, không race |
+| Rarity chase | Shiny 1/4096, redeem (Patreon) | Shiny, raid legendaries | Hiếm cards, wishlist | Star variant + t3 event lock — no paywall cho rarity |
+| Progression | Level bằng XP từ chat, evolve bằng candy từ dupe | Candy per catch, IV 3 stats, XL candy gate 40–50 | Level by "companionship" (thời gian) | **Hồn ngọc từ dupe (tier-scaled), IV 6 stats, L20→t1 L50→t2** |
+| Team building | Battle đơn giản | Type matchup | N/A | **Chemistry 9-slot EA FC style (3 chủ lực + 9 buff)** — depth độc nhất |
+| Economy | Pokécoins premium + market (trade người chơi) | PokéCoins real-money | Kakera premium | **Linh thạch chung với TuTien** — sink qua travel, faucet chỉ item |
+| Anti-bot | Anti-spam, cấm selfbot/auto-catcher, ToS ban | Spoofing detection | Rate limit rolls | Travel-time + cooldown Redis + encounter cap — không có "free tap" |
+| Monetization | Premium: XP boosters, shiny charm, redeems | PokéCoins items, boxes | Patreon: +rolls, wishlist | Đã có sẵn monetization TuTien (nạp Linh thạch) — game con không cần model riêng |
 
-**TuTien Bot's gap in the market:** No existing cultivation bot combines (1) passive activity-driven progression, (2) global VWAP marketplace, (3) Vietnamese-first i18n, and (4) hard seasonal resets. This is a genuinely differentiated product.
+---
+
+## Economy Notes (Sink/Faucet cho Tam Quốc)
+
+Áp dụng research economy (taps/sinks, GameGrowthAdvisor + Machinations + Yodo1 4S):
+
+- **Sink bắt buộc:** travel cost — mỗi chuyến đi trả Linh thạch theo khoảng cách. Đây là sink chính, phải đủ "đau" để có ý nghĩa nhưng không chặn người chơi mới (pinch point: scarce enough to matter, abundant enough to keep active).
+- **Sink tùy chọn:** item shop (bùa bắt, hồi máu) — chi tiêu gia tăng khi gặp hero hiếm (escalating investment cho rare target, giống GO dùng Golden Razz + Ultra Ball cho legendary).
+- **Faucet chỉ có 2, đều nhỏ và có chủ đích:** (1) starter miễn phí (1 lần), (2) boss drop = **ITEM không phải Linh thạch** — không bơm currency.
+- **KHÔNG có** reward tiền từ battle, không có "sell hero lấy Linh thạch" (v1), không có daily cash reward riêng của game con.
+- **Vì sao quan trọng:** `users.balance` là chung. Main game đã có faucet (tu vi season, football betting win, farming service). Tam Quốc **phải net-sink hoặc trung tính** — nếu không, nó bơm thêm currency vào hệ kinh tế chung và làm mất giá Linh thạch trên marketplace toàn cục.
+- **Scarcity:** travel-time là clock async (không phải energy wall) — người chơi không bị phạt vì nghỉ 2 ngày, nhưng vẫn có nhịp quay lại (idle-game retention).
+
+---
+
+## Anti-Botting / Farming Notes (v1)
+
+- Encounter chỉ từ **travel action có chi phí** — không có "free tap" để bot khai thác (khác chat-activity spawn của Pokétwo vốn bị auto-catcher lạm dụng).
+- **Cooldown Redis per user action:** travel bắt đầu, capture attempt, item use — cap ~20 encounter/giờ/user.
+- **Velocity detection:** phát hiện pattern tự động (cùng thời điểm mỗi ngày, cùng chuỗi action) → log + audit flag; không ban tự động v1.
+- Tận dụng hạ tầng đã có: Redis cooldown pattern (đã dùng cho tu vi), `SELECT FOR UPDATE` cho mọi giao dịch chạm `users.balance` (pattern football betting đã validate).
+- Discord rate limit (50 req/s global) là trần nền tảng — thiết kế giao diện bằng **embeds + components** (1 message per action), không spam messages.
 
 ---
 
 ## Sources
 
-- DaoVerse official site: https://cultivationbot.com/ [HIGH confidence — official source]
-- top.gg cultivation tag: https://top.gg/tag/cultivation [HIGH confidence — live ecosystem data]
-- top.gg xianxia tag: https://top.gg/tag/xianxia [HIGH confidence]
-- EPIC RPG top.gg listing: https://top.gg/bot/555955826880413256 [HIGH confidence]
-- Growmate.gg idle Discord games analysis: https://www.growmate.gg/blog/best-free-idle-discord-games [MEDIUM confidence]
-- CommunityOne bot comparison 2025: https://blog.communityone.io/top-level-bots-discord-2025/ [MEDIUM confidence]
-- Hwang, D. (2025). "Player Engagement with Idle Games." UC Santa Cruz thesis. [HIGH confidence — academic peer-reviewed]
-- UnbelievaBoat official site: https://unbelievaboat.com/ [HIGH confidence]
-- Cultivation realms reference: https://cultivationgames.com/wiki/the-complete-guide-to-cultivation-realms [MEDIUM confidence — genre reference]
-- Game economy design (sink mechanisms): https://medium.com/@msahinn21/designing-game-economies-inflation-resource-management-and-balance [MEDIUM confidence]
+- Pokétwo official site + docs (poketwo.net, docs.poketwo.net — spawning/catching, evolutions, ToS anti-bot) — MEDIUM (verified cross-source)
+- Zelda.zone Pokétwo guide (commands, spawn rates, shiny odds) — MEDIUM
+- Bulbapedia + Pokemon Fandom + Pokebattler catch rate formula (base rate, HP term, berry/ball multipliers) — MEDIUM (cross-checked 3 sources)
+- Pokemon GO Help Center (candy, evolution) + XL candy analysis — MEDIUM
+- EA FC 25/26 chemistry guides (FootballGPT, TeamGullit, OperationSports, Red Bull) — MEDIUM (cross-checked)
+- GameGrowthAdvisor game economy design (taps/sinks, inflation control) — MEDIUM
+- Machinations.io economy design + Yodo1 4S framework (sources/sinks/scarcity/stability) — MEDIUM
+- GameAnalytics idle game retention + Apptrove idle pacing + mobilegamereport (energy walls vs async clocks) — MEDIUM
+- discordbotlist.com / top.gg Pokemon bots landscape (Pokétwo, PokéMeow, PokéHunt, Mewbot, Pokéverse) — MEDIUM
+- **Project internal:** `.planning/notes/sanguo-game-design.md` (design decisions), `.planning/PROJECT.md` (constraints, economy), existing STACK.md (infra) — HIGH
+
+---
+
+*Feature research for: Tam Quốc Collection (Milestone v3.0)*
+*Researched: 2026-08-10*
