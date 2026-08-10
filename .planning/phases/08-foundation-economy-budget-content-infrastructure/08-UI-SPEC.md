@@ -1,10 +1,11 @@
 ---
 phase: 8
 slug: 08-foundation-economy-budget-content-infrastructure
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-10
+reviewed_at: 2026-08-10
 ---
 
 # Phase 8 — UI Design Contract
@@ -113,17 +114,24 @@ All copy below is the **`sanguo` i18n namespace** (UI strings only — D-07). VI
 
 ## UI Considerations
 
-Applicable state considerations resolved: **5 covered, 2 backstop, 0 unresolved**
+Applicable state considerations resolved: **6 covered, 2 backstop, 0 unresolved** (probe raised 34 applicable items across 6 elements; consolidated below, verified by gsd-ui-checker).
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
 | loading | map-embed | ✅ covered | Read-only static embed; standard `interaction.deferReply()` within 3s window; no async fetch → no persistent loading state |
 | error | map-command | ✅ covered | Not-registered → `common:errors.notRegistered`; generic failure → `sanguo:map.error` via `buildErrorEmbed` (DANGER) |
+| populated | map-embed | ✅ covered | Happy path renders `sanguo:map.zones` + `sanguo:map.nodes` field lists with a `heroEmoji()` marker per node — `map_nodes.length > 0` → populated branch |
 | long-text | hero/zone names | ✅ covered | Names from DB per-locale columns, short (<40 chars); field value limit 1024 chars enforced |
 | overflow | embed-fields | ✅ covered | Scaffold ≤25 fields, ≤1024 chars/value, ≤4096 total; 5–10 placeholder nodes fit in ~1–3 fields |
 | zero-one-many | map-nodes | ✅ covered | 0 nodes → `map.empty` + `map.empty_hint` copy; 5–10 placeholder nodes → `map.zones`/`map.nodes` field lists; each node renders via `heroEmoji()` |
 | empty | map-nodes | 🧪 backstop | Seed guarantees ≥5 placeholder nodes at boot (D-10); empty-branch renders `map.empty` copy — held-out defensive test lifts as `{ statement: empty map_nodes renders map.empty copy, verification: backstop }` |
 | registry-mismatch | startup appId check | 🧪 backstop | `applicationId === CLIENT_ID` mismatch → fatal exit before `client.login()` (D-14); boot-time failure is not user-facing — smoke-test of boot with mismatched id lifts as `{ statement: boot fails hard on appId mismatch, verification: backstop }` |
+
+**Dismissed (recorded, reasons required by probe):**
+
+- `partial` (incomplete data) — static read-only embed has no partial-render path; seed guarantees 5–10 nodes (D-10), empty branch covered above.
+- `unclassified E2` (map-command interaction) — an interaction handler, not a display surface; its loading/error states are covered by the map-embed rows above.
+- `unclassified E6` (startup appId check) — boot-time process check, not user-facing; covered by the registry-mismatch backstop row above.
 
 ---
 
@@ -160,4 +168,4 @@ Applicable state considerations resolved: **5 covered, 2 backstop, 0 unresolved*
 - [ ] Dimension 5 Spacing: PASS
 - [ ] Dimension 6 Registry Safety: PASS
 
-**Approval:** {pending / approved YYYY-MM-DD}
+**Approval:** approved 2026-08-10
