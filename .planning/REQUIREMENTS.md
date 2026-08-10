@@ -226,6 +226,81 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 
+## v3 Requirements (Tam Quốc Collection)
+
+**Current focus:** Game sưu tầm hero Tam Quốc (kiểu Pokemon) tách biệt dữ liệu nhưng dùng chung `users.balance` (Linh thạch) làm tiền tệ. Encounter đến từ di chuyển trả phí — Linh thạch là sink chính + chống bot tự nhiên.
+
+### Foundation & Economy Budget
+
+- [ ] **TQC-01**: Extract shared wallet service (`services/wallet.ts`): `deductBalance` (WHERE guard + rowCount) + `creditBalance`; refactor các call site hiện có (gather, farming, football) qua wallet.
+- [ ] **TQC-02**: Schemas mới: `heroes`, `user_heroes` (IV 6 chỉ số), `map_nodes`, `player_travel_state`, `sanguo_battles`, `sanguo_items`, `user_sanguo_items`, `encounter_runs` + migration + idempotent seed.
+- [ ] **TQC-03**: i18n `sanguo` namespace (VI/EN/ZH-CN từ ngày đầu); content data (tên hero/vùng/item) ở DB per-locale columns; chỉ UI strings trong i18next.
+- [ ] **TQC-04**: Emoji registry generator từ `emojis.json` (1056 emoji) → `assets/sanguoEmojis.ts` + `heroEmoji()` helper + startup `applicationId === CLIENT_ID` check; không đọc sibling repo lúc runtime.
+- [ ] **TQC-05**: Economy budget document: expected Linh thạch/hour của optimal loop (dưới tu vi caps), convertibility decisions, net-sink/neutral constraint — design-gate trước khi viết content.
+
+### Travel & Encounters
+
+- [ ] **TQC-06**: Pure `travelService`: ETA/cost/transitions; `/sanguo travel` (atomic wallet deduct + state row write); travel-cancel component.
+- [ ] **TQC-07**: `sanguoTick` pg-boss cron (mỗi phút, manager process) scan due encounters/arrivals với `FOR UPDATE SKIP LOCKED`; cancel = row update (cancel-safe); REST notifications.
+- [ ] **TQC-08**: Encounter system: roll dọc hành trình theo vùng + boss thường; route-scaled encounter rates; per-user caps (~20/hr) + cooldown từ ngày đầu.
+- [ ] **TQC-09**: Map/zone data research — node structure + phân bố 132 hero theo vùng/lore (phase research riêng, thảo luận data sau).
+
+### Battle & Capture
+
+- [ ] **TQC-10**: Pure `battleEngine` (seeded, replayable với `pure-rand`); `sanguo_battles` records + jsonb round logs; solo battle (player-initiated + encounter-initiated).
+- [ ] **TQC-11**: `captureService`: `captureChance(rarity × HP% × item)` clamped [0,1]; crypto RNG; % hiển thị trước khi bắt; pity counter; audit log đầy đủ kể cả failed attempts.
+- [ ] **TQC-12**: IV 6 chỉ số (0–31) roll khi bắt; starter onboarding chọn 1 hero miễn phí (faucet duy nhất).
+- [ ] **TQC-13**: Collection view: `/sanguo heroes` (collection/pokedex theo zone, emoji + tier + IV); `/sanguo map` scaffold.
+
+### Progression, Chemistry & Economy Depth
+
+- [ ] **TQC-14**: Duplicate → hồn ngọc: tier-scaled, diminishing returns, daily conversion cap, account-bound (không convert Linh thạch).
+- [ ] **TQC-15**: Evolution L20→t1 / L50→t2; t3 schema-gated (chờ event/item đặc biệt).
+- [ ] **TQC-16**: `/sanguo shop` + bag; boss thường drop items (never money); mọi sink qua `wallet.deductBalance`.
+- [ ] **TQC-17**: Legion battle 3+9 chemistry (buff hệ kiểu EA FC, bonus-only không penalty) mở rộng `battleEngine`; chemistry data model thiết kế từ Phase 1.
+
+### Anti-Abuse, Monitoring & Marketplace Gating
+
+- [ ] **TQC-18**: Bot detection: velocity/exact-interval heuristics + captcha escalation (reuse farming captcha infra) + soft-cap + review.
+- [ ] **TQC-19**: Economy monitoring: audit reports (Linh thạch per item per day), telemetry từ Phases 2–3 feed balance pass.
+- [ ] **TQC-20**: Marketplace convertibility gating — không collection item nào marketable nếu chưa có reviewed conversion spec.
+- [ ] **TQC-21**: Automation policy documentation — collection-game bots vs paid farming service, stance nhất quán.
+
+---
+
+## Traceability (v3)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| TQC-01 | — | Pending |
+| TQC-02 | — | Pending |
+| TQC-03 | — | Pending |
+| TQC-04 | — | Pending |
+| TQC-05 | — | Pending |
+| TQC-06 | — | Pending |
+| TQC-07 | — | Pending |
+| TQC-08 | — | Pending |
+| TQC-09 | — | Pending |
+| TQC-10 | — | Pending |
+| TQC-11 | — | Pending |
+| TQC-12 | — | Pending |
+| TQC-13 | — | Pending |
+| TQC-14 | — | Pending |
+| TQC-15 | — | Pending |
+| TQC-16 | — | Pending |
+| TQC-17 | — | Pending |
+| TQC-18 | — | Pending |
+| TQC-19 | — | Pending |
+| TQC-20 | — | Pending |
+| TQC-21 | — | Pending |
+
+**Coverage:**
+- v3 requirements: 21 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 21 ⚠️
+
+---
+
 ## Traceability (v2)
 
 | Requirement | Phase | Status |
@@ -244,5 +319,5 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-06-05 — Fixed MONET-01/MONET-04 traceability (deferred, not Phase 7)*
+*Last updated: 2026-08-10 — Milestone v3.0 Tam Quốc Collection requirements defined (TQC-01 → TQC-21)*
 
