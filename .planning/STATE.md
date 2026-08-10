@@ -86,6 +86,7 @@ Phase 07 [Monetization & Commands]       █████ COMPLETED
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260629-8pw | Fix football placeholder team names in bet notifications | 2026-06-28 | ef21849 | [260629-8pw-fix-football-placeholder-team-names-in-b](./quick/260629-8pw-fix-football-placeholder-team-names-in-b/) |
+| 260810-f7j | Upgrade dependencies: eslint 9→10 (EOL), TS 6.0.3, vitest 4, ioredis 6, pm2 7, lint-staged 17, + minor/patch | 2026-08-10 | 4700405 | [260810-f7j-upgrade-dependencies-eslint-9-to-10-eol-](./quick/260810-f7j-upgrade-dependencies-eslint-9-to-10-eol-/) |
 
 ---
 
