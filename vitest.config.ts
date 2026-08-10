@@ -6,10 +6,6 @@ export default defineConfig({
     include: ['src/**/__tests__/**/*.test.ts'],
     setupFiles: ['./src/testSetup.ts'],
     pool: 'threads',
-    poolOptions: {
-      threads: {
-        isolate: true,
-      },
-    },
+    isolate: true,
   },
 });
