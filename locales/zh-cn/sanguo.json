@@ -1,0 +1,16 @@
+{
+  "cmd": {
+    "map": {
+      "description": "查看三国地图"
+    }
+  },
+  "map": {
+    "title": "🗺️ 三国地图",
+    "current_position": "当前位置",
+    "zones": "领地",
+    "nodes": "地名",
+    "empty": "地图尚未绘制",
+    "empty_hint": "此地暂无数据，请稍后再来。",
+    "error": "加载地图时出错，请重试。"
+  }
+}

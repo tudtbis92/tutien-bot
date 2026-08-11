@@ -1,0 +1,16 @@
+{
+  "cmd": {
+    "map": {
+      "description": "View the Three Kingdoms map"
+    }
+  },
+  "map": {
+    "title": "🗺️ Three Kingdoms Map",
+    "current_position": "Current position",
+    "zones": "Zones",
+    "nodes": "Places",
+    "empty": "The map has not been drawn yet",
+    "empty_hint": "This land has no data yet. Please come back later.",
+    "error": "There was an error loading the map. Please try again."
+  }
+}

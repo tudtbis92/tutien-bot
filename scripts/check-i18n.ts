@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOCALES_DIR = path.join(__dirname, '../locales');
-const NAMESPACES = ['common', 'game', 'combat', 'marketplace', 'admin'];
+const NAMESPACES = ['common', 'game', 'combat', 'marketplace', 'admin', 'football', 'sanguo'];
 const LOCALES = ['vi', 'en', 'zh-cn'];
 
 function getKeys(obj: Record<string, unknown>, prefix = ''): string[] {

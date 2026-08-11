@@ -1,0 +1,16 @@
+{
+  "cmd": {
+    "map": {
+      "description": "Xem bản đồ Tam Quốc"
+    }
+  },
+  "map": {
+    "title": "🗺️ Bản đồ Tam Quốc",
+    "current_position": "Vị trí hiện tại",
+    "zones": "Vùng đất",
+    "nodes": "Địa danh",
+    "empty": "Bản đồ chưa được vẽ",
+    "empty_hint": "Vùng đất này chưa có dữ liệu. Hãy quay lại sau.",
+    "error": "Có lỗi khi tải bản đồ. Hãy thử lại."
+  }
+}
