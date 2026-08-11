@@ -25,6 +25,37 @@ Game phụ kiểu Pokemon cho bot, dùng chung Linh thạch (`users.balance`) l�
 - **Duplicate → hồn ngọc** → dùng nâng level hero
 - **Level 20 → tiến hóa t1, level 50 → tiến hóa t2**
 
+## Chỉ số IV (đã chốt post-gate Phase 8)
+
+6 chỉ số (0–31 mỗi cái, max tổng 186), rename từ `hp/atk/def/spd/crit/luck` → `str/agi/int/mov/lea/cha`:
+
+| Stat | Vai trò trong battle |
+|---|---|
+| **STR** | sát thương + phòng thủ vật lý |
+| **AGI** | chính xác + né tránh |
+| **INT** | sát thương + phòng thủ phép/kỹ năng |
+| **MOV** | thứ tự đánh |
+| **LEA** | ↑ tỉ lệ buff, ↓ tỉ lệ debuff |
+| **CHA** | ↑ gây hiệu ứng phe địch, ↓ bị hiệu ứng phe mình |
+
+**IV% = round(sum/186 × 100)** → hạng: **100**=Hoàng Kim · **90-99**=Hồng ngọc · **80-89**=Lam cấp · **60-79**=Lục cấp · **<60**=Hôi cấp. Hiển thị grade (không phải 6 số thô), i18n keys.
+
+## Faction / Role / Class / Family (đã chốt post-gate Phase 8)
+
+- **Faction phẳng** (bỏ phân cấp): Hán, Ngụy, Thục, Ngô, Thập Thường Thị, Khăn Vàng, Lương Châu + Nam Man, Ô Hoàn, Sơn Việt, Tiên Ti, Hung Nô... (Ngoại Tộc cũ bị thay bởi chính các thành phần của nó). Lưu trong bảng reference `hero_factions`.
+- **Role 9**: ruler, general, strategist, civil, royal, eunuch, religious, tribal, scholar.
+- **Class 8** (vị trí đội hình, không phải cách tác chiến): vanguard, cavalry, archer, spellcaster, schemer, vu_co, thu_binh, cong_binh.
+- **Family**: `heroes.family` varchar NULL (~8-12 gia tộc: tôn, tào, hạ_hầu, viên, gia_cát, tư_mã, công_tôn, mã...).
+
+## Chemistry (EA FC style, đã chốt)
+
+3 tầng liên kết — **family** (mạnh nhất, xuyên faction — Gia Cát Lượng/Thục + Gia Cát Cẩn/Ngô vẫn bond) > **faction** (match phẳng) > **role** (yếu nhất). Chemistry chỉ active khi hero xếp **đúng vị trí theo class** trong đội hình.
+
+## Trận hình (đã chốt post-gate Phase 8)
+
+- Không cố định — người chơi **mua trận hình**; mỗi trận hình phân bổ class + số lượng + vị trí slot khác nhau.
+- Schema `formations` + `formation_slots` + `user_formations` được thiết kế từ bây giờ (Phase 8 post-gate); logic mua/bán + battleEngine consume ở Phase 11.
+
 ## Khởi đầu & Kinh tế
 
 - Chọn 1 trong vài **starter hero miễn phí**
@@ -40,7 +71,7 @@ Game phụ kiểu Pokemon cho bot, dùng chung Linh thạch (`users.balance`) l�
 ## Assets (đã có sẵn)
 
 - `E:\Saeth\sanguo_assets` — repo asset riêng
-- 132 hero Tam Quốc (`src/data/heroes-v1.json`): 9 factions, 5 roles, mỗi hero có id/name/title/faction/weapon/detail
+- 132 hero Tam Quốc (`src/data/heroes-v1.json`): mỗi hero có id/name/title/faction/weapon/detail — faction/role cũ (10 faction/5 role) được tái phân loại sang model mới (faction phẳng + 9 role) qua research (xem "Faction / Role / Class / Family" bên dưới)
 - Mỗi hero 4 tier spritesheet (t0→t3) + bản `_star`
 - `assets/emojis.json`: **1056 emoji đã upload** cho application `1381818375633899562` — mapping `{hero_id}_{t0..t3}[_star]`
 - `tiers.json`: visual 4 bậc, forms (mecha/god/sexy) — tiềm năng mở rộng sau

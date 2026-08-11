@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-10)
 Phase: 08 (foundation-economy-budget-content-infrastructure) — EXECUTING
 Plan: 4 of 4
 Status: Phase complete — ready for verification
-Last activity: 2026-08-11 — Phase 08 execution started
+Last activity: 2026-08-11 - Completed quick task 260811-lld: Post-gate Phase 8 schema redesign (IV rename, flat factions, role/class/family, formations schema, Tavily classifications, reseed)
 
 Progress: [██████████] 100%
 
@@ -73,6 +73,14 @@ Progress: [██████████] 100%
 | Economy design-gate trước content (TQC-05) | Chặn faucet → marketplace arbitrage (Linh thạch printing press) | Phase 8 |
 | Soul gems account-bound, không convert Linh thạch | Ngăn dupe loop sụp economy | Phase 11 |
 | Boss drops items, never money | Faucet an toàn không chạm `users.balance` | Phase 11 |
+| Chemistry 3 tầng: family > faction > role | EA FC-style: family = bond mạnh nhất (xuyên faction), faction = medium, role = weak | Phase 8 post-gate |
+| Faction phẳng (bỏ phân cấp): Hán/Ngụy/Thục/Ngô + Thập Thường Thị/Khăn Vàng/Lương Châu + Nam Man/Ô Hoàn/Sơn Việt/Tiên Ti/Hung Nô... | Ngoại Tộc cũ bị thay bằng các thành phần top-level; chemistry faction = match phẳng | Phase 8 post-gate |
+| IV 6 chỉ số đổi sang STR/AGI/INT/MOV/LEA/CHA | STR=vật lý atk+def, AGI=chính xác+né, INT=phép atk+def, MOV=thứ tự đánh, LEA=↑buff/↓debuff, CHA=↑hiệu ứng phe địch/↓bị hiệu ứng phe mình | Phase 8 post-gate |
+| IV hạng theo % (sum/186): 100=Hoàng Kim, 90-99=Hồng ngọc, 80-89=Lam cấp, 60-79=Lục cấp, <60=Hôi cấp | Grade summary thay vì 6 số thô (PITFALLS.md:284); i18n keys | Phase 8 post-gate |
+| `heroes.class` = vị trí đội hình, 8 class: vanguard/cavalry/archer/spellcaster/schemer/vu_co/thu_binh/cong_binh | Class định vị slot; chemistry do faction/role/family quyết định | Phase 8 post-gate |
+| Trận hình mua được, không cố định; schema `formations`+`formation_slots`+`user_formations` thiết kế từ bây giờ | Mỗi trận hình phân bổ class/số lượng/vị trí khác nhau; logic mua/bán ở Phase 11 | Phase 8 post-gate |
+| Role 9 loại: ruler/general/strategist/civil/royal/eunuch/religious/tribal/scholar | Thay 5 role cũ (royal/eunuch/military/civil/religious) | Phase 8 post-gate |
+| `heroes.family` varchar NULL (~8-12 gia tộc: tôn/tào/hạ_hầu/viên/gia_cát/tư_mã/công_tôn/mã...) | Family = chemistry tier mạnh nhất, xuyên faction (Gia Cát Lượng Thục + Gia Cát Cẩn Ngô) | Phase 8 post-gate |
 
 ### Pending Todos / Blockers
 
@@ -101,6 +109,12 @@ Resume: `/gsd-plan-phase 8`
 | Phase 08-foundation-economy-budget-content-infrastructure P2 | 18min | 3 tasks | 10 files |
 | Phase 08-foundation-economy-budget-content-infrastructure P3 | 18min | 2 tasks | 1 files |
 | Phase 08 P4 | 82min | 6 tasks | 16 files |
+
+## Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260811-lld | Post-gate Phase 8 schema redesign — IV rename, flat factions, role/class/family, formations schema, Tavily classifications, reseed | 2026-08-11 | 2b86898 | [260811-lld](./quick/260811-lld-post-gate-phase-8-schema-redesign-locked/) |
 
 ## Decisions
 
