@@ -27,3 +27,10 @@ export * from './farming.js';
 // Phase 8 schemas
 export * from './mapNodes.js';
 export * from './walletTransactions.js';
+export * from './heroes.js';
+export * from './userHeroes.js';
+export * from './playerTravelState.js';
+export * from './sanguoBattles.js';
+export * from './sanguoItems.js';
+export * from './userSanguoItems.js';
+export * from './encounterRuns.js';
