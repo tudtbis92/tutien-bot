@@ -81,6 +81,8 @@ Progress: [██████████] 100%
 | Trận hình mua được, không cố định; schema `formations`+`formation_slots`+`user_formations` thiết kế từ bây giờ | Mỗi trận hình phân bổ class/số lượng/vị trí khác nhau; logic mua/bán ở Phase 11 | Phase 8 post-gate |
 | Role 9 loại: ruler/general/strategist/civil/royal/eunuch/religious/tribal/scholar | Thay 5 role cũ (royal/eunuch/military/civil/religious) | Phase 8 post-gate |
 | `heroes.family` varchar NULL (~8-12 gia tộc: tôn/tào/hạ_hầu/viên/gia_cát/tư_mã/công_tôn/mã...) | Family = chemistry tier mạnh nhất, xuyên faction (Gia Cát Lượng Thục + Gia Cát Cẩn Ngô) | Phase 8 post-gate |
+| Family = bảng reference `hero_families` theo DÒNG MÁU, không theo họ | Lưu là họ phổ biến thứ 4 (~70M), bị ban cho Hung Nô/du mục → nhiều gia tộc Lưu khác nhau; chemistry match exact family_id tránh bond giả (VD: Công Tôn Toản ≠ Công Tôn Độ — research xác nhận không họ hàng) | Phase 8 post-gate |
+| Hoàng tộc Hán = `liu_hoang_toc` (9: 3 vua + Lưu Bị/Biểu/Yên/Diêu/Đại/Ngu); Hà thị = `ha_ngoai_thich` (3: Hà Tiến/Hà Hoàng Hậu/Hà Miêu); Trương Khăn Vàng = `zhang_khan_vang` (3 anh em) | Hai dòng máu khác nhau nối qua hôn nhân — KHÔNG gộp chung vua + ngoại thích | Phase 8 post-gate |
 
 ### Pending Todos / Blockers
 
@@ -114,7 +116,7 @@ Resume: `/gsd-plan-phase 8`
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 260811-lld | Post-gate Phase 8 schema redesign — IV rename, flat factions, role/class/family, formations schema, Tavily classifications, reseed | 2026-08-11 | 2b86898 | [260811-lld](./quick/260811-lld-post-gate-phase-8-schema-redesign-locked/) |
+| 260811-lld | Post-gate Phase 8 schema redesign — IV rename, flat factions, role/class/family (bloodline table), formations schema, Tavily classifications, reseed | 2026-08-11 | 6cd2f20 | [260811-lld](./quick/260811-lld-post-gate-phase-8-schema-redesign-locked/) |
 
 ## Decisions
 

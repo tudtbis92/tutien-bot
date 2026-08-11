@@ -45,7 +45,7 @@ Game phụ kiểu Pokemon cho bot, dùng chung Linh thạch (`users.balance`) l�
 - **Faction phẳng** (bỏ phân cấp): Hán, Ngụy, Thục, Ngô, Thập Thường Thị, Khăn Vàng, Lương Châu + Nam Man, Ô Hoàn, Sơn Việt, Tiên Ti, Hung Nô... (Ngoại Tộc cũ bị thay bởi chính các thành phần của nó). Lưu trong bảng reference `hero_factions`.
 - **Role 9**: ruler, general, strategist, civil, royal, eunuch, religious, tribal, scholar.
 - **Class 8** (vị trí đội hình, không phải cách tác chiến): vanguard, cavalry, archer, spellcaster, schemer, vu_co, thu_binh, cong_binh.
-- **Family**: `heroes.family` varchar NULL (~8-12 gia tộc: tôn, tào, hạ_hầu, viên, gia_cát, tư_mã, công_tôn, mã...).
+- **Family**: bảng reference `hero_families` (mỗi row = 1 DÒNG MÁU, không phải họ — Lưu hoàng tộc ≠ bất kỳ gia tộc Lưu nào khác). `heroes.family_id` FK. Chemistry match exact family_id → không bond giả (research xác nhận Công Tôn Toản ≠ Công Tôn Độ). 12 families: liu_hoang_toc (9), ha_ngoai_thich (3), zhang_khan_vang (3), xiahou (2), yuan (2), kuai (2), shi (2), sun/cao/ma/dong/kong (1).
 
 ## Chemistry (EA FC style, đã chốt)
 
