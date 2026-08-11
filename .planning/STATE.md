@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Tam Quốc Collection
-current_phase: 8
-current_phase_name: Milestone v3.0 — Tam Quốc Collection
-status: planning
+current_phase: 08
+current_phase_name: foundation-economy-budget-content-infrastructure
+status: executing
 stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-08-11T02:01:01.701Z"
-last_activity: 2026-08-10
-last_activity_desc: Milestone v3.0 roadmap created (Phases 8–12, 21/21 TQC requirements mapped)
+last_updated: "2026-08-11T02:39:44.516Z"
+last_activity: 2026-08-11
+last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,14 +28,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-10)
 
 **Core value:** Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi phút voice, mỗi reaction đều âm thầm xây dựng hành trình tu tiên của người chơi.
-**Current focus:** Phase 8 — Foundation, Economy Budget & Content Infrastructure (Milestone v3.0)
+**Current focus:** Phase 08 — foundation-economy-budget-content-infrastructure
 
 ## Current Position
 
-Phase: 8 of 12 (Milestone v3.0 — Tam Quốc Collection)
-Plan: — (not yet planned)
-Status: Roadmap created — ready to plan Phase 8
-Last activity: 2026-08-10 — Milestone v3.0 roadmap created (Phases 8–12, 21/21 TQC requirements mapped)
+Phase: 08 (foundation-economy-budget-content-infrastructure) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 08
+Last activity: 2026-08-11 — Phase 08 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
