@@ -11,6 +11,7 @@ import { walletTransactions } from '../db/schema/walletTransactions.js';
  *    transaction; throws Error('INSUFFICIENT_BALANCE') on zero-row result.
  *  - creditBalance: no balance guard (a credit cannot go negative); the DB-level
  *    balance_non_negative check (users.ts) remains the last line of defense.
+ *    Throws Error('USER_NOT_FOUND:<id>') on zero-row result (WR-01 review fix).
  *
  * Every successful mutation writes exactly one wallet_transactions row (userId,
  * type, amount, balance_after, reason, metadata) in the SAME transaction as the
@@ -98,6 +99,12 @@ export async function creditBalance(
       .set({ balance: sql`${users.balance} + ${amount}` })
       .where(eq(users.id, userId))
       .returning({ balance: users.balance });
+
+    if (rows.length === 0) {
+      // A credit to a non-existent user matches zero rows — surface a clear
+      // error instead of crashing on rows[0] (WR-01 review fix).
+      throw new Error(`USER_NOT_FOUND:${userId}`);
+    }
 
     const balanceAfter = rows[0]!.balance;
 
