@@ -638,31 +638,38 @@ for (const hero of HEROES) { // HEROES loaded from heroes-v1.json (dev-time)
 | A7 | Tavily MCP (available in this environment) is the research tool used for ZH-CN hero names during the phase | TQC-03 | If Tavily is unavailable to the executor, D-06's mandate stalls the content step — plan a fallback (documented manual research) |
 | A8 | Node v26.3.0 locally (vs .nvmrc 22) is compatible with all pinned packages | Environment | If a package misbehaves on 26, `nvm use 22` per deploy.sh:10 resolves it — no code impact |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Is `1381818375633899562` the bot's real production CLIENT_ID?** (D-16)
+All five open questions are resolved during planning and mapped to plan tasks below. Q1–Q4 were resolved by the plan set; Q5 is resolved by the wave-0 dev-DB environment task (plan 08-04 Task 1), which is a blocking prerequisite for migration 0014 and the seed.
+
+1. **Is `1381818375633899562` the bot's real production CLIENT_ID?** (D-16) — **RESOLVED (plan 08-01, Task 1 + user_setup)**
    - What we know: emojis.json applicationId = `1381818375633899562`; local `.env` CLIENT_ID = placeholder `your_application_client_id`.
    - What's unclear: whether the production bot application is the same as the emoji-owning app.
    - Recommendation: update `.env` to the emoji app's ID (per D-16's stated contract) OR regenerate emojis.json for the correct app. The startup check (D-14) will catch a wrong choice at boot — decide before Phase 9 depends on emoji rendering.
+   - Resolution: plan 08-01 Task 1 updates `.env` CLIENT_ID to `1381818375633899562` after the user confirms the production app in user_setup; the D-14 startup hard-fail makes any divergence visible at boot, never silent.
 
-2. **How is `/sanguo` structured — top-level with subcommands vs flat names?** (SC3)
+2. **How is `/sanguo` structured — top-level with subcommands vs flat names?** (SC3) — **RESOLVED (plan 08-01, Task 3)**
    - What we know: UI-SPEC ships only `/sanguo map`; TQC-13 (Phase 10) needs `/sanguo heroes` and `/sanguo map`.
    - What's unclear: none technically — subcommand structure (option a) is forward-compatible and recommended (A4).
    - Recommendation: top-level `sanguo` command + `map` subcommand in `src/commands/sanguo/map.ts`.
+   - Resolution: implemented as option (a) — top-level `sanguo` + `map` subcommand (plan 08-01 Task 3), forward-compatible with `/sanguo heroes` in Phase 10.
 
-3. **Wallet error contract — string errors or error classes?**
+3. **Wallet error contract — string errors or error classes?** — **RESOLVED (plan 08-02, Task 1 + Task 2)**
    - What we know: gather/farming throw `new Error('INSUFFICIENT_BALANCE')`; football throws `InsufficientBalanceError`.
    - What's unclear: whether the wallet should standardize (recommended: keep a single exported `InsufficientBalanceError` class AND preserve message compatibility, since call sites check `err.message`).
    - Recommendation: wallet throws a class with `message === 'INSUFFICIENT_BALANCE'` so both existing call patterns keep working; new flows use the class.
+   - Resolution: wallet throws `Error` with `message === 'INSUFFICIENT_BALANCE'` (plan 08-02 Task 1) — message compatibility keeps gather/farming call sites working; predictionService preserves its `InsufficientBalanceError` class by catching and rethrowing the wallet error (plan 08-02 Task 2).
 
-4. **Historical ledger backfill?**
+4. **Historical ledger backfill?** — **RESOLVED (plan 08-02, Task 1)**
    - What we know: ledger starts empty at Phase 8 (A5); `/profile` history UI is deferred (D-04).
    - Recommendation: no backfill — record it as a conscious decision in the plan; revisit when the history UI ships.
+   - Resolution: no backfill — recorded as a conscious decision in plan 08-02; ledger starts empty at Phase 8 per D-04/A5.
 
-5. **Does the real deployment run Postgres/Redis via Docker, and where is docker-compose.yml?**
+5. **Does the real deployment run Postgres/Redis via Docker, and where is docker-compose.yml?** — **RESOLVED (plan 08-04, Task 1)**
    - What we know: no docker-compose.yml in the repo; local probes show 5432/6432/6379 closed this session; deploy.sh targets an existing server environment (`source /etc/tutien/.env`, pm2).
    - What's unclear: how the developer boots local DB/Redis for migration + seed + boot smoke tests.
    - Recommendation: plan task = "start local Postgres+Redis" (or document the external dev DB); migration/seed smoke tests are impossible without one.
+   - Resolution: plan 08-04 Task 1 (wave-0, blocking) provisions or verifies a reachable dev PostgreSQL — creates docker-compose.yml (postgres 16 + redis 7 with pg_isready healthcheck) when Docker is available, or accepts a local PostgreSQL install / external dev DB as documented alternatives; the node pg probe (`SELECT 1` against DATABASE_URL_DIRECT) is the blocking `<verify>` before migration 0014 + seed. See also the Missing dependencies note below.
 
 ## Environment Availability
 
@@ -680,7 +687,7 @@ for (const hero of HEROES) { // HEROES loaded from heroes-v1.json (dev-time)
 | eslint | SC4 lint gate | ✅ | 10.8.1 | — |
 
 **Missing dependencies with no fallback:**
-- **PostgreSQL (5432) + PgBouncer (6432)** — blocking for SC2 (bot boots with schemas migrated + seeded) and for any DB-touching verification. The planner MUST include an environment task (start dev DB) or target a reachable dev database before migration/seed steps.
+- **PostgreSQL (5432) + PgBouncer (6432)** — blocking for SC2 (bot boots with schemas migrated + seeded) and for any DB-touching verification. The planner MUST include an environment task (start dev DB) or target a reachable dev database before migration/seed steps. **→ RESOLVED: plan 08-04 Task 1 (wave-0, blocking) provisions/verifies a reachable dev PostgreSQL via docker-compose.yml (postgres 16 + redis 7), local install, or external DB — the node pg probe against DATABASE_URL_DIRECT is the gate before migration 0014 + seed (see OQ5 RESOLVED).**
 
 **Missing dependencies with fallback:**
 - Redis — not used in Phase 8; nothing blocked.

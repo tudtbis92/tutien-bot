@@ -84,7 +84,12 @@
   3. User can invoke `/sanguo map` and see a read-only map scaffold where hero emojis render from the generated registry (`heroEmoji()`), with a startup `applicationId === CLIENT_ID` check.
   4. User sees `sanguo` UI strings in their locale (VI/EN/ZH-CN) with zero hardcoded strings — i18n lint passes; content names (hero/zone/item) come from DB per-locale columns.
   5. Economy budget document is approved: expected Linh thạch/hour of the optimal loop documented and below tu vi caps; convertibility decisions recorded (net-sink/neutral constraint) — design gate passed before content authoring.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 08-01-PLAN.md — Emoji registry + i18n sanguo + map_nodes schema + /sanguo map scaffold (tracer)
+- [ ] 08-02-PLAN.md — Wallet service + ledger + 7-site refactor + unit tests (TQC-01)
+- [ ] 08-03-PLAN.md — Economy budget design-gate doc (TQC-05)
+- [ ] 08-04-PLAN.md — Dev-DB env + sanguo schemas + migration 0014 (9 tables incl. map_nodes) + seed + deploy (TQC-02)
 **UI hint**: yes
 
 ### Phase 9: Travel & Encounters
