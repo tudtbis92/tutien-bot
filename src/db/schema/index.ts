@@ -23,3 +23,6 @@ export * from './footballAnnouncements.js';
 export * from './apiCache.js';
 export * from './predictionChannels.js';
 export * from './farming.js';
+
+// Phase 8 schemas
+export * from './mapNodes.js';

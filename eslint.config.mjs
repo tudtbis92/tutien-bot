@@ -1,5 +1,48 @@
 import i18next from 'eslint-plugin-i18next';
 import tseslint from 'typescript-eslint';
+import { ESLintUtils } from '@typescript-eslint/utils';
+
+// Custom D-15 rule: raw Discord emoji IDs / emoji markup must only be produced by
+// heroEmoji() from src/assets/sanguoEmojis.ts (the generated registry). The
+// registry file itself is exempt via context.filename check.
+const createRule = ESLintUtils.RuleCreator(
+  (name) => `https://github.com/genZVN2021/tutien-bot#${name}`,
+);
+
+const noEmojiId = createRule({
+  name: 'no-emoji-id',
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Block raw Discord emoji IDs and emoji markup outside src/assets/sanguoEmojis.ts (D-15)',
+    },
+    schema: [],
+    messages: {
+      emojiLiteral:
+        'Raw Discord emoji ID/markup must only be produced by heroEmoji() from src/assets/sanguoEmojis.ts (D-15).',
+    },
+  },
+  defaultOptions: [],
+  create(context) {
+    // Normalize Windows separators so the registry path check is platform-stable
+    const filename = context.filename.replace(/\\/g, '/');
+    // The generated registry is the single allowed source of emoji IDs (D-13/D-15)
+    if (filename.endsWith('src/assets/sanguoEmojis.ts')) return {};
+    // Tests legitimately assert heroEmoji() markup output — exempt them (i18next precedent)
+    if (filename.includes('/__tests__/') || /\.(test|spec)\.ts$/.test(filename)) return {};
+    const emojiMarkup = /^<a?:\w+:\d{17,20}>$/;
+    const bareId = /^\d{17,20}$/;
+    return {
+      Literal(node) {
+        if (typeof node.value !== 'string') return;
+        if (emojiMarkup.test(node.value) || bareId.test(node.value)) {
+          context.report({ node, messageId: 'emojiLiteral' });
+        }
+      },
+    };
+  },
+});
 
 export default [
   // TypeScript recommended rules for all src/ TypeScript files
@@ -91,6 +134,15 @@ export default [
         },
       }],
     },
+  },
+
+  // Custom D-15 emoji-ID rule — scoped to the Discord client surface (src/commands + src/ui),
+  // the only places emoji markup/IDs can reach embed output. Pre-existing bare IDs in
+  // non-surface files (e.g. OWO_BOT_ID in src/types/farming.ts) stay untouched (scope boundary).
+  {
+    files: ['src/commands/**/*.ts', 'src/ui/**/*.ts'],
+    plugins: { local: { rules: { 'no-emoji-id': noEmojiId } } },
+    rules: { 'local/no-emoji-id': 'error' },
   },
 
   // Test files: disable i18next rule — test descriptions/assertions are not user-facing strings
