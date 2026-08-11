@@ -1,4 +1,5 @@
 import { pgTable, serial, varchar, integer, bigint, timestamp } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { users } from './users.js';
 
 /**
@@ -13,7 +14,7 @@ export const formations = pgTable('formations', {
   nameEn: varchar('name_en', { length: 100 }).notNull(),
   nameZh: varchar('name_zh', { length: 100 }),
   slotCount: integer('slot_count').notNull(),
-  basePrice: bigint('base_price', { mode: 'bigint' }).notNull().default(0n),
+  basePrice: bigint('base_price', { mode: 'bigint' }).notNull().default(sql`0`),
 });
 
 /**

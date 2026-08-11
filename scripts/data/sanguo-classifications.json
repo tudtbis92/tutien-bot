@@ -120,7 +120,7 @@
   "tadun": { "faction": "o_hoan", "role": "tribal", "class": "cavalry", "family": null },
   "nanlou": { "faction": "o_hoan", "role": "tribal", "class": "vanguard", "family": null },
   "supuyan": { "faction": "o_hoan", "role": "tribal", "class": "vanguard", "family": null },
-  "dianwu": { "faction": "nguy", "role": "general", "class": "vanguard", "family": null },
+  "dianwu": { "faction": "luong_chau", "role": "tribal", "class": "archer", "family": null },
   "yang_teng": { "faction": "luong_chau", "role": "general", "class": "vanguard", "family": null },
   "tan_dai_vuong": { "faction": "trieu_tien", "role": "royal", "class": "vanguard", "family": null },
   "co_quoc_xuyen_vuong": { "faction": "trieu_tien", "role": "royal", "class": "cavalry", "family": null },

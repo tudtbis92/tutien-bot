@@ -1,7 +1,11 @@
 /**
  * Phase 08 Sanguo Content Seed (TQC-02, D-05/D-06/D-09/D-10/D-11/D-12)
+ * Phase 08 post-gate: hero classifications (faction/role/class/family) from
+ * scripts/data/sanguo-classifications.json — 14 flat factions seeded first,
+ * heroes reference faction_id FK.
  *
- * Seeds: 132 heroes (heroes-v1.json), 5-10 placeholder map_nodes, 2-4 sanguo_items.
+ * Seeds: 14 hero_factions, 132 heroes (heroes-v1.json + classifications),
+ * 5-10 placeholder map_nodes, 2-4 sanguo_items.
  *
  * Idempotent: INSERT ... ON CONFLICT DO UPDATE keyed on natural keys
  * (heroes.heroId, map_nodes.code, sanguo_items.code) — re-running updates
@@ -75,26 +79,54 @@ function loadZhNames(): ZhNames {
 const zhNames = loadZhNames();
 
 // ---------------------------------------------------------------------------
-// Faction/role mapping (RESEARCH TQC-02 — 10 factions / 5 roles)
+// Flat faction catalog (Phase 8 post-gate — hero_factions reference table).
+// 14 top-level codes; hero factions resolved from sanguo-classifications.json.
 // ---------------------------------------------------------------------------
-type HeroFaction = NonNullable<typeof schema.heroes.$inferInsert['faction']>;
-type HeroRole = NonNullable<typeof schema.heroes.$inferInsert['role']>;
+interface FactionDef {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  nameZh: string | null;
+  sortOrder: number;
+}
 
-const FACTION_MAP: Record<string, HeroFaction> = {
-  'Hoàng tộc': 'hoang_toc',
-  'Thập Thường Thị': 'thap_thuong_thi',
-  'Triều đình': 'trieu_dinh',
-  'Đảng nhân': 'dang_nhan',
-  'Tướng triều': 'tuong_trieu',
-  'Khăn Vàng': 'khan_vang',
-  'Lương Châu': 'luong_chau',
-  'Quần hùng': 'quan_hung',
-  'Châu mục': 'chau_muc',
-  'Ngoại tộc': 'ngoai_toc',
-};
+const FACTIONS: FactionDef[] = [
+  { code: 'han', nameVi: 'Hán', nameEn: 'Han', nameZh: '汉', sortOrder: 1 },
+  { code: 'nguy', nameVi: 'Ngụy', nameEn: 'Wei', nameZh: '魏', sortOrder: 2 },
+  { code: 'thuc', nameVi: 'Thục', nameEn: 'Shu', nameZh: '蜀', sortOrder: 3 },
+  { code: 'ngo', nameVi: 'Ngô', nameEn: 'Wu', nameZh: '吴', sortOrder: 4 },
+  { code: 'thap_thuong_thi', nameVi: 'Thập Thường Thị', nameEn: 'Ten Attendants', nameZh: '十常侍', sortOrder: 5 },
+  { code: 'khan_vang', nameVi: 'Khăn Vàng', nameEn: 'Yellow Turbans', nameZh: '黄巾', sortOrder: 6 },
+  { code: 'luong_chau', nameVi: 'Lương Châu', nameEn: 'Liang Province', nameZh: '凉州', sortOrder: 7 },
+  { code: 'quan_hung', nameVi: 'Quần Hùng', nameEn: 'Warlords', nameZh: '群雄', sortOrder: 8 },
+  { code: 'nam_man', nameVi: 'Nam Man', nameEn: 'Southern Man', nameZh: '南蛮', sortOrder: 9 },
+  { code: 'o_hoan', nameVi: 'Ô Hoàn', nameEn: 'Wuhuan', nameZh: '乌桓', sortOrder: 10 },
+  { code: 'son_viet', nameVi: 'Sơn Việt', nameEn: 'Shanyue', nameZh: '山越', sortOrder: 11 },
+  { code: 'tien_ti', nameVi: 'Tiên Ti', nameEn: 'Xianbei', nameZh: '鲜卑', sortOrder: 12 },
+  { code: 'hung_no', nameVi: 'Hung Nô', nameEn: 'Xiongnu', nameZh: '匈奴', sortOrder: 13 },
+  { code: 'trieu_tien', nameVi: 'Triều Tiên cổ', nameEn: 'Ancient Korean Kingdoms', nameZh: '朝鲜古国', sortOrder: 14 },
+];
 
-// role maps directly to hero_role (royal|eunuch|military|civil|religious)
-const ROLE_VALUES: HeroRole[] = ['royal', 'eunuch', 'military', 'civil', 'religious'];
+// ---------------------------------------------------------------------------
+// Hero classification (Phase 8 post-gate) — committed Tavily-researched map.
+// Keyed by hero_id; each entry { faction, role, class, family }.
+// ---------------------------------------------------------------------------
+interface HeroClassification {
+  faction: string;
+  role: NonNullable<typeof schema.heroes.$inferInsert['role']>;
+  class: NonNullable<typeof schema.heroes.$inferInsert['class']>;
+  family: string | null;
+}
+
+const CLASSIFICATIONS_PATH = fileURLToPath(new URL('./data/sanguo-classifications.json', import.meta.url));
+function loadClassifications(): Record<string, HeroClassification> {
+  try {
+    return JSON.parse(fs.readFileSync(CLASSIFICATIONS_PATH, 'utf8')) as Record<string, HeroClassification>;
+  } catch {
+    console.error('[Seed] FATAL: scripts/data/sanguo-classifications.json not found — 132 hero classifications required');
+    process.exit(1);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Content definitions
@@ -206,23 +238,49 @@ const SANGUO_ITEMS = [
 // Seed
 // ---------------------------------------------------------------------------
 async function seed() {
+  // --- Hero factions (Phase 8 post-gate — flat reference table, seed first) ---
+  const factionRows: (typeof schema.heroFactions.$inferInsert)[] = FACTIONS.map((f) => ({
+    code: f.code,
+    nameVi: f.nameVi,
+    nameEn: f.nameEn,
+    nameZh: f.nameZh,
+    sortOrder: f.sortOrder,
+  }));
+  let factionCount = 0;
+  for (const row of factionRows) {
+    const [inserted] = await db
+      .insert(schema.heroFactions)
+      .values(row)
+      .onConflictDoUpdate({
+        target: schema.heroFactions.code,
+        set: {
+          nameVi: row.nameVi,
+          nameEn: row.nameEn,
+          nameZh: row.nameZh,
+          sortOrder: row.sortOrder,
+        },
+      })
+      .returning({ id: schema.heroFactions.id });
+    if (!inserted) throw new Error(`[Seed] Failed to upsert faction: ${row.code}`);
+    factionCount++;
+  }
+  const factionIdByCode = new Map<string, number>();
+  const factionRowsOut = await db.select().from(schema.heroFactions);
+  for (const f of factionRowsOut) factionIdByCode.set(f.code, f.id);
+
   // --- Heroes (D-09: all 132, fail fast) -----------------------------------
+  const classifications = loadClassifications();
   const rawHeroes = JSON.parse(fs.readFileSync(HEROES_JSON_PATH, 'utf8')) as HeroJsonEntry[];
   if (rawHeroes.length !== 132) {
     throw new Error(`[Seed] Expected 132 heroes in heroes-v1.json, got ${rawHeroes.length}`);
   }
 
-  // Fail fast on unmapped faction/role — never silently skip a hero (T-08-07)
-  const factionToEnum = new Map<string, HeroFaction>();
-  const roleToEnum = new Map<string, HeroRole>();
-  for (const [vi, e] of Object.entries(FACTION_MAP)) factionToEnum.set(vi, e);
-  for (const r of ROLE_VALUES) roleToEnum.set(r, r);
-
+  // Fail fast on missing classification / unmapped faction — never silently skip
   const heroRows: (typeof schema.heroes.$inferInsert)[] = rawHeroes.map((h) => {
-    const faction = factionToEnum.get(h.faction);
-    if (!faction) throw new Error(`[Seed] Unmapped faction "${h.faction}" for hero ${h.id}`);
-    const role = roleToEnum.get(h.role);
-    if (!role) throw new Error(`[Seed] Unmapped role "${h.role}" for hero ${h.id}`);
+    const cls = classifications[h.id];
+    if (!cls) throw new Error(`[Seed] Missing classification for hero ${h.id}`);
+    const factionId = factionIdByCode.get(cls.faction);
+    if (!factionId) throw new Error(`[Seed] Unmapped faction "${cls.faction}" for hero ${h.id}`);
     // D-06: nameZh from the committed Tavily-researched map (never agent-guessed)
     const nameZh = zhNames.heroes[h.id] ?? null;
     return {
@@ -230,8 +288,10 @@ async function seed() {
       nameVi: h.name,
       nameEn: h.en,
       nameZh,
-      faction,
-      role,
+      factionId,
+      role: cls.role,
+      class: cls.class,
+      family: cls.family ?? null,
       gender: h.gender ?? null,
       people: h.people ?? null,
       titleVi: h.title ?? null,
@@ -258,8 +318,10 @@ async function seed() {
           gender: row.gender,
           people: row.people,
           detailEn: row.detailEn,
-          faction: row.faction,
+          factionId: row.factionId,
           role: row.role,
+          class: row.class,
+          family: row.family,
           ...(zh ? { nameZh: zh } : {}),
         },
       })
@@ -330,7 +392,7 @@ async function seed() {
     itemCount++;
   }
 
-  console.log(`[Seed] ${heroCount} heroes, ${nodeCount} map_nodes, ${itemCount} items upserted`);
+  console.log(`[Seed] ${factionCount} factions, ${heroCount} heroes, ${nodeCount} map_nodes, ${itemCount} items upserted`);
   console.log('[Seed] Sanguo seed complete!');
 }
 
