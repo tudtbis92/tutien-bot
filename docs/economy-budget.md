@@ -101,3 +101,27 @@ For the sanguo sub-game: **total Linh thạch outflow (travel, items, evolution)
 - **Gates Phase 9–11 content authoring (D-18):** travel costs (Phase 9, TQC-06), encounter yields (Phase 9, TQC-08), shop prices (Phase 11, TQC-16), and evolution fees (Phase 11, TQC-15) MUST satisfy the constraints above — no content work in those phases may proceed on the assumption of a net source.
 - **Phase 12 monitoring/audit (TQC-19)** consumes this document as the audit baseline: Linh thạch per item per day reports are compared against these sink/source figures, and the marketplace numbers above are spec-only (Phase 12 must re-verify against code before auditing, per the threat register).
 - **One-way gate:** any future rebalancing of the economy budget requires a new sign-off in this document (D-18). The budget is not silently amendable.
+
+---
+
+## Design Gate Sign-off
+
+**Status: PASSED** — the economy design gate closes with this sign-off (D-18).
+
+**Decision (2026-08-11):** The economy budget as documented above is **approved**:
+
+1. **Net-sink/neutral is a HARD constraint (D-19):** total Linh thạch outflow (travel, items, evolution) >= total inflow (boss drops, if any) for the sanguo sub-game. The Phase 10 free starter hero (TQC-12) is the only faucet exception. No net-source in v1.
+2. **Expected net Linh thạch/hour of the optimal loop is <= 0**, which is trivially below the `DAILY_CAP 10_000` tu-vi-cap sanity bound (SC5) — the loop cannot be a net earner by construction. Gross per-hour flow must stay below the ~`416`/hour magnitude bound.
+3. **The convertibility matrix is accepted:** tu vi never converts to Linh thạch; hồn ngọc is account-bound and never converts back to Linh thạch; duplicate heroes convert to hồn ngọc (Phase 11, TQC-14); no sanguo item is marketable without a reviewed conversion spec (Phase 12, TQC-20).
+
+**Gating statement — this sign-off is a prerequisite for content authoring in Phases 9–11 (D-18):**
+
+- **Phase 9** (travel costs TQC-06, encounter yields TQC-08) MUST comply with D-19 — travel prices are sinks, encounter yields must never turn the loop into a net source.
+- **Phase 10** (TQC-12) — the starter faucet is the ONLY faucet; no other money-minting mechanic may be introduced.
+- **Phase 11** (TQC-14/15/16/17 — evolution fees, shop sinks, hồn ngọc conversion) MUST comply with D-19 and close the loop: every sink goes through `wallet.deductBalance` (D-03), hồn ngọc never converts to Linh thạch, boss drops are items only.
+- **No content work in Phases 9–11 may proceed on the assumption of a net source.**
+
+**Consumers:** Phase 12 monitoring/audit (TQC-19) consumes this document as the audit baseline; the marketplace figures herein are spec-only (planned, not live) until Phase 12 re-verifies them against code.
+
+Any future rebalancing of the economy budget requires a **new sign-off** in this document (D-18 one-way gate).
+
