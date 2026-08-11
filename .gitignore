@@ -29,3 +29,6 @@ Thumbs.db
 # Keys/Certs
 *.key
 *.pem
+
+# GSD runtime sentinel (tool-managed, recreated on demand)
+.planning/.gsd-allow-shrink
