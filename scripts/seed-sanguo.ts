@@ -7,11 +7,14 @@
  * (heroes.heroId, map_nodes.code, sanguo_items.code) — re-running updates
  * changed content and never duplicates rows (D-11).
  *
- * name_zh is intentionally NOT set in this task-4 version (D-06): ZH-CN names
- * come from the Tavily research pass (task 5 of this plan), which extends the
- * set clauses with nameZh sourced from scripts/data/sanguo-zh-names.json.
- * Keeping nameZh out of the task-4 set prevents an empty map from clobbering
- * researched values on a premature re-run.
+ * name_zh is sourced from scripts/data/sanguo-zh-names.json (D-06) — the
+ * committed Tavily-researched ZH-CN map keyed by hero_id / node code / item
+ * code. The data file is dev-time only (never read at runtime); a missing file
+ * logs a warning and yields an empty map so a deploy without the data still
+ * runs, seeding name_zh NULL. The upsert set clauses carry nameZh via a
+ * clobber-safe conditional spread: nameZh is written whenever a researched
+ * value exists, and an entry-less re-run can never clobber a researched value
+ * with NULL (D-11/D-06).
  *
  * Dev-time source: E:\Saeth\sanguo_assets\src\data\heroes-v1.json (never read
  * at runtime). Requires: DATABASE_URL_DIRECT (bypasses PgBouncer).
@@ -23,6 +26,7 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import * as schema from '../src/db/schema/index.js';
 
 // ---------------------------------------------------------------------------
@@ -41,6 +45,25 @@ const db = drizzle({ client: pool, schema });
 // Dev-time content source (D-06/D-09 — dev-only, never read at runtime)
 // ---------------------------------------------------------------------------
 const HEROES_JSON_PATH = 'E:\\Saeth\\sanguo_assets\\src\\data\\heroes-v1.json';
+const ZH_NAMES_PATH = fileURLToPath(new URL('./data/sanguo-zh-names.json', import.meta.url));
+
+// Committed Tavily-researched ZH-CN name map (D-06). Missing file -> empty map
+// so a deploy without the data still runs (seeds name_zh NULL).
+interface ZhNames {
+  heroes: Record<string, string>;
+  mapNodes: Record<string, string>;
+  items: Record<string, string>;
+}
+const EMPTY_ZH: ZhNames = { heroes: {}, mapNodes: {}, items: {} };
+function loadZhNames(): ZhNames {
+  try {
+    return JSON.parse(fs.readFileSync(ZH_NAMES_PATH, 'utf8')) as ZhNames;
+  } catch {
+    console.warn('[Seed] WARNING: scripts/data/sanguo-zh-names.json not found — seeding name_zh as NULL');
+    return EMPTY_ZH;
+  }
+}
+const zhNames = loadZhNames();
 
 // ---------------------------------------------------------------------------
 // Faction/role mapping (RESEARCH TQC-02 — 10 factions / 5 roles)
@@ -191,11 +214,13 @@ async function seed() {
     if (!faction) throw new Error(`[Seed] Unmapped faction "${h.faction}" for hero ${h.id}`);
     const role = roleToEnum.get(h.role);
     if (!role) throw new Error(`[Seed] Unmapped role "${h.role}" for hero ${h.id}`);
+    // D-06: nameZh from the committed Tavily-researched map (never agent-guessed)
+    const nameZh = zhNames.heroes[h.id] ?? null;
     return {
       heroId: h.id,
       nameVi: h.name,
       nameEn: h.en,
-      // nameZh intentionally omitted (D-06 — filled by task-5 Tavily research)
+      nameZh,
       faction,
       role,
       gender: h.gender ?? null,
@@ -208,6 +233,9 @@ async function seed() {
 
   let heroCount = 0;
   for (const row of heroRows) {
+    // Clobber-safe set (D-11/D-06): nameZh only when a researched value exists,
+    // so an entry-less re-run can never overwrite a researched value with NULL.
+    const zh = row.nameZh;
     const [inserted] = await db
       .insert(schema.heroes)
       .values(row)
@@ -223,6 +251,7 @@ async function seed() {
           detailEn: row.detailEn,
           faction: row.faction,
           role: row.role,
+          ...(zh ? { nameZh: zh } : {}),
         },
       })
       .returning({ id: schema.heroes.id });
@@ -233,12 +262,14 @@ async function seed() {
   // --- Map nodes (D-10 placeholders) ---------------------------------------
   let nodeCount = 0;
   for (const node of MAP_NODES) {
+    const zh = zhNames.mapNodes[node.code] ?? null;
     const [inserted] = await db
       .insert(schema.mapNodes)
       .values({
         code: node.code,
         nameVi: node.nameVi,
         nameEn: node.nameEn,
+        nameZh: zh,
         zone: node.zone,
         nodeOrder: node.nodeOrder,
         representativeHeroId: node.representativeHeroId,
@@ -251,6 +282,7 @@ async function seed() {
           zone: node.zone,
           nodeOrder: node.nodeOrder,
           representativeHeroId: node.representativeHeroId,
+          ...(zh ? { nameZh: zh } : {}),
         },
       })
       .returning({ id: schema.mapNodes.id });
@@ -261,12 +293,14 @@ async function seed() {
   // --- Sanguo items ----------------------------------------------------------
   let itemCount = 0;
   for (const item of SANGUO_ITEMS) {
+    const zh = zhNames.items[item.code] ?? null;
     const [inserted] = await db
       .insert(schema.sanguoItems)
       .values({
         code: item.code,
         nameVi: item.nameVi,
         nameEn: item.nameEn,
+        nameZh: zh,
         itemType: item.itemType,
         rarity: item.rarity,
         basePrice: item.basePrice,
@@ -279,6 +313,7 @@ async function seed() {
           itemType: item.itemType,
           rarity: item.rarity,
           basePrice: item.basePrice,
+          ...(zh ? { nameZh: zh } : {}),
         },
       })
       .returning({ id: schema.sanguoItems.id });
