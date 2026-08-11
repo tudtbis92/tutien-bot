@@ -1,11 +1,11 @@
 import { db } from '../../db/client.js';
-import { users } from '../../db/schema/users.js';
 import { farmingSubscriptions } from '../../db/schema/farming.js';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import type { FarmingSettings } from '../../types/farming.js';
 import { redis } from '../../cache/redis.js';
+import { deductBalance } from '../wallet.js';
 
 dayjs.extend(utc);
 
@@ -73,17 +73,10 @@ export class FarmingSubscriptionService {
         }
 
         if (price > 0n) {
-          const updateResult = await tx
-            .update(users)
-            .set({
-              balance: sql`${users.balance} - ${price}`
-            })
-            .where(sql`${users.id} = ${userId} AND ${users.balance} >= ${price}`)
-            .returning({ id: users.id });
-
-          if (updateResult.length === 0) {
-            throw new Error('INSUFFICIENT_BALANCE');
-          }
+          await deductBalance(tx, userId, price, {
+            reason: 'farming_subscription',
+            metadata: { planType, durationDays },
+          });
         }
 
         await tx
@@ -147,17 +140,10 @@ export class FarmingSubscriptionService {
         const fee = this.calculateUpgradeFee(currentSub.expiresAt);
 
         if (fee > 0n) {
-          const updateResult = await tx
-            .update(users)
-            .set({
-              balance: sql`${users.balance} - ${fee}`
-            })
-            .where(sql`${users.id} = ${userId} AND ${users.balance} >= ${fee}`)
-            .returning({ id: users.id });
-
-          if (updateResult.length === 0) {
-            throw new Error('INSUFFICIENT_BALANCE');
-          }
+          await deductBalance(tx, userId, fee, {
+            reason: 'farming_upgrade',
+            metadata: { planType: 'premium' },
+          });
         }
 
         await tx

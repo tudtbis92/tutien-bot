@@ -1,8 +1,9 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { users } from '../../db/schema/users.js';
 import { footballMatches } from '../../db/schema/footballMatches.js';
 import { footballBets, type FootballBet } from '../../db/schema/footballBets.js';
 import { calculatePayout, validateBetAmount } from './oddsCalculator.js';
+import { deductBalance, creditBalance } from '../wallet.js';
 
 // Custom Errors
 export class MatchNotFoundError extends Error {
@@ -156,25 +157,26 @@ export async function placeBet(
       throw new InsufficientBalanceError();
     }
 
-    // 7. Calculate new balance: refund old wager, deduct new wager
-    const balanceDiff = oldWagerAmount - wagerAmount;
-    
-    // Update user balance using atomic query with defensive check
-    const updatedUsers = await tx
-      .update(users)
-      .set({
-        balance: sql`${users.balance} + ${balanceDiff}`
-      })
-      .where(
-        and(
-          eq(users.id, userId),
-          sql`${users.balance} + ${balanceDiff} >= 0` // Double check no negative balance
-        )
-      )
-      .returning();
-
-    if (updatedUsers.length === 0) {
-      throw new InsufficientBalanceError();
+    // 7. Refund old wager (edit) then deduct new wager through the wallet.
+    // The ledger stays reconcilable on edits: one 'bet_refund' row + one
+    // 'bet_wager' row. A thrown Error('INSUFFICIENT_BALANCE') from the wallet
+    // is rethrown as InsufficientBalanceError (caller-facing class preserved).
+    try {
+      if (isEdit && oldWagerAmount > 0n) {
+        await creditBalance(tx, userId, oldWagerAmount, {
+          reason: 'bet_refund',
+          metadata: { betId: betIdToUpdate, matchId, betType },
+        });
+      }
+      await deductBalance(tx, userId, wagerAmount, {
+        reason: 'bet_wager',
+        metadata: { betId: isEdit ? betIdToUpdate : undefined, matchId, betType },
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'INSUFFICIENT_BALANCE') {
+        throw new InsufficientBalanceError();
+      }
+      throw err;
     }
 
     let resultBet: FootballBet;

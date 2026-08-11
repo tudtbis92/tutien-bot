@@ -60,7 +60,7 @@ describe('FarmingSubscriptionService', () => {
         for: vi.fn().mockResolvedValue([]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        returning: vi.fn().mockResolvedValue([{ balance: 35000n }]),
         insert: vi.fn().mockReturnThis(),
         values: vi.fn().mockReturnThis(),
         onConflictDoUpdate: vi.fn().mockResolvedValue({}),
@@ -117,7 +117,7 @@ describe('FarmingSubscriptionService', () => {
         for: vi.fn().mockResolvedValue([]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: 1 }]), // balance == fee: UPDATE matches 1 row
+        returning: vi.fn().mockResolvedValue([{ balance: 10000n }]), // balance == fee: UPDATE matches 1 row
         insert: vi.fn().mockReturnThis(),
         values: vi.fn().mockReturnThis(),
         onConflictDoUpdate: vi.fn().mockResolvedValue({}),
@@ -159,7 +159,7 @@ describe('FarmingSubscriptionService', () => {
         for: vi.fn().mockResolvedValue([]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        returning: vi.fn().mockResolvedValue([{ balance: 10000n }]),
         insert: vi.fn().mockReturnThis(),
         values: vi.fn().mockReturnThis(),
         onConflictDoUpdate: vi.fn().mockResolvedValue({}),
@@ -236,7 +236,10 @@ describe('FarmingSubscriptionService', () => {
         for: vi.fn().mockResolvedValue([{ planType: 'basic', expiresAt }]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        returning: vi.fn().mockResolvedValue([{ balance: 10000n }]),
+        // Wallet ledger step (wallet.deductBalance inserts a wallet_transactions row)
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockResolvedValue({}),
       };
 
       vi.mocked(db.transaction).mockImplementation(async (cb) => {
@@ -332,7 +335,10 @@ describe('FarmingSubscriptionService', () => {
         for: vi.fn().mockResolvedValue([{ planType: 'basic', expiresAt }]),
         update: vi.fn().mockReturnThis(),
         set: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        returning: vi.fn().mockResolvedValue([{ balance: 10000n }]),
+        // Wallet ledger step (wallet.deductBalance inserts a wallet_transactions row)
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockResolvedValue({}),
       };
 
       vi.mocked(db.transaction).mockImplementation(async (cb) => {

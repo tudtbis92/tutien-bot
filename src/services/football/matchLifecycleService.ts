@@ -1,9 +1,8 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { REST, Routes } from 'discord.js';
 import { db } from '../../db/client.js';
 import { config } from '../../config.js';
 import { logger } from '../../utils/logger.js';
-import { users } from '../../db/schema/users.js';
 import { footballBets } from '../../db/schema/footballBets.js';
 import { type FootballMatch } from '../../db/schema/footballMatches.js';
 import { predictionChannels } from '../../db/schema/predictionChannels.js';
@@ -12,6 +11,7 @@ import { buildPredictionEmbed, buildLiveScoreUpdate } from '../../ui/embeds/buil
 import { getT, type SupportedLocale } from '../../i18n/index.js';
 import { redis } from '../../cache/redis.js';
 import { PredictionImageService } from './predictionImageService.js';
+import { creditBalance } from '../wallet.js';
 
 const rest = new REST().setToken(config.DISCORD_TOKEN);
 
@@ -353,11 +353,11 @@ export async function resolveMatchBets(match: FootballMatch, txDb: typeof db = d
     for (const bet of pendingBets) {
       try {
         if (isVoid) {
-          // Refund the wager amount back to user's wallet
-          await tx
-            .update(users)
-            .set({ balance: sql`${users.balance} + ${bet.wagerAmount}` })
-            .where(eq(users.id, bet.userId));
+          // Refund the wager amount back to user's wallet (via the wallet — ledger row written)
+          await creditBalance(tx, bet.userId, bet.wagerAmount, {
+            reason: 'bet_void',
+            metadata: { betId: bet.id, matchId: match.id },
+          });
 
           await tx
             .update(footballBets)
@@ -413,11 +413,11 @@ export async function resolveMatchBets(match: FootballMatch, txDb: typeof db = d
           }
 
           if (isPush) {
-            // Push (Draw on handicap/line) -> Refund wager
-            await tx
-              .update(users)
-              .set({ balance: sql`${users.balance} + ${bet.wagerAmount}` })
-              .where(eq(users.id, bet.userId));
+            // Push (Draw on handicap/line) -> Refund wager (via the wallet — ledger row written)
+            await creditBalance(tx, bet.userId, bet.wagerAmount, {
+              reason: 'bet_push',
+              metadata: { betId: bet.id, matchId: match.id },
+            });
 
             await tx
               .update(footballBets)
@@ -430,10 +430,10 @@ export async function resolveMatchBets(match: FootballMatch, txDb: typeof db = d
             logger.info('MatchLifecycleService', `Pushed bet ${bet.id} for user ${bet.userId} (Score matches line)`);
           } else if (won) {
             const payout = bet.potentialPayout ?? 0n;
-            await tx
-              .update(users)
-              .set({ balance: sql`${users.balance} + ${payout}` })
-              .where(eq(users.id, bet.userId));
+            await creditBalance(tx, bet.userId, payout, {
+              reason: 'bet_payout',
+              metadata: { betId: bet.id, matchId: match.id },
+            });
 
             await tx
               .update(footballBets)

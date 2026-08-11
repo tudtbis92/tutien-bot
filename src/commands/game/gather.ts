@@ -22,7 +22,6 @@ import {
 } from 'discord.js';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { users } from '../../db/schema/users.js';
 import { characterItems } from '../../db/schema/character_items.js';
 import { gatherPoolItems } from '../../db/schema/gather_pool_items.js';
 import { items } from '../../db/schema/items.js';
@@ -30,6 +29,7 @@ import { GATHER_FEES, getMajorRealmIndex } from '../../constants/gatherFees.js';
 import { buildItemEmbed } from '../../ui/embeds/buildItemEmbed.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
+import { deductBalance } from '../../services/wallet.js';
 
 // ── Command definition ────────────────────────────────────────────────────
 
@@ -153,21 +153,14 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   // 6. Atomic transaction: deduct linh thạch fee from users.balance + grant items
   try {
     await db.transaction(async (tx) => {
-      // Deduct linh thạch from users.balance (NOT characters.tuVi)
-      // The WHERE condition is the atomic race-condition guard.
-      const deductResult = await tx
-        .update(users)
-        .set({ balance: sql`${users.balance} - ${totalFee}` })
-        .where(
-          and(
-            eq(users.discordId, char.discordId),
-            sql`${users.balance} >= ${totalFee}`, // race condition guard
-          ),
-        );
-
-      if ((deductResult.rowCount ?? 0) === 0) {
-        throw new Error('INSUFFICIENT_BALANCE');
-      }
+      // Deduct linh thạch from users.balance (NOT characters.tuVi) through the
+      // wallet — the atomic WHERE guard + ledger write live in deductBalance.
+      // user is guaranteed defined here: the balance pre-check above returns
+      // early when user is undefined (balance falls back to 0n).
+      await deductBalance(tx, user!.id, totalFee, {
+        reason: 'gather',
+        metadata: { amount, feePerRoll, majorRealmIndex },
+      });
 
       // Grant items
       for (const [itemId, quantity] of gainMap) {
