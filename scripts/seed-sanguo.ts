@@ -16,8 +16,13 @@
  * value exists, and an entry-less re-run can never clobber a researched value
  * with NULL (D-11/D-06).
  *
- * Dev-time source: E:\Saeth\sanguo_assets\src\data\heroes-v1.json (never read
- * at runtime). Requires: DATABASE_URL_DIRECT (bypasses PgBouncer).
+ * Dev-time source: scripts/data/heroes-v1.json (committed repo copy — deploy-safe
+ * default; override with env SANGUO_HEROES_SOURCE for the sibling repo). Requires:
+ * DATABASE_URL_DIRECT (bypasses PgBouncer).
+ *
+ * representative_hero_id values are written in the heroes.hero_id (snake_case)
+ * space; heroEmoji() resolves them to their 3-letter emoji prefix via the
+ * generated SANSUO_HERO_EMOJI_CODES map (CR-01 review fix).
  *
  * Run: npx tsx scripts/seed-sanguo.ts  (or: npm run seed:sanguo)
  */
@@ -44,7 +49,11 @@ const db = drizzle({ client: pool, schema });
 // ---------------------------------------------------------------------------
 // Dev-time content source (D-06/D-09 — dev-only, never read at runtime)
 // ---------------------------------------------------------------------------
-const HEROES_JSON_PATH = 'E:\\Saeth\\sanguo_assets\\src\\data\\heroes-v1.json';
+// The committed repo copy (scripts/data/heroes-v1.json) is the deploy-safe
+// default: the Linux server has no sibling repo. Local regeneration may point
+// SANGUO_HEROES_SOURCE at the sibling repo's heroes-v1.json instead.
+const HEROES_JSON_PATH =
+  process.env['SANGUO_HEROES_SOURCE'] ?? fileURLToPath(new URL('./data/heroes-v1.json', import.meta.url));
 const ZH_NAMES_PATH = fileURLToPath(new URL('./data/sanguo-zh-names.json', import.meta.url));
 
 // Committed Tavily-researched ZH-CN name map (D-06). Missing file -> empty map

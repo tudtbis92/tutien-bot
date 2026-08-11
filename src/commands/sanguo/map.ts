@@ -66,19 +66,24 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       .from(mapNodes)
       .orderBy(asc(mapNodes.nodeOrder));
 
-    // Zones: distinct zone values, each with its representativeHeroId from DB (D-07)
-    const zoneMap = new Map<string, string | null>();
+    // Zones: distinct zone values, each with its representativeHeroId from DB (D-07).
+    // Zone label = the first node's per-locale name in that zone (zone codes like
+    // trung_nguyen are DB keys, never user-facing — WR-02 review fix).
+    const zoneMap = new Map<string, { label: string; heroId: string | null }>();
     for (const row of rows) {
       if (!zoneMap.has(row.zone)) {
-        zoneMap.set(row.zone, row.representativeHeroId);
+        zoneMap.set(row.zone, {
+          label: pickName(row, locale),
+          heroId: row.representativeHeroId,
+        });
       }
     }
 
     const data: SanguoMapEmbedData = {
       currentZoneName: rows.length > 0 ? pickName(rows[0]!, locale) : '',
-      zones: [...zoneMap.entries()].map(([label, heroId]) => ({
-        label,
-        heroId: heroId ?? undefined,
+      zones: [...zoneMap.entries()].map(([, v]) => ({
+        label: v.label,
+        heroId: v.heroId ?? undefined,
       })),
       nodes: rows.map((row) => pickName(row, locale)),
       shardId,

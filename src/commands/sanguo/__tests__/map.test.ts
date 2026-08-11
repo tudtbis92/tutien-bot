@@ -52,4 +52,59 @@ describe('/sanguo map command', () => {
     );
     expect(nodesField?.value).toBe('sanguo:map.empty_hint');
   });
+
+  it('renders heroEmoji markers for seeded snake_case representative_hero_id values without error (CR-01 regression)', async () => {
+    vi.mocked(fetchCommandContext).mockResolvedValue({
+      locale: 'vi',
+      t,
+      char: { id: 1 },
+      user: { balance: 0n },
+      shardId: 0,
+    } as never);
+
+    // The seed (scripts/seed-sanguo.ts) writes representative_hero_id in the
+    // heroes.hero_id snake_case space — dong_trac, cao_cao, etc. The command
+    // must resolve these to emoji markup, not throw EMOJI_NOT_FOUND.
+    const rows = [
+      {
+        id: 1,
+        code: 'luoyang',
+        nameVi: 'Lạc Dương',
+        nameEn: 'Luoyang',
+        nameZh: '洛阳',
+        zone: 'trung_nguyen',
+        nodeOrder: 1,
+        representativeHeroId: 'dong_trac',
+      },
+      {
+        id: 2,
+        code: 'changan',
+        nameVi: 'Trường An',
+        nameEn: 'Chang\u2019an',
+        nameZh: '长安',
+        zone: 'quan_trung',
+        nodeOrder: 2,
+        representativeHeroId: 'han_xian_di',
+      },
+    ];
+    const orderBy = vi.fn().mockResolvedValue(rows);
+    const from = vi.fn().mockReturnValue({ orderBy });
+    (db.select as any).mockReturnValue({ from });
+
+    const interaction = mockInteraction();
+    await execute(interaction);
+
+    expect(interaction.editReply).toHaveBeenCalledTimes(1);
+    const embeds = (interaction.editReply as any).mock.calls[0]?.[0]?.embeds ?? [];
+    const zonesField = embeds[0]?.data?.fields?.find(
+      (f: { name: string }) => f.name === 'sanguo:map.zones',
+    );
+    // Zone label now derives from the representative node's per-locale name (WR-02),
+    // and the marker renders via heroEmoji('<:dtr_t0:...>' markup) — no raw zone code.
+    expect(zonesField?.value).toContain('<:dtr_t0:');
+    expect(zonesField?.value).toContain('Lạc Dương');
+    expect(zonesField?.value).not.toContain('trung_nguyen');
+    expect(zonesField?.value).toContain('<:hxd_t0:');
+    expect(zonesField?.value).toContain('Trường An');
+  });
 });
