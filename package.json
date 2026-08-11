@@ -13,7 +13,8 @@
     "test": "vitest run",
     "migrate": "drizzle-kit migrate",
     "prepare": "husky",
-    "check-i18n": "tsx scripts/check-i18n.ts"
+    "check-i18n": "tsx scripts/check-i18n.ts",
+    "gen:emojis": "tsx scripts/gen-sanguo-emojis.ts"
   },
   "lint-staged": {
     "src/**/*.ts": [

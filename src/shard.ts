@@ -9,6 +9,10 @@ import { initPgBossForShard } from './workers/pgBoss.js';
 import { db } from './db/client.js';
 import { users } from './db/schema/users.js';
 import { eq } from 'drizzle-orm';
+import {
+  SANSUO_EMOJI_APPLICATION_ID,
+  assertEmojiApplicationId,
+} from './assets/sanguoEmojis.js';
 
 const client = new Client({
   intents: [
@@ -24,6 +28,17 @@ const client = new Client({
 });
 
 async function main(): Promise<void> {
+  // D-14: hard-fail before touching Discord if the emoji registry applicationId
+  // does not match the bot's CLIENT_ID — every sanguo emoji would render broken.
+  if (!assertEmojiApplicationId(SANSUO_EMOJI_APPLICATION_ID, config.CLIENT_ID)) {
+    logger.error(
+      'Shard',
+      `Fatal: emoji registry applicationId ${SANSUO_EMOJI_APPLICATION_ID} does not match CLIENT_ID ${config.CLIENT_ID}. ` +
+        'Refusing to start (D-14) — regenerated emojis.json is required for this app.',
+    );
+    process.exit(1);
+  }
+
   // i18next init — must complete before any command runs
   // Each shard is a separate process with its own i18next instance
   await initI18n();
