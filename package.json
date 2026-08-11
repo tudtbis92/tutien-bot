@@ -14,7 +14,8 @@
     "migrate": "drizzle-kit migrate",
     "prepare": "husky",
     "check-i18n": "tsx scripts/check-i18n.ts",
-    "gen:emojis": "tsx scripts/gen-sanguo-emojis.ts"
+    "gen:emojis": "tsx scripts/gen-sanguo-emojis.ts",
+    "seed:sanguo": "tsx scripts/seed-sanguo.ts"
   },
   "lint-staged": {
     "src/**/*.ts": [
