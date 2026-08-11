@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { heroEmoji, assertEmojiApplicationId, SANSUO_EMOJIS, type SanguoTier } from '../sanguoEmojis.js';
+import {
+  heroEmoji,
+  heroEmojiPrefix,
+  assertEmojiApplicationId,
+  SANSUO_EMOJIS,
+  SANSUO_HERO_EMOJI_CODES,
+  type SanguoTier,
+} from '../sanguoEmojis.js';
 
 describe('heroEmoji', () => {
   it('returns renderable Discord markup <:name:id> — never a bare ID (SC3)', () => {
@@ -16,6 +23,28 @@ describe('heroEmoji', () => {
 
     // Unknown hero (no prefix in registry) → throws — never '' or a raw literal
     expect(() => heroEmoji('no_such_hero')).toThrow('EMOJI_NOT_FOUND:no_such_hero');
+  });
+
+  it('resolves a snake_case hero id (representative_hero_id space) through SANSUO_HERO_EMOJI_CODES (CR-01)', () => {
+    // The seed writes map_nodes.representative_hero_id in the heroes.hero_id
+    // (snake_case) space — e.g. dong_trac, cao_cao. heroEmoji() must resolve
+    // these to their 3-letter emoji prefix and render markup, not throw.
+    expect(heroEmoji('dong_trac')).toBe(`<:dtr_t0:${SANSUO_EMOJIS.dtr_t0}>`);
+    expect(heroEmoji('cao_cao', 1, true)).toBe(`<:cao_t1_star:${SANSUO_EMOJIS.cao_t1_star}>`);
+    expect(heroEmojiPrefix('dong_trac')).toBe('dtr');
+    expect(heroEmojiPrefix('abt')).toBe('abt');
+  });
+
+  it('every hero id in SANSUO_HERO_EMOJI_CODES resolves to a real registry prefix (CR-01 coverage)', () => {
+    const codes = SANSUO_HERO_EMOJI_CODES as Record<string, string>;
+    const prefixes = Object.keys(codes);
+    expect(prefixes.length).toBeGreaterThanOrEqual(132);
+    for (const heroId of prefixes) {
+      const prefix = codes[heroId]!;
+      // The resolved key must exist in the registry — heroEmoji must never throw for a mapped hero
+      expect(SANSUO_EMOJIS[`${prefix}_t0` as keyof typeof SANSUO_EMOJIS]).toBeDefined();
+      expect(heroEmoji(heroId)).toMatch(/^<:[a-z0-9_]+:\d{17,20}>$/);
+    }
   });
 });
 
