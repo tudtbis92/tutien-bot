@@ -20,23 +20,26 @@ export const userHeroes = pgTable(
       .notNull()
       .references(() => heroes.id),
     level: integer('level').notNull().default(1),
-    // Six IV columns (0-31) — rolled at capture (Phase 10 TQC-12)
-    ivHp: smallint('iv_hp').notNull(),
-    ivAtk: smallint('iv_atk').notNull(),
-    ivDef: smallint('iv_def').notNull(),
-    ivSpd: smallint('iv_spd').notNull(),
-    ivCrit: smallint('iv_crit').notNull(),
-    ivLuck: smallint('iv_luck').notNull(),
+    // Six IV columns (0-31) — rolled at capture (Phase 10 TQC-12).
+    // Phase 8 post-gate rename: STR=physical atk+def, AGI=accuracy+evasion,
+    // INT=magic atk+def, MOV=turn order, LEA=+buff/-debuff, CHA=+enemy
+    // effects/-own debuffs. Max sum 186 (Hoang Kim grade at 100%).
+    ivStr: smallint('iv_str').notNull(),
+    ivAgi: smallint('iv_agi').notNull(),
+    ivInt: smallint('iv_int').notNull(),
+    ivMov: smallint('iv_mov').notNull(),
+    ivLea: smallint('iv_lea').notNull(),
+    ivCha: smallint('iv_cha').notNull(),
     capturedAt: timestamp('captured_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     // IV range checks — each stat bounded 0-31 per TQC-02
-    check('iv_hp_range', sql`${table.ivHp} >= 0 AND ${table.ivHp} <= 31`),
-    check('iv_atk_range', sql`${table.ivAtk} >= 0 AND ${table.ivAtk} <= 31`),
-    check('iv_def_range', sql`${table.ivDef} >= 0 AND ${table.ivDef} <= 31`),
-    check('iv_spd_range', sql`${table.ivSpd} >= 0 AND ${table.ivSpd} <= 31`),
-    check('iv_crit_range', sql`${table.ivCrit} >= 0 AND ${table.ivCrit} <= 31`),
-    check('iv_luck_range', sql`${table.ivLuck} >= 0 AND ${table.ivLuck} <= 31`),
+    check('iv_str_range', sql`${table.ivStr} >= 0 AND ${table.ivStr} <= 31`),
+    check('iv_agi_range', sql`${table.ivAgi} >= 0 AND ${table.ivAgi} <= 31`),
+    check('iv_int_range', sql`${table.ivInt} >= 0 AND ${table.ivInt} <= 31`),
+    check('iv_mov_range', sql`${table.ivMov} >= 0 AND ${table.ivMov} <= 31`),
+    check('iv_lea_range', sql`${table.ivLea} >= 0 AND ${table.ivLea} <= 31`),
+    check('iv_cha_range', sql`${table.ivCha} >= 0 AND ${table.ivCha} <= 31`),
     // For fast inventory queries by user
     index('user_heroes_user_idx').on(table.userId),
   ],

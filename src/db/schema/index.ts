@@ -34,3 +34,7 @@ export * from './sanguoBattles.js';
 export * from './sanguoItems.js';
 export * from './userSanguoItems.js';
 export * from './encounterRuns.js';
+
+// Phase 8 post-gate schemas
+export * from './heroFactions.js';
+export * from './formations.js';
