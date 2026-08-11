@@ -5,15 +5,15 @@ milestone_name: Tam Quốc Collection
 current_phase: 08
 current_phase_name: foundation-economy-budget-content-infrastructure
 status: executing
-stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-08-11T02:39:44.516Z"
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-08-11T03:26:58.009Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # State: TuTien Bot
@@ -33,11 +33,11 @@ See: .planning/PROJECT.md (updated 2026-08-10)
 ## Current Position
 
 Phase: 08 (foundation-economy-budget-content-infrastructure) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 08
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-08-11 — Phase 08 execution started
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 25%
 
 ## Phase Registry (Milestone v3)
 
@@ -83,12 +83,23 @@ Progress: [░░░░░░░░░░] 0%
 
 ## Session Continuity
 
-**Resume file:** E:\Saeth\tutien-bot\.planning\phases\08-foundation-economy-budget-content-infrastructure\08-UI-SPEC.md
+**Resume file:** None
 
-Last session: 2026-08-10T08:48:22.724Z
-Stopped at: Phase 8 UI-SPEC approved
+Last session: 2026-08-11T03:26:57.992Z
+Stopped at: Completed 08-01-PLAN.md
 Resume: `/gsd-plan-phase 8`
 
 ---
 
 *State updated for v3: 2026-08-10*
+
+## Performance Metrics
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 08-foundation-economy-budget-content-infrastructure P1 | 32min | 3 tasks | 20 files |
+
+## Decisions
+
+- [Phase ?]: ESLint emoji rule uses ESLintUtils.RuleCreator (v8.66.0 actual API) scoped to src/commands + src/ui (emoji-rendering surface, D-15) — createRule does not exist in installed version; blanket src/** scope would flag pre-existing OWO_BOT_ID
+- [Phase ?]: heroId optional in SanguoMapEmbedData.zones - null representative_hero_id renders label-only zone entry (D-07) — Plan interface said heroId: string but must-have truth requires label-only rendering for null zone markers

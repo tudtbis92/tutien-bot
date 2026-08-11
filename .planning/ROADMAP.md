@@ -101,7 +101,7 @@
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Emoji registry + i18n sanguo + map_nodes schema + /sanguo map scaffold (tracer)
+- [x] 08-01-PLAN.md — Emoji registry + i18n sanguo + map_nodes schema + /sanguo map scaffold (tracer)
 - [ ] 08-02-PLAN.md — Wallet service + ledger + 7-site refactor + unit tests (TQC-01)
 - [ ] 08-03-PLAN.md — Economy budget design-gate doc (TQC-05)
 
