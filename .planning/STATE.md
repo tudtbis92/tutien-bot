@@ -5,15 +5,15 @@ milestone_name: Tam Quốc Collection
 current_phase: 08
 current_phase_name: foundation-economy-budget-content-infrastructure
 status: executing
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-08-11T03:59:50.288Z"
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-08-11T04:11:35.626Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # State: TuTien Bot
@@ -33,11 +33,11 @@ See: .planning/PROJECT.md (updated 2026-08-10)
 ## Current Position
 
 Phase: 08 (foundation-economy-budget-content-infrastructure) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-08-11 — Phase 08 execution started
 
-Progress: [█████░░░░░] 50%
+Progress: [████████░░] 75%
 
 ## Phase Registry (Milestone v3)
 
@@ -85,8 +85,8 @@ Progress: [█████░░░░░] 50%
 
 **Resume file:** None
 
-Last session: 2026-08-11T03:59:50.270Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-08-11T04:11:35.607Z
+Stopped at: Completed 08-03-PLAN.md
 Resume: `/gsd-plan-phase 8`
 
 ---
@@ -99,6 +99,7 @@ Resume: `/gsd-plan-phase 8`
 |------|----------|-------|-------|
 | Phase 08-foundation-economy-budget-content-infrastructure P1 | 32min | 3 tasks | 20 files |
 | Phase 08-foundation-economy-budget-content-infrastructure P2 | 18min | 3 tasks | 10 files |
+| Phase 08-foundation-economy-budget-content-infrastructure P3 | 18min | 2 tasks | 1 files |
 
 ## Decisions
 
@@ -106,3 +107,4 @@ Resume: `/gsd-plan-phase 8`
 - [Phase ?]: heroId optional in SanguoMapEmbedData.zones - null representative_hero_id renders label-only zone entry (D-07) — Plan interface said heroId: string but must-have truth requires label-only rendering for null zone markers
 - [Phase 08]: Tx type derived as Parameters<Parameters<typeof db.transaction>[0]>[0] - plan literal PgTransaction<typeof schema, 'basic'> misorders drizzle 0.45.2 generics (TQueryResult first) — Derived type is exactly what the transaction callback receives; compiles on installed drizzle version
 - [Phase 08]: Edit wager flow writes two ledger rows (bet_refund + bet_wager) - ledger stays reconcilable on edits per SC1 — Research option chosen over single net row; matches plan action text
+- [Phase 08]: Economy design gate PASSED (2026-08-11): D-19 net-sink/neutral is a hard constraint, expected net linh thach/hour of optimal sanguo loop <= 0 (trivially below DAILY_CAP 10_000 tu-vi cap SC5), convertibility matrix accepted — gates Phases 9-11 content (TQC-05/D-18) — SC5 design-sanity check; any future rebalancing requires a new sign-off (D-18 one-way gate)
