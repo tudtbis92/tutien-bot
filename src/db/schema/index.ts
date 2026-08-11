@@ -28,6 +28,8 @@ export * from './farming.js';
 export * from './mapNodes.js';
 export * from './walletTransactions.js';
 export * from './heroes.js';
+export * from './heroFactions.js';
+export * from './heroFamilies.js';
 export * from './userHeroes.js';
 export * from './playerTravelState.js';
 export * from './sanguoBattles.js';

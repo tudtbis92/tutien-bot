@@ -108,6 +108,35 @@ const FACTIONS: FactionDef[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Bloodline family catalog (Phase 8 post-gate — hero_families reference table).
+// One row per DISTINCT lineage — a surname like Liu/张 can host several
+// unrelated families, so codes are bloodline-specific (liu_hoang_toc for the
+// Han imperial Liu clan, zhang_khan_vang for the three Yellow Turban Zhang
+// brothers, etc.). Chemistry (Phase 11) matches on exact family_id.
+// ---------------------------------------------------------------------------
+interface FamilyDef {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  nameZh: string | null;
+}
+
+const FAMILIES: FamilyDef[] = [
+  { code: 'liu_hoang_toc', nameVi: 'Lưu hoàng tộc', nameEn: 'Liu Imperial Clan', nameZh: '刘氏皇族' },
+  { code: 'ha_ngoai_thich', nameVi: 'Hà thị ngoại thích', nameEn: 'He Consort Clan', nameZh: '何氏外戚' },
+  { code: 'zhang_khan_vang', nameVi: 'Trương thị Khăn Vàng', nameEn: 'Zhang Yellow Turbans', nameZh: '张氏黄巾' },
+  { code: 'sun', nameVi: 'Tôn thị', nameEn: 'Sun Clan', nameZh: '孙氏' },
+  { code: 'cao', nameVi: 'Tào thị', nameEn: 'Cao Clan', nameZh: '曹氏' },
+  { code: 'ma', nameVi: 'Mã thị', nameEn: 'Ma Clan', nameZh: '马氏' },
+  { code: 'dong', nameVi: 'Đổng thị', nameEn: 'Dong Clan', nameZh: '董氏' },
+  { code: 'yuan', nameVi: 'Viên thị', nameEn: 'Yuan Clan', nameZh: '袁氏' },
+  { code: 'xiahou', nameVi: 'Hạ Hầu thị', nameEn: 'Xiahou Clan', nameZh: '夏侯氏' },
+  { code: 'kuai', nameVi: 'Khoái thị', nameEn: 'Kuai Clan', nameZh: '蒯氏' },
+  { code: 'shi', nameVi: 'Sĩ thị', nameEn: 'Shi Clan', nameZh: '士氏' },
+  { code: 'kong', nameVi: 'Khổng thị', nameEn: 'Kong Clan', nameZh: '孔氏' },
+];
+
+// ---------------------------------------------------------------------------
 // Hero classification (Phase 8 post-gate) — committed Tavily-researched map.
 // Keyed by hero_id; each entry { faction, role, class, family }.
 // ---------------------------------------------------------------------------
@@ -268,6 +297,24 @@ async function seed() {
   const factionRowsOut = await db.select().from(schema.heroFactions);
   for (const f of factionRowsOut) factionIdByCode.set(f.code, f.id);
 
+  // --- Hero families (Phase 8 post-gate — bloodline reference table) ---------
+  let familyCount = 0;
+  for (const fam of FAMILIES) {
+    const [inserted] = await db
+      .insert(schema.heroFamilies)
+      .values(fam)
+      .onConflictDoUpdate({
+        target: schema.heroFamilies.code,
+        set: { nameVi: fam.nameVi, nameEn: fam.nameEn, nameZh: fam.nameZh },
+      })
+      .returning({ id: schema.heroFamilies.id });
+    if (!inserted) throw new Error(`[Seed] Failed to upsert family: ${fam.code}`);
+    familyCount++;
+  }
+  const familyIdByCode = new Map<string, number>();
+  const familyRowsOut = await db.select().from(schema.heroFamilies);
+  for (const fam of familyRowsOut) familyIdByCode.set(fam.code, fam.id);
+
   // --- Heroes (D-09: all 132, fail fast) -----------------------------------
   const classifications = loadClassifications();
   const rawHeroes = JSON.parse(fs.readFileSync(HEROES_JSON_PATH, 'utf8')) as HeroJsonEntry[];
@@ -281,6 +328,8 @@ async function seed() {
     if (!cls) throw new Error(`[Seed] Missing classification for hero ${h.id}`);
     const factionId = factionIdByCode.get(cls.faction);
     if (!factionId) throw new Error(`[Seed] Unmapped faction "${cls.faction}" for hero ${h.id}`);
+    const familyId = cls.family ? familyIdByCode.get(cls.family) : undefined;
+    if (cls.family && !familyId) throw new Error(`[Seed] Unmapped family "${cls.family}" for hero ${h.id}`);
     // D-06: nameZh from the committed Tavily-researched map (never agent-guessed)
     const nameZh = zhNames.heroes[h.id] ?? null;
     return {
@@ -291,7 +340,7 @@ async function seed() {
       factionId,
       role: cls.role,
       class: cls.class,
-      family: cls.family ?? null,
+      familyId: familyId ?? null,
       gender: h.gender ?? null,
       people: h.people ?? null,
       titleVi: h.title ?? null,
@@ -321,7 +370,7 @@ async function seed() {
           factionId: row.factionId,
           role: row.role,
           class: row.class,
-          family: row.family,
+          familyId: row.familyId,
           ...(zh ? { nameZh: zh } : {}),
         },
       })
@@ -392,7 +441,7 @@ async function seed() {
     itemCount++;
   }
 
-  console.log(`[Seed] ${factionCount} factions, ${heroCount} heroes, ${nodeCount} map_nodes, ${itemCount} items upserted`);
+  console.log(`[Seed] ${factionCount} factions, ${familyCount} families, ${heroCount} heroes, ${nodeCount} map_nodes, ${itemCount} items upserted`);
   console.log('[Seed] Sanguo seed complete!');
 }
 

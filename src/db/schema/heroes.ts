@@ -1,5 +1,6 @@
 import { pgTable, serial, varchar, text, integer, pgEnum } from 'drizzle-orm/pg-core';
 import { heroFactions } from './heroFactions.js';
+import { heroFamilies } from './heroFamilies.js';
 
 // 9 roles (Phase 8 post-gate — replaces 5-role enum)
 export const heroRoleEnum = pgEnum('hero_role', [
@@ -50,8 +51,11 @@ export const heroes = pgTable('heroes', {
   role: heroRoleEnum('role').notNull(),
   // Formation position class (8 values) — chemistry (Phase 11) matches slot
   class: heroClassEnum('class').notNull(),
-  // Chemistry tier strongest (Phase 8 post-gate) — nullable until research confirms
-  family: varchar('family', { length: 30 }),
+  // Chemistry tier strongest (Phase 8 post-gate) — FK to hero_families.
+  // One row per BLOODLINE (Liu imperial clan != any other Liu family);
+  // chemistry matches on exact family_id so surname collisions can't create
+  // false bonds. Null until research confirms / no notable clan.
+  familyId: integer('family_id').references(() => heroFamilies.id),
   // Nullable content columns from heroes-v1.json
   gender: varchar('gender', { length: 20 }),
   people: varchar('people', { length: 50 }),

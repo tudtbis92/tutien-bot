@@ -1,134 +1,794 @@
 {
-  "han_ling_di": { "faction": "han", "role": "royal", "class": "schemer", "family": null },
-  "han_shao_di": { "faction": "han", "role": "royal", "class": "schemer", "family": null },
-  "han_xian_di": { "faction": "han", "role": "royal", "class": "schemer", "family": null },
-  "ha_thai_hau": { "faction": "han", "role": "royal", "class": "schemer", "family": null },
-  "dong_thai_hau": { "faction": "han", "role": "royal", "class": "schemer", "family": null },
-  "vuong_my_nhan": { "faction": "han", "role": "royal", "class": "schemer", "family": null },
-  "truong_nhuong": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "trieu_trung": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "kien_thac": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "doan_khue": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "phong_tu": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "tao_tiet": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "hau_lam": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "ha_uan": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "quach_thang": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "trinh_khoang": { "faction": "thap_thuong_thi", "role": "eunuch", "class": "schemer", "family": null },
-  "ha_tien": { "faction": "han", "role": "general", "class": "vanguard", "family": null },
-  "ha_mieu": { "faction": "han", "role": "general", "class": "vanguard", "family": null },
-  "vuong_doan": { "faction": "han", "role": "civil", "class": "schemer", "family": null },
-  "thai_ung": { "faction": "han", "role": "scholar", "class": "schemer", "family": null },
-  "tran_lam": { "faction": "nguy", "role": "civil", "class": "schemer", "family": null },
-  "luu_dao": { "faction": "han", "role": "civil", "class": "schemer", "family": null },
-  "truong_quan": { "faction": "han", "role": "civil", "class": "schemer", "family": null },
-  "dau_vu": { "faction": "han", "role": "general", "class": "vanguard", "family": null },
-  "tran_phien": { "faction": "han", "role": "civil", "class": "schemer", "family": null },
-  "ly_ung": { "faction": "han", "role": "civil", "class": "schemer", "family": null },
-  "pham_bang": { "faction": "han", "role": "civil", "class": "schemer", "family": null },
-  "quach_thai": { "faction": "han", "role": "scholar", "class": "schemer", "family": null },
-  "hoang_phu_tung": { "faction": "han", "role": "general", "class": "vanguard", "family": null },
-  "chu_tuan": { "faction": "han", "role": "general", "class": "vanguard", "family": null },
-  "lu_thuc": { "faction": "han", "role": "general", "class": "schemer", "family": null },
-  "pho_tiep": { "faction": "han", "role": "general", "class": "vanguard", "family": null },
-  "bao_tin": { "faction": "han", "role": "general", "class": "cavalry", "family": null },
-  "bao_hong": { "faction": "han", "role": "general", "class": "vanguard", "family": null },
-  "thuan_vu_quynh": { "faction": "han", "role": "general", "class": "vanguard", "family": null },
-  "gongsun_zan": { "faction": "quan_hung", "role": "general", "class": "cavalry", "family": "gongsun" },
-  "truong_giac": { "faction": "khan_vang", "role": "religious", "class": "spellcaster", "family": "zhang" },
-  "truong_bao": { "faction": "khan_vang", "role": "religious", "class": "spellcaster", "family": "zhang" },
-  "truong_luong": { "faction": "khan_vang", "role": "religious", "class": "schemer", "family": "zhang" },
-  "ma_nguyen_nghia": { "faction": "khan_vang", "role": "civil", "class": "schemer", "family": null },
-  "duong_chau": { "faction": "khan_vang", "role": "civil", "class": "schemer", "family": null },
-  "truong_man_thanh": { "faction": "khan_vang", "role": "general", "class": "vanguard", "family": null },
-  "ba_tai": { "faction": "khan_vang", "role": "general", "class": "vanguard", "family": null },
-  "banh_thoat": { "faction": "khan_vang", "role": "general", "class": "cavalry", "family": null },
-  "trieu_hoang": { "faction": "khan_vang", "role": "general", "class": "vanguard", "family": null },
-  "han_trung": { "faction": "khan_vang", "role": "general", "class": "archer", "family": null },
-  "ton_ha": { "faction": "khan_vang", "role": "general", "class": "archer", "family": null },
-  "bac_ky": { "faction": "khan_vang", "role": "general", "class": "vanguard", "family": null },
-  "trinh_vien_chi": { "faction": "khan_vang", "role": "general", "class": "vanguard", "family": null },
-  "quan_hoi": { "faction": "khan_vang", "role": "general", "class": "vanguard", "family": null },
-  "zhang_yan": { "faction": "quan_hung", "role": "general", "class": "vanguard", "family": null },
-  "bian_chuong": { "faction": "luong_chau", "role": "general", "class": "vanguard", "family": null },
-  "han_toai": { "faction": "luong_chau", "role": "general", "class": "cavalry", "family": null },
-  "bac_cung_ba_ngoc": { "faction": "luong_chau", "role": "general", "class": "archer", "family": null },
-  "vuong_quoc": { "faction": "luong_chau", "role": "general", "class": "cavalry", "family": null },
-  "dong_trac": { "faction": "quan_hung", "role": "ruler", "class": "vanguard", "family": "dong" },
-  "yuan_shao": { "faction": "quan_hung", "role": "ruler", "class": "cavalry", "family": "yuan" },
-  "yuan_shu": { "faction": "quan_hung", "role": "ruler", "class": "vanguard", "family": "yuan" },
-  "sun_jian": { "faction": "ngo", "role": "general", "class": "vanguard", "family": "sun" },
-  "ma_dang": { "faction": "luong_chau", "role": "general", "class": "cavalry", "family": "ma" },
-  "dinh_nguyen": { "faction": "quan_hung", "role": "general", "class": "vanguard", "family": null },
-  "liu_bei": { "faction": "thuc", "role": "ruler", "class": "vanguard", "family": "liu" },
-  "guan_yu": { "faction": "thuc", "role": "general", "class": "vanguard", "family": null },
-  "zhang_fei": { "faction": "thuc", "role": "general", "class": "vanguard", "family": null },
-  "cao_cao": { "faction": "nguy", "role": "ruler", "class": "schemer", "family": "cao" },
-  "xiahou_dun": { "faction": "nguy", "role": "general", "class": "vanguard", "family": "xiahou" },
-  "xiahou_yuan": { "faction": "nguy", "role": "general", "class": "archer", "family": "xiahou" },
-  "huang_gai": { "faction": "ngo", "role": "general", "class": "vanguard", "family": null },
-  "cheng_pu": { "faction": "ngo", "role": "general", "class": "vanguard", "family": null },
-  "liu_yu": { "faction": "quan_hung", "role": "royal", "class": "schemer", "family": "liu" },
-  "han_fu": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "ju_shou": { "faction": "quan_hung", "role": "strategist", "class": "schemer", "family": null },
-  "tian_feng": { "faction": "quan_hung", "role": "strategist", "class": "schemer", "family": null },
-  "zhang_yang": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "gongsun_du": { "faction": "quan_hung", "role": "ruler", "class": "schemer", "family": "gongsun" },
-  "liu_biao": { "faction": "quan_hung", "role": "ruler", "class": "schemer", "family": "liu" },
-  "wang_rui": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "kuai_yue": { "faction": "quan_hung", "role": "strategist", "class": "schemer", "family": "kuai" },
-  "kuai_liang": { "faction": "quan_hung", "role": "strategist", "class": "schemer", "family": "kuai" },
-  "cai_mao": { "faction": "quan_hung", "role": "general", "class": "vanguard", "family": null },
-  "huang_zu": { "faction": "quan_hung", "role": "general", "class": "vanguard", "family": null },
-  "chen_wen": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "liu_yao": { "faction": "quan_hung", "role": "ruler", "class": "schemer", "family": "liu" },
-  "wang_lang": { "faction": "nguy", "role": "civil", "class": "schemer", "family": null },
-  "xu_gong": { "faction": "quan_hung", "role": "general", "class": "vanguard", "family": null },
-  "shi_xie": { "faction": "quan_hung", "role": "ruler", "class": "schemer", "family": "shi" },
-  "shi_yi": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": "shi" },
-  "zhang_jin": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "lai_gong": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "liu_yan": { "faction": "quan_hung", "role": "royal", "class": "schemer", "family": "liu" },
-  "zhao_wei": { "faction": "quan_hung", "role": "general", "class": "vanguard", "family": null },
-  "zhang_lu": { "faction": "nguy", "role": "religious", "class": "spellcaster", "family": null },
-  "zhang_xiu": { "faction": "nguy", "role": "general", "class": "vanguard", "family": null },
-  "ma_xiang": { "faction": "khan_vang", "role": "general", "class": "vanguard", "family": null },
-  "xi_jian": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "tao_qian": { "faction": "quan_hung", "role": "ruler", "class": "schemer", "family": null },
-  "mi_zhu": { "faction": "thuc", "role": "civil", "class": "schemer", "family": null },
-  "chen_deng": { "faction": "nguy", "role": "strategist", "class": "schemer", "family": null },
-  "ze_rong": { "faction": "quan_hung", "role": "religious", "class": "spellcaster", "family": null },
-  "liu_dai": { "faction": "quan_hung", "role": "royal", "class": "schemer", "family": "liu" },
-  "zhang_miao": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "qiao_mao": { "faction": "quan_hung", "role": "general", "class": "cavalry", "family": null },
-  "kong_zhou": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "huang_wan": { "faction": "han", "role": "civil", "class": "schemer", "family": null },
-  "kong_rong": { "faction": "quan_hung", "role": "scholar", "class": "schemer", "family": "kong" },
-  "wang_kuang": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "gai_xun": { "faction": "han", "role": "civil", "class": "schemer", "family": null },
-  "zhang_wen": { "faction": "han", "role": "general", "class": "schemer", "family": null },
-  "tan_shihuai": { "faction": "tien_ti", "role": "tribal", "class": "archer", "family": null },
-  "helian": { "faction": "tien_ti", "role": "tribal", "class": "vanguard", "family": null },
-  "kuitou": { "faction": "tien_ti", "role": "tribal", "class": "cavalry", "family": null },
-  "qianman": { "faction": "tien_ti", "role": "tribal", "class": "vanguard", "family": null },
-  "budugen": { "faction": "tien_ti", "role": "tribal", "class": "vanguard", "family": null },
-  "qiangqu": { "faction": "hung_no", "role": "royal", "class": "cavalry", "family": null },
-  "yufuluo": { "faction": "hung_no", "role": "royal", "class": "vanguard", "family": null },
-  "huchuquan": { "faction": "hung_no", "role": "royal", "class": "archer", "family": null },
-  "xubu_guduhou": { "faction": "hung_no", "role": "royal", "class": "vanguard", "family": null },
-  "qiuliju": { "faction": "o_hoan", "role": "tribal", "class": "archer", "family": null },
-  "tadun": { "faction": "o_hoan", "role": "tribal", "class": "cavalry", "family": null },
-  "nanlou": { "faction": "o_hoan", "role": "tribal", "class": "vanguard", "family": null },
-  "supuyan": { "faction": "o_hoan", "role": "tribal", "class": "vanguard", "family": null },
-  "dianwu": { "faction": "luong_chau", "role": "tribal", "class": "archer", "family": null },
-  "yang_teng": { "faction": "luong_chau", "role": "general", "class": "vanguard", "family": null },
-  "tan_dai_vuong": { "faction": "trieu_tien", "role": "royal", "class": "vanguard", "family": null },
-  "co_quoc_xuyen_vuong": { "faction": "trieu_tien", "role": "royal", "class": "cavalry", "family": null },
-  "at_ba_to": { "faction": "trieu_tien", "role": "civil", "class": "schemer", "family": null },
-  "uy_cuu_dai": { "faction": "trieu_tien", "role": "royal", "class": "schemer", "family": null },
-  "tieu_co_vuong": { "faction": "trieu_tien", "role": "royal", "class": "vanguard", "family": null },
-  "gia_tong": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "luong_long": { "faction": "son_viet", "role": "general", "class": "vanguard", "family": null },
-  "si_tu": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null },
-  "ngo_cu": { "faction": "quan_hung", "role": "civil", "class": "schemer", "family": null }
+    "han_ling_di":  {
+                        "faction":  "han",
+                        "role":  "royal",
+                        "class":  "schemer",
+                        "family":  "liu_hoang_toc"
+                    },
+    "han_shao_di":  {
+                        "faction":  "han",
+                        "role":  "royal",
+                        "class":  "schemer",
+                        "family":  "liu_hoang_toc"
+                    },
+    "han_xian_di":  {
+                        "faction":  "han",
+                        "role":  "royal",
+                        "class":  "schemer",
+                        "family":  "liu_hoang_toc"
+                    },
+    "ha_thai_hau":  {
+                        "faction":  "han",
+                        "role":  "royal",
+                        "class":  "schemer",
+                        "family":  "ha_ngoai_thich"
+                    },
+    "dong_thai_hau":  {
+                          "faction":  "han",
+                          "role":  "royal",
+                          "class":  "schemer",
+                          "family":  null
+                      },
+    "vuong_my_nhan":  {
+                          "faction":  "han",
+                          "role":  "royal",
+                          "class":  "schemer",
+                          "family":  null
+                      },
+    "truong_nhuong":  {
+                          "faction":  "thap_thuong_thi",
+                          "role":  "eunuch",
+                          "class":  "schemer",
+                          "family":  null
+                      },
+    "trieu_trung":  {
+                        "faction":  "thap_thuong_thi",
+                        "role":  "eunuch",
+                        "class":  "schemer",
+                        "family":  null
+                    },
+    "kien_thac":  {
+                      "faction":  "thap_thuong_thi",
+                      "role":  "eunuch",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "doan_khue":  {
+                      "faction":  "thap_thuong_thi",
+                      "role":  "eunuch",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "phong_tu":  {
+                     "faction":  "thap_thuong_thi",
+                     "role":  "eunuch",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "tao_tiet":  {
+                     "faction":  "thap_thuong_thi",
+                     "role":  "eunuch",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "hau_lam":  {
+                    "faction":  "thap_thuong_thi",
+                    "role":  "eunuch",
+                    "class":  "schemer",
+                    "family":  null
+                },
+    "ha_uan":  {
+                   "faction":  "thap_thuong_thi",
+                   "role":  "eunuch",
+                   "class":  "schemer",
+                   "family":  null
+               },
+    "quach_thang":  {
+                        "faction":  "thap_thuong_thi",
+                        "role":  "eunuch",
+                        "class":  "schemer",
+                        "family":  null
+                    },
+    "trinh_khoang":  {
+                         "faction":  "thap_thuong_thi",
+                         "role":  "eunuch",
+                         "class":  "schemer",
+                         "family":  null
+                     },
+    "ha_tien":  {
+                    "faction":  "han",
+                    "role":  "general",
+                    "class":  "vanguard",
+                    "family":  "ha_ngoai_thich"
+                },
+    "ha_mieu":  {
+                    "faction":  "han",
+                    "role":  "general",
+                    "class":  "vanguard",
+                    "family":  "ha_ngoai_thich"
+                },
+    "vuong_doan":  {
+                       "faction":  "han",
+                       "role":  "civil",
+                       "class":  "schemer",
+                       "family":  null
+                   },
+    "thai_ung":  {
+                     "faction":  "han",
+                     "role":  "scholar",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "tran_lam":  {
+                     "faction":  "nguy",
+                     "role":  "civil",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "luu_dao":  {
+                    "faction":  "han",
+                    "role":  "civil",
+                    "class":  "schemer",
+                    "family":  null
+                },
+    "truong_quan":  {
+                        "faction":  "han",
+                        "role":  "civil",
+                        "class":  "schemer",
+                        "family":  null
+                    },
+    "dau_vu":  {
+                   "faction":  "han",
+                   "role":  "general",
+                   "class":  "vanguard",
+                   "family":  null
+               },
+    "tran_phien":  {
+                       "faction":  "han",
+                       "role":  "civil",
+                       "class":  "schemer",
+                       "family":  null
+                   },
+    "ly_ung":  {
+                   "faction":  "han",
+                   "role":  "civil",
+                   "class":  "schemer",
+                   "family":  null
+               },
+    "pham_bang":  {
+                      "faction":  "han",
+                      "role":  "civil",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "quach_thai":  {
+                       "faction":  "han",
+                       "role":  "scholar",
+                       "class":  "schemer",
+                       "family":  null
+                   },
+    "hoang_phu_tung":  {
+                           "faction":  "han",
+                           "role":  "general",
+                           "class":  "vanguard",
+                           "family":  null
+                       },
+    "chu_tuan":  {
+                     "faction":  "han",
+                     "role":  "general",
+                     "class":  "vanguard",
+                     "family":  null
+                 },
+    "lu_thuc":  {
+                    "faction":  "han",
+                    "role":  "general",
+                    "class":  "schemer",
+                    "family":  null
+                },
+    "pho_tiep":  {
+                     "faction":  "han",
+                     "role":  "general",
+                     "class":  "vanguard",
+                     "family":  null
+                 },
+    "bao_tin":  {
+                    "faction":  "han",
+                    "role":  "general",
+                    "class":  "cavalry",
+                    "family":  null
+                },
+    "bao_hong":  {
+                     "faction":  "han",
+                     "role":  "general",
+                     "class":  "vanguard",
+                     "family":  null
+                 },
+    "thuan_vu_quynh":  {
+                           "faction":  "han",
+                           "role":  "general",
+                           "class":  "vanguard",
+                           "family":  null
+                       },
+    "gongsun_zan":  {
+                        "faction":  "quan_hung",
+                        "role":  "general",
+                        "class":  "cavalry",
+                        "family":  null
+                    },
+    "truong_giac":  {
+                        "faction":  "khan_vang",
+                        "role":  "religious",
+                        "class":  "spellcaster",
+                        "family":  "zhang_khan_vang"
+                    },
+    "truong_bao":  {
+                       "faction":  "khan_vang",
+                       "role":  "religious",
+                       "class":  "spellcaster",
+                       "family":  "zhang_khan_vang"
+                   },
+    "truong_luong":  {
+                         "faction":  "khan_vang",
+                         "role":  "religious",
+                         "class":  "schemer",
+                         "family":  "zhang_khan_vang"
+                     },
+    "ma_nguyen_nghia":  {
+                            "faction":  "khan_vang",
+                            "role":  "civil",
+                            "class":  "schemer",
+                            "family":  null
+                        },
+    "duong_chau":  {
+                       "faction":  "khan_vang",
+                       "role":  "civil",
+                       "class":  "schemer",
+                       "family":  null
+                   },
+    "truong_man_thanh":  {
+                             "faction":  "khan_vang",
+                             "role":  "general",
+                             "class":  "vanguard",
+                             "family":  null
+                         },
+    "ba_tai":  {
+                   "faction":  "khan_vang",
+                   "role":  "general",
+                   "class":  "vanguard",
+                   "family":  null
+               },
+    "banh_thoat":  {
+                       "faction":  "khan_vang",
+                       "role":  "general",
+                       "class":  "cavalry",
+                       "family":  null
+                   },
+    "trieu_hoang":  {
+                        "faction":  "khan_vang",
+                        "role":  "general",
+                        "class":  "vanguard",
+                        "family":  null
+                    },
+    "han_trung":  {
+                      "faction":  "khan_vang",
+                      "role":  "general",
+                      "class":  "archer",
+                      "family":  null
+                  },
+    "ton_ha":  {
+                   "faction":  "khan_vang",
+                   "role":  "general",
+                   "class":  "archer",
+                   "family":  null
+               },
+    "bac_ky":  {
+                   "faction":  "khan_vang",
+                   "role":  "general",
+                   "class":  "vanguard",
+                   "family":  null
+               },
+    "trinh_vien_chi":  {
+                           "faction":  "khan_vang",
+                           "role":  "general",
+                           "class":  "vanguard",
+                           "family":  null
+                       },
+    "quan_hoi":  {
+                     "faction":  "khan_vang",
+                     "role":  "general",
+                     "class":  "vanguard",
+                     "family":  null
+                 },
+    "zhang_yan":  {
+                      "faction":  "quan_hung",
+                      "role":  "general",
+                      "class":  "vanguard",
+                      "family":  null
+                  },
+    "bian_chuong":  {
+                        "faction":  "luong_chau",
+                        "role":  "general",
+                        "class":  "vanguard",
+                        "family":  null
+                    },
+    "han_toai":  {
+                     "faction":  "luong_chau",
+                     "role":  "general",
+                     "class":  "cavalry",
+                     "family":  null
+                 },
+    "bac_cung_ba_ngoc":  {
+                             "faction":  "luong_chau",
+                             "role":  "general",
+                             "class":  "archer",
+                             "family":  null
+                         },
+    "vuong_quoc":  {
+                       "faction":  "luong_chau",
+                       "role":  "general",
+                       "class":  "cavalry",
+                       "family":  null
+                   },
+    "dong_trac":  {
+                      "faction":  "quan_hung",
+                      "role":  "ruler",
+                      "class":  "vanguard",
+                      "family":  "dong"
+                  },
+    "yuan_shao":  {
+                      "faction":  "quan_hung",
+                      "role":  "ruler",
+                      "class":  "cavalry",
+                      "family":  "yuan"
+                  },
+    "yuan_shu":  {
+                     "faction":  "quan_hung",
+                     "role":  "ruler",
+                     "class":  "vanguard",
+                     "family":  "yuan"
+                 },
+    "sun_jian":  {
+                     "faction":  "ngo",
+                     "role":  "general",
+                     "class":  "vanguard",
+                     "family":  "sun"
+                 },
+    "ma_dang":  {
+                    "faction":  "luong_chau",
+                    "role":  "general",
+                    "class":  "cavalry",
+                    "family":  "ma"
+                },
+    "dinh_nguyen":  {
+                        "faction":  "quan_hung",
+                        "role":  "general",
+                        "class":  "vanguard",
+                        "family":  null
+                    },
+    "liu_bei":  {
+                    "faction":  "thuc",
+                    "role":  "ruler",
+                    "class":  "vanguard",
+                    "family":  "liu_hoang_toc"
+                },
+    "guan_yu":  {
+                    "faction":  "thuc",
+                    "role":  "general",
+                    "class":  "vanguard",
+                    "family":  null
+                },
+    "zhang_fei":  {
+                      "faction":  "thuc",
+                      "role":  "general",
+                      "class":  "vanguard",
+                      "family":  null
+                  },
+    "cao_cao":  {
+                    "faction":  "nguy",
+                    "role":  "ruler",
+                    "class":  "schemer",
+                    "family":  "cao"
+                },
+    "xiahou_dun":  {
+                       "faction":  "nguy",
+                       "role":  "general",
+                       "class":  "vanguard",
+                       "family":  "xiahou"
+                   },
+    "xiahou_yuan":  {
+                        "faction":  "nguy",
+                        "role":  "general",
+                        "class":  "archer",
+                        "family":  "xiahou"
+                    },
+    "huang_gai":  {
+                      "faction":  "ngo",
+                      "role":  "general",
+                      "class":  "vanguard",
+                      "family":  null
+                  },
+    "cheng_pu":  {
+                     "faction":  "ngo",
+                     "role":  "general",
+                     "class":  "vanguard",
+                     "family":  null
+                 },
+    "liu_yu":  {
+                   "faction":  "quan_hung",
+                   "role":  "royal",
+                   "class":  "schemer",
+                   "family":  "liu_hoang_toc"
+               },
+    "han_fu":  {
+                   "faction":  "quan_hung",
+                   "role":  "civil",
+                   "class":  "schemer",
+                   "family":  null
+               },
+    "ju_shou":  {
+                    "faction":  "quan_hung",
+                    "role":  "strategist",
+                    "class":  "schemer",
+                    "family":  null
+                },
+    "tian_feng":  {
+                      "faction":  "quan_hung",
+                      "role":  "strategist",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "zhang_yang":  {
+                       "faction":  "quan_hung",
+                       "role":  "civil",
+                       "class":  "schemer",
+                       "family":  null
+                   },
+    "gongsun_du":  {
+                       "faction":  "quan_hung",
+                       "role":  "ruler",
+                       "class":  "schemer",
+                       "family":  null
+                   },
+    "liu_biao":  {
+                     "faction":  "quan_hung",
+                     "role":  "ruler",
+                     "class":  "schemer",
+                     "family":  "liu_hoang_toc"
+                 },
+    "wang_rui":  {
+                     "faction":  "quan_hung",
+                     "role":  "civil",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "kuai_yue":  {
+                     "faction":  "quan_hung",
+                     "role":  "strategist",
+                     "class":  "schemer",
+                     "family":  "kuai"
+                 },
+    "kuai_liang":  {
+                       "faction":  "quan_hung",
+                       "role":  "strategist",
+                       "class":  "schemer",
+                       "family":  "kuai"
+                   },
+    "cai_mao":  {
+                    "faction":  "quan_hung",
+                    "role":  "general",
+                    "class":  "vanguard",
+                    "family":  null
+                },
+    "huang_zu":  {
+                     "faction":  "quan_hung",
+                     "role":  "general",
+                     "class":  "vanguard",
+                     "family":  null
+                 },
+    "chen_wen":  {
+                     "faction":  "quan_hung",
+                     "role":  "civil",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "liu_yao":  {
+                    "faction":  "quan_hung",
+                    "role":  "ruler",
+                    "class":  "schemer",
+                    "family":  "liu_hoang_toc"
+                },
+    "wang_lang":  {
+                      "faction":  "nguy",
+                      "role":  "civil",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "xu_gong":  {
+                    "faction":  "quan_hung",
+                    "role":  "general",
+                    "class":  "vanguard",
+                    "family":  null
+                },
+    "shi_xie":  {
+                    "faction":  "quan_hung",
+                    "role":  "ruler",
+                    "class":  "schemer",
+                    "family":  "shi"
+                },
+    "shi_yi":  {
+                   "faction":  "quan_hung",
+                   "role":  "civil",
+                   "class":  "schemer",
+                   "family":  "shi"
+               },
+    "zhang_jin":  {
+                      "faction":  "quan_hung",
+                      "role":  "civil",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "lai_gong":  {
+                     "faction":  "quan_hung",
+                     "role":  "civil",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "liu_yan":  {
+                    "faction":  "quan_hung",
+                    "role":  "royal",
+                    "class":  "schemer",
+                    "family":  "liu_hoang_toc"
+                },
+    "zhao_wei":  {
+                     "faction":  "quan_hung",
+                     "role":  "general",
+                     "class":  "vanguard",
+                     "family":  null
+                 },
+    "zhang_lu":  {
+                     "faction":  "nguy",
+                     "role":  "religious",
+                     "class":  "spellcaster",
+                     "family":  null
+                 },
+    "zhang_xiu":  {
+                      "faction":  "nguy",
+                      "role":  "general",
+                      "class":  "vanguard",
+                      "family":  null
+                  },
+    "ma_xiang":  {
+                     "faction":  "khan_vang",
+                     "role":  "general",
+                     "class":  "vanguard",
+                     "family":  null
+                 },
+    "xi_jian":  {
+                    "faction":  "quan_hung",
+                    "role":  "civil",
+                    "class":  "schemer",
+                    "family":  null
+                },
+    "tao_qian":  {
+                     "faction":  "quan_hung",
+                     "role":  "ruler",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "mi_zhu":  {
+                   "faction":  "thuc",
+                   "role":  "civil",
+                   "class":  "schemer",
+                   "family":  null
+               },
+    "chen_deng":  {
+                      "faction":  "nguy",
+                      "role":  "strategist",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "ze_rong":  {
+                    "faction":  "quan_hung",
+                    "role":  "religious",
+                    "class":  "spellcaster",
+                    "family":  null
+                },
+    "liu_dai":  {
+                    "faction":  "quan_hung",
+                    "role":  "royal",
+                    "class":  "schemer",
+                    "family":  "liu_hoang_toc"
+                },
+    "zhang_miao":  {
+                       "faction":  "quan_hung",
+                       "role":  "civil",
+                       "class":  "schemer",
+                       "family":  null
+                   },
+    "qiao_mao":  {
+                     "faction":  "quan_hung",
+                     "role":  "general",
+                     "class":  "cavalry",
+                     "family":  null
+                 },
+    "kong_zhou":  {
+                      "faction":  "quan_hung",
+                      "role":  "civil",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "huang_wan":  {
+                      "faction":  "han",
+                      "role":  "civil",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "kong_rong":  {
+                      "faction":  "quan_hung",
+                      "role":  "scholar",
+                      "class":  "schemer",
+                      "family":  "kong"
+                  },
+    "wang_kuang":  {
+                       "faction":  "quan_hung",
+                       "role":  "civil",
+                       "class":  "schemer",
+                       "family":  null
+                   },
+    "gai_xun":  {
+                    "faction":  "han",
+                    "role":  "civil",
+                    "class":  "schemer",
+                    "family":  null
+                },
+    "zhang_wen":  {
+                      "faction":  "han",
+                      "role":  "general",
+                      "class":  "schemer",
+                      "family":  null
+                  },
+    "tan_shihuai":  {
+                        "faction":  "tien_ti",
+                        "role":  "tribal",
+                        "class":  "archer",
+                        "family":  null
+                    },
+    "helian":  {
+                   "faction":  "tien_ti",
+                   "role":  "tribal",
+                   "class":  "vanguard",
+                   "family":  null
+               },
+    "kuitou":  {
+                   "faction":  "tien_ti",
+                   "role":  "tribal",
+                   "class":  "cavalry",
+                   "family":  null
+               },
+    "qianman":  {
+                    "faction":  "tien_ti",
+                    "role":  "tribal",
+                    "class":  "vanguard",
+                    "family":  null
+                },
+    "budugen":  {
+                    "faction":  "tien_ti",
+                    "role":  "tribal",
+                    "class":  "vanguard",
+                    "family":  null
+                },
+    "qiangqu":  {
+                    "faction":  "hung_no",
+                    "role":  "royal",
+                    "class":  "cavalry",
+                    "family":  null
+                },
+    "yufuluo":  {
+                    "faction":  "hung_no",
+                    "role":  "royal",
+                    "class":  "vanguard",
+                    "family":  null
+                },
+    "huchuquan":  {
+                      "faction":  "hung_no",
+                      "role":  "royal",
+                      "class":  "archer",
+                      "family":  null
+                  },
+    "xubu_guduhou":  {
+                         "faction":  "hung_no",
+                         "role":  "royal",
+                         "class":  "vanguard",
+                         "family":  null
+                     },
+    "qiuliju":  {
+                    "faction":  "o_hoan",
+                    "role":  "tribal",
+                    "class":  "archer",
+                    "family":  null
+                },
+    "tadun":  {
+                  "faction":  "o_hoan",
+                  "role":  "tribal",
+                  "class":  "cavalry",
+                  "family":  null
+              },
+    "nanlou":  {
+                   "faction":  "o_hoan",
+                   "role":  "tribal",
+                   "class":  "vanguard",
+                   "family":  null
+               },
+    "supuyan":  {
+                    "faction":  "o_hoan",
+                    "role":  "tribal",
+                    "class":  "vanguard",
+                    "family":  null
+                },
+    "dianwu":  {
+                   "faction":  "luong_chau",
+                   "role":  "tribal",
+                   "class":  "archer",
+                   "family":  null
+               },
+    "yang_teng":  {
+                      "faction":  "luong_chau",
+                      "role":  "general",
+                      "class":  "vanguard",
+                      "family":  null
+                  },
+    "tan_dai_vuong":  {
+                          "faction":  "trieu_tien",
+                          "role":  "royal",
+                          "class":  "vanguard",
+                          "family":  null
+                      },
+    "co_quoc_xuyen_vuong":  {
+                                "faction":  "trieu_tien",
+                                "role":  "royal",
+                                "class":  "cavalry",
+                                "family":  null
+                            },
+    "at_ba_to":  {
+                     "faction":  "trieu_tien",
+                     "role":  "civil",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "uy_cuu_dai":  {
+                       "faction":  "trieu_tien",
+                       "role":  "royal",
+                       "class":  "schemer",
+                       "family":  null
+                   },
+    "tieu_co_vuong":  {
+                          "faction":  "trieu_tien",
+                          "role":  "royal",
+                          "class":  "vanguard",
+                          "family":  null
+                      },
+    "gia_tong":  {
+                     "faction":  "quan_hung",
+                     "role":  "civil",
+                     "class":  "schemer",
+                     "family":  null
+                 },
+    "luong_long":  {
+                       "faction":  "son_viet",
+                       "role":  "general",
+                       "class":  "vanguard",
+                       "family":  null
+                   },
+    "si_tu":  {
+                  "faction":  "quan_hung",
+                  "role":  "civil",
+                  "class":  "schemer",
+                  "family":  null
+              },
+    "ngo_cu":  {
+                   "faction":  "quan_hung",
+                   "role":  "civil",
+                   "class":  "schemer",
+                   "family":  null
+               }
 }
