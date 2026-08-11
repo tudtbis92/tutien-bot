@@ -4,16 +4,16 @@ milestone: v3.0
 milestone_name: Tam Quốc Collection
 current_phase: 08
 current_phase_name: foundation-economy-budget-content-infrastructure
-status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-08-11T04:11:35.626Z"
+status: verifying
+stopped_at: Completed 08-04-PLAN.md (all 4 plans of phase 08 done)
+last_updated: "2026-08-11T06:01:24.728Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # State: TuTien Bot
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-08-10)
 
 Phase: 08 (foundation-economy-budget-content-infrastructure) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-11 — Phase 08 execution started
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Phase Registry (Milestone v3)
 
@@ -85,8 +85,8 @@ Progress: [████████░░] 75%
 
 **Resume file:** None
 
-Last session: 2026-08-11T04:11:35.607Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-08-11T06:01:24.712Z
+Stopped at: Completed 08-04-PLAN.md (all 4 plans of phase 08 done)
 Resume: `/gsd-plan-phase 8`
 
 ---
@@ -100,6 +100,7 @@ Resume: `/gsd-plan-phase 8`
 | Phase 08-foundation-economy-budget-content-infrastructure P1 | 32min | 3 tasks | 20 files |
 | Phase 08-foundation-economy-budget-content-infrastructure P2 | 18min | 3 tasks | 10 files |
 | Phase 08-foundation-economy-budget-content-infrastructure P3 | 18min | 2 tasks | 1 files |
+| Phase 08 P4 | 82min | 6 tasks | 16 files |
 
 ## Decisions
 
@@ -108,3 +109,5 @@ Resume: `/gsd-plan-phase 8`
 - [Phase 08]: Tx type derived as Parameters<Parameters<typeof db.transaction>[0]>[0] - plan literal PgTransaction<typeof schema, 'basic'> misorders drizzle 0.45.2 generics (TQueryResult first) — Derived type is exactly what the transaction callback receives; compiles on installed drizzle version
 - [Phase 08]: Edit wager flow writes two ledger rows (bet_refund + bet_wager) - ledger stays reconcilable on edits per SC1 — Research option chosen over single net row; matches plan action text
 - [Phase 08]: Economy design gate PASSED (2026-08-11): D-19 net-sink/neutral is a hard constraint, expected net linh thach/hour of optimal sanguo loop <= 0 (trivially below DAILY_CAP 10_000 tu-vi cap SC5), convertibility matrix accepted — gates Phases 9-11 content (TQC-05/D-18) — SC5 design-sanity check; any future rebalancing requires a new sign-off (D-18 one-way gate)
+- [Phase 08]: Migration 0004 (empty since 'fix migration missing 0004') restored to ADD COLUMN dk_event_id varchar(20) — proven from 0004 snapshot diff (0003->0004 added only that column); 0006 drops it, so a fresh-DB chain was un-appliable until restored (Rule 3) — Fresh local dev DB needed the full 0000-0014 chain; without 0004 the chain failed at 0006 with column does not exist
+- [Phase 08]: ZH-CN hero names researched via Tavily (kongming.net hanzi index primary + targeted corrections): 109 from kongming simplified column, 23 corrected mis-picks (sun_jian 孙坚, liu_yao 刘繇, liu_yan 刘焉, ly_ung 李膺, zhang_miao 张邈, gongsun_du 公孙度...), 23 non-kongming figures researched individually (foreign chiefs, emperors, Korean kings) — D-06 names never agent-guessed — Kongming first-match mis-picks variant-spelling figures; accuracy spot-check (10-hero sample) zero unresolved mismatches after correction

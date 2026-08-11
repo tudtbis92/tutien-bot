@@ -97,7 +97,7 @@
   4. User sees `sanguo` UI strings in their locale (VI/EN/ZH-CN) with zero hardcoded strings — i18n lint passes; content names (hero/zone/item) come from DB per-locale columns.
   5. Economy budget document is approved: expected Linh thạch/hour of the optimal loop documented and below tu vi caps; convertibility decisions recorded (net-sink/neutral constraint) — design gate passed before content authoring.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 Plans:
 **Wave 1**
 
@@ -107,7 +107,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 08-04-PLAN.md — Dev-DB env + sanguo schemas + migration 0014 (9 tables incl. map_nodes) + seed + deploy (TQC-02)
+- [x] 08-04-PLAN.md — Dev-DB env + sanguo schemas + migration 0014 (9 tables incl. map_nodes) + seed + deploy (TQC-02)
 
 **UI hint**: yes
 
@@ -177,7 +177,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 8. Foundation, Economy Budget & Content Infrastructure | 3/4 | In Progress|  |
+| 8. Foundation, Economy Budget & Content Infrastructure | 4/4 | In Progress|  |
 | 9. Travel & Encounters | 0/TBD | Not started | - |
 | 10. Battle & Capture | 0/TBD | Not started | - |
 | 11. Progression, Chemistry & Economy Depth | 0/TBD | Not started | - |

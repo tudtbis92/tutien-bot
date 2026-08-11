@@ -233,7 +233,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 ### Foundation & Economy Budget
 
 - [x] **TQC-01**: Extract shared wallet service (`services/wallet.ts`): `deductBalance` (WHERE guard + rowCount) + `creditBalance`; refactor các call site hiện có (gather, farming, football) qua wallet.
-- [ ] **TQC-02**: Schemas mới: `heroes`, `user_heroes` (IV 6 chỉ số), `map_nodes`, `player_travel_state`, `sanguo_battles`, `sanguo_items`, `user_sanguo_items`, `encounter_runs` + migration + idempotent seed.
+- [x] **TQC-02**: Schemas mới: `heroes`, `user_heroes` (IV 6 chỉ số), `map_nodes`, `player_travel_state`, `sanguo_battles`, `sanguo_items`, `user_sanguo_items`, `encounter_runs` + migration + idempotent seed.
 - [x] **TQC-03**: i18n `sanguo` namespace (VI/EN/ZH-CN từ ngày đầu); content data (tên hero/vùng/item) ở DB per-locale columns; chỉ UI strings trong i18next.
 - [x] **TQC-04**: Emoji registry generator từ `emojis.json` (1056 emoji) → `assets/sanguoEmojis.ts` + `heroEmoji()` helper + startup `applicationId === CLIENT_ID` check; không đọc sibling repo lúc runtime.
 - [x] **TQC-05**: Economy budget document: expected Linh thạch/hour của optimal loop (dưới tu vi caps), convertibility decisions, net-sink/neutral constraint — design-gate trước khi viết content.
