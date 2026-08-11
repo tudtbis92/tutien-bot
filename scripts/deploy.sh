@@ -22,6 +22,9 @@ echo "[deploy] Running migrations (direct PostgreSQL connection)..."
 source /etc/tutien/.env
 DATABASE_URL="$DATABASE_URL_DIRECT" npx drizzle-kit migrate
 
+echo "[deploy] Seeding sanguo content (idempotent)..."
+DATABASE_URL="$DATABASE_URL_DIRECT" npx tsx scripts/seed-sanguo.ts
+
 echo "[deploy] Restarting bot..."
 pm2 restart tutien-bot
 
