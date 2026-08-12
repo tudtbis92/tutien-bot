@@ -109,13 +109,15 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 ```typescript
 // travel.ts — handlers consumed by interactionCreate routing
 export async function handleDestinationSelect(interaction: StringSelectMenuInteraction): Promise<void> {
-  // read chosen code; update reply with destination + ETA + ENABLED Start button
+  // read chosen code (interaction.values[0]); update reply with destination + ETA
+  // + ENABLED Start button built with buildStartButton(t, false, selectedCode) — F1
 }
 export async function handleStartPress(interaction: ButtonInteraction): Promise<void> {
+  // parse selectedCode from the customId suffix (customId.slice(START_BTN_ID.length + 1));
   // startTravel(user.id, selectedCode); NO_ROUTE → DANGER embed; success → travel reply embed
 }
 ```
-Note: `fetchCommandContext` takes `ChatInputCommandInteraction` — for `StringSelectMenuInteraction`/`ButtonInteraction` read the user row directly via `db.select({ id: users.id }).from(users).where(eq(users.discordId, interaction.user.id))` mirroring `interactionCreate.ts:462-465`.
+Note: `fetchCommandContext` takes `ChatInputCommandInteraction` — for `StringSelectMenuInteraction`/`ButtonInteraction` read the user row directly via `db.select({ id: users.id }).from(users).where(eq(users.discordId, interaction.user.id))` mirroring `interactionCreate.ts:462-465`. **F1:** the Start button carries the destination in its customId (`sanguo:travel:start:{code}`) — a ButtonInteraction has no select values, and the message-snapshot `StringSelectMenuComponent` has no `.values` (only `StringSelectMenuInteraction` does, context7-verified).
 
 ---
 
@@ -140,7 +142,7 @@ New branches (RESEARCH §Code Examples "StringSelectMenu + buttons"):
     return;
   }
   // existing button branch (~380-445) — add:
-  if (interaction.customId === START_BTN_ID) { /* handleStartPress */ return; }
+  if (interaction.customId.startsWith(START_BTN_ID)) { /* handleStartPress — F1: destination in customId suffix */ return; }
   if (interaction.customId === ACK_BTN_ID)  { /* handleAckPress — clear encounterActive, updatedAt=now */ return; }
 ```
 **Existing logger pattern:** `logger.error('InteractionCreate', 'Error in handlePredictResult', err)` — `interactionCreate.ts:33`.
@@ -154,7 +156,7 @@ New branches (RESEARCH §Code Examples "StringSelectMenu + buttons"):
 **API contract (RESEARCH §5):**
 - `getCurrentPosition(userId)` → `{ nodeId, nodeCode }` — `status='arrived'` → `toNodeId`; `status='traveling'` → `fromNodeId`; no row → `START_NODE = 'luoyang'` (research A6).
 - `getAdjacentNodes(nodeId)` → SELECT `map_edges` WHERE `node_a_id = :nodeId OR node_b_id = :nodeId`, JOIN nodes + zones, ordered by `travelSeconds ASC`, cap 25.
-- `startTravel(userId, toNodeCode)` → resolve code → id via map_nodes.code (D-20-resilient); throw `ALREADY_TRAVELING` if row `status='traveling'` (D-09); throw `NO_ROUTE` if edge missing (Pitfall 4); INSERT on first journey / in-place UPDATE on subsequent (`userId.unique()` = one row forever); set `fromNodeId=current, toNodeId=dest, travelSecondsRemaining=edge.travelSeconds, encounterActive=false, status='traveling', departAt=now, updatedAt=now`.
+- `startTravel(userId, toNodeCode)` → resolve code → id via map_nodes.code (D-20-resilient); **read the current row with `.for('update')` (F3 — locks the double-start race; two concurrent starts both reading 'arrived' would UPDATE last-wins)**; throw `ALREADY_TRAVELING` if row `status='traveling'` (D-09); throw `NO_ROUTE` if edge missing (Pitfall 4); INSERT on first journey / in-place UPDATE on subsequent (`userId.unique()` = one row forever); set `fromNodeId=current, toNodeId=dest, travelSecondsRemaining=edge.travelSeconds, encounterActive=false, status='traveling', departAt=now, updatedAt=now`.
 
 **Error style:** plain `Error('ALREADY_TRAVELING')` / `Error('NO_ROUTE')` — mirrors `wallet.ts:61`. Transaction style: `db.transaction(async (tx) => { ... })` per `wallet.ts:78-81`.
 
@@ -172,12 +174,12 @@ export async function checkInTravel(userId: number): Promise<CheckInResult> {
     const [row] = await tx.select().from(playerTravelState)
       .where(eq(playerTravelState.userId, userId)).for('update');   // single writer
     if (!row || row.status === 'arrived') return { mode: 'start' };
-    if (row.encounterActive) return { mode: 'encounterPending' };   // ack-gated (D-25)
+    if (row.encounterActive) { /* F2: fetch latest pending encounter_runs row (userId + status='pending' ORDER BY id DESC LIMIT 1) and return { mode:'encounterPending', encounter: <mapped heroId/zone/boss> } */ }   // ack-gated (D-25)
     let remaining = row.travelSecondsRemaining;
     const counted = Math.floor((Date.now() - row.updatedAt.getTime()) / 60000);
     for (let k = 1; k <= counted; k++) {
       if (remaining <= 0) break;                                    // arrival — no rolls past it (D-28)
-      remaining -= 60;
+      remaining -= 60;                                              // hit minute IS counted (F4 — D-28 amended)
       const roll = await rollMinute({ ... });                       // 09-04 encounterService + cap + boss
       if (roll.hit) {                                               // STOP AT FIRST (D-24)
         await tx.update(playerTravelState).set({ travelSecondsRemaining: remaining,
@@ -250,8 +252,9 @@ export function buildDestinationMenu(adjacent: AdjacentNode[], locale: Supported
 ```typescript
 export const START_BTN_ID = 'sanguo:travel:start';
 export const ACK_BTN_ID = 'sanguo:travel:ack';
-export function buildStartButton(t: TFunction, disabled = true): ButtonBuilder {
-  return new ButtonBuilder().setCustomId(START_BTN_ID).setLabel(t('sanguo:travel.start_button'))
+export function buildStartButton(t: TFunction, disabled = true, destinationCode?: string): ButtonBuilder {
+  return new ButtonBuilder().setCustomId(destinationCode ? `${START_BTN_ID}:${destinationCode}` : START_BTN_ID) // F1 — destination rides in the customId
+    .setLabel(t('sanguo:travel.start_button'))
     .setStyle(ButtonStyle.Primary).setDisabled(disabled);
 }
 export function buildAckButton(t: TFunction): ButtonBuilder {

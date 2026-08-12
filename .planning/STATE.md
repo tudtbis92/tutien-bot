@@ -87,7 +87,7 @@ Progress: [██████████] 100%
 | Sanguo emoji đều animated → markup `<a:name:id>` | Verify live app: 1056/1056 GIF. `<:name:id>` render literal `:dtr_t0:` (user xác nhận lỗi). `heroEmoji()` + generator emit `a:` prefix (D-21) | Phase 8 verification |
 | Zone markers → message CONTENT với `# ` (H1) header | Discord heading chỉ render trong content, KHÔNG trong embed field/description (discord-api-docs#7167). `# ` = H1 lớn nhất → emoji render to (D-22) | Phase 8 verification |
 | **Travel = PULL-based check-in (D-22..D-28)** — không cron, không REST DM; kết quả (status/encounter/arrival) trả inline khi user gọi `/sanguo travel` | Thay push model (sanguoTick crons D-11 + REST DM D-12); đơn giản hơn (no pgBoss registration), bền hơn (elapsed tự heal), chống bot tốt hơn (cần chủ động gọi lệnh); SUPERSEDES D-11/D-12 | Phase 9 redesign (2026-08-12) |
-| **Encounter = 1 ROLL 35%/phút, DỪNG ngay encounter đầu tiên (D-24)**; pause bằng nút ack "Tiếp tục hành trình" (D-25); đích chọn bằng StringSelectMenu + Start button (D-26) | User quyết định: journey chỉ tính đi được số phút roll fail; không batch encounter; ack gate = Phase-10-ready cho battle/capture | Phase 9 redesign (2026-08-12) |
+| **Encounter = 1 ROLL 35%/phút, DỪNG ngay encounter đầu tiên (D-24)**; pause bằng nút ack "Tiếp tục hành trình" (D-25); đích chọn bằng StringSelectMenu + Start button (D-26). **Mỗi phút counted đều trừ remaining — kể cả phút trúng encounter (D-28 amended, F4)**; hit dừng loop ngay, không roll/count phút sau cho tới khi ack | User quyết định: journey tính từng phút counted; không batch encounter; ack gate = Phase-10-ready cho battle/capture. D-28 wording "ONLY on failed rolls" amended 2026-08-12 (F4) để khớp ack-pin `updatedAt + k·60` | Phase 9 redesign (2026-08-12) |
 | **Encounter supply = f(check-in cadence) ≤ 20/hr** — không phải continuous cron supply | `docs/economy-budget.md` re-baseline: capture-fee sink (Phase 10) phải price theo pull-driven supply | Phase 9 redesign (2026-08-12) |
 
 ### Pending Todos / Blockers
@@ -124,6 +124,7 @@ Resume: `/gsd-plan-phase 9` (next: Travel & Encounters)
 |---|-------------|------|--------|-----------|
 | 260811-lld | Post-gate Phase 8 schema redesign — IV rename, flat factions, role/class/family (bloodline table), spouse relations, formations schema, Tavily classifications, reseed | 2026-08-11 | 0a069c7 | [260811-lld](./quick/260811-lld-post-gate-phase-8-schema-redesign-locked/) |
 | 260812-j7r | Phase 9 pull-based travel check-in redesign (D-22..D-28): rewrite CONTEXT/UI-SPEC/RESEARCH/PATTERNS + plans 01/03/04, fix 02/05 — no cron, no REST DM, select menu + ack button | 2026-08-12 | 9fe8f31 | [260812-j7r](./quick/260812-j7r-phase-9-pull-based-travel-check-in-redes/) |
+| 260812-k9m | Phase 9 plan fixes F1..F8 (context7/tavily-verified review): F1 Start-button destination in customId, F2 encounterPending payload + encounter_runs index, F3 startTravel FOR UPDATE, F4 D-28 hit-minute wording, F5 sub-minute remainder assumption, F6 zero-adjacent no_route, F7 cap-key TTL, F8 Number(rate) | 2026-08-12 | TBD | [260812-k9m](./quick/260812-k9m-phase-9-plan-fixes/) |
 
 ## Decisions
 

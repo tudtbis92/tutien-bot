@@ -59,7 +59,7 @@ New UI artifacts this phase creates — consumed by planner as task inventory:
 7. Zero adjacent nodes → embed shows `no_route` copy; the select menu has no options and Start stays disabled.
 
 **Interaction contract — check-in (pull model, D-22/D-24/D-25):**
-1. `/sanguo travel` while traveling (status='traveling', not encounter-active) computes elapsed since `updatedAt`, rolls 1× per counted minute (35% zone probability), decrements remaining on failed rolls, and returns:
+1. `/sanguo travel` while traveling (status='traveling', not encounter-active) computes elapsed since `updatedAt`, rolls 1× per counted minute (35% zone probability), decrements remaining on each counted minute (a hit's minute is counted too — D-28 amended, F4; the loop stops immediately after a hit), and returns:
    - **Encounter result**: embed + **"Tiếp tục hành trình"** ack button (`sanguo:travel:ack`) — pressing it clears `encounterActive` and resumes the clock (D-25). Encounter-resolve UI (battle/capture) is Phase 10.
    - **Arrival result**: arrival embed + the destination select menu re-opens for the next hop.
    - **Status result**: current position + remaining ETA (no action components).

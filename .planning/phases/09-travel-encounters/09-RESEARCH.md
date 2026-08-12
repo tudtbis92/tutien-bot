@@ -278,7 +278,7 @@ export async function checkInTravel(userId: number, now = new Date()): Promise<C
 
     for (let k = 1; k <= countedMinutes; k++) {
       if (remaining <= 0) break;                              // arrival — no rolls past it (D-28)
-      remaining -= 60;                                        // decrement on the counted minute
+      remaining -= 60;                                        // decrement on the counted minute (F4: the hit minute IS counted — D-28 amended; the loop stops at the hit, no minutes after it roll)
       const pos = positionFraction(remaining, totalSeconds(row, tx));  // D-15
       if (await shouldRoll(zoneRate, cryptoRng)) {            // D-10/D-24 — STOP AT FIRST HIT
         await tx.update(playerTravelState).set({
@@ -696,7 +696,7 @@ export async function getAdjacentNodes(nodeId: number): Promise<AdjacentNode[]>
 
 export async function startTravel(userId: number, toNodeCode: string): Promise<{ etaSeconds: number }>
 // 1. Resolve toNodeCode → node id via map_nodes.code (D-20-resilient: codes stable across reseeds).
-// 2. Read current row: if status='traveling' → throw ALREADY_TRAVELING (D-09; userId.unique() backstop)
+// 2. Read current row with .for('update') (F3 — locks the double-start race): if status='traveling' → throw ALREADY_TRAVELING (D-09; userId.unique() backstop)
 // 3. Validate edge exists from current position to toNodeId → throw NO_ROUTE (defense in depth; select value is advisory)
 // 4. INSERT on first journey; UPDATE existing row on subsequent (userId.unique() = one row forever)
 //    set: fromNodeId=current, toNodeId=dest, travelSecondsRemaining=edge.travelSeconds,
@@ -731,7 +731,7 @@ Replace the Phase 8 `arriveAt timestamp notNull` + `cost bigint notNull` model w
 
 **Migration:** new Drizzle migration (0018) `ALTER TABLE player_travel_state DROP COLUMN arrive_at, DROP COLUMN cost, ADD COLUMN travel_seconds_remaining integer NOT NULL DEFAULT 0, ADD COLUMN encounter_active boolean NOT NULL DEFAULT false` — safe because the Phase 8 table is empty in production (no travel shipped yet). Also `CREATE TABLE map_edges`, `CREATE TABLE map_zones`, `CREATE TABLE hero_zone_rates`, `ALTER TABLE map_nodes` (keep columns; D-20 truncates + reseeds rows), `ALTER TABLE encounter_runs ADD COLUMN encounter_type varchar(20) NOT NULL DEFAULT 'hero'`.
 
-**encounter_runs boss flag (D-14):** add `encounter_type varchar(20) NOT NULL DEFAULT 'hero'` with values `'hero' | 'boss'` (extensible for future encounter kinds). `hero_id` stays nullable — boss encounters write `hero_id NULL` + `encounter_type='boss'` + zone.
+**encounter_runs boss flag (D-14):** add `encounter_type varchar(20) NOT NULL DEFAULT 'hero'` with values `'hero' | 'boss'` (extensible for future encounter kinds). `hero_id` stays nullable — boss encounters write `hero_id NULL` + `encounter_type='boss'` + zone. **F2 index:** add `index('encounter_runs_user_status_idx')` on (user_id, status) — the check-in's pending-encounter re-fetch (`WHERE userId AND status='pending' ORDER BY id DESC LIMIT 1`) must not full-scan.
 
 ### 7. Encounter roll specifics (TQC-08, D-10/D-13/D-14/D-15/D-24)
 
@@ -743,7 +743,7 @@ Replace the Phase 8 `arriveAt timestamp notNull` + `cost bigint notNull` model w
 5. **Weighted hero pick:** blend zone A pool × (1−pos) + zone B pool × pos (Pattern 3); pick via crypto.randomInt cumulative walk.
 6. **Record + STOP (D-24):** `INSERT encounter_runs (user_id, travel_id, zone, hero_id, encounter_type, status='pending')`; set `encounterActive=true`, pin `updatedAt` to the hit minute; return the encounter embed + ack button inline (D-23/D-25). Boss counts toward the cap too (it IS an encounter). **The loop stops here — no further minutes are rolled until the ack clears the pause.**
 
-**Expected rates (sanity — pull model):** at a 35%/minute roll, a 60-min counted window yields ~21 expected rolls; with the sliding 20/hr cap binding, players receive ≤20 encounters/hr of active check-in. Boss sub-roll 0.07 → ~1.4-2 boss encounters/hr at cap. Travel is never blocked by the cap (D-13), and a journey only "consumes" minutes that roll fail (D-24/D-28 — a hit pauses the clock).
+**Expected rates (sanity — pull model):** at a 35%/minute roll, a 60-min counted window yields ~21 expected rolls; with the sliding 20/hr cap binding, players receive ≤20 encounters/hr of active check-in. Boss sub-roll 0.07 → ~1.4-2 boss encounters/hr at cap. Travel is never blocked by the cap (D-13), and every counted minute (including a hit minute — D-28 amended, F4) decrements the remaining clock; a hit pauses it via the ack gate (D-24/D-25).
 
 ### 8. ROADMAP / economy amendments required
 
@@ -828,7 +828,7 @@ export function buildAckButton(): ButtonBuilder {
 }
 // src/events/interactionCreate.ts — button/select branches (existing button branch ~380-445 extended)
 if (interaction.isStringSelectMenu()) { /* customId sanguo:travel:dest → store selected, enable Start */ }
-if (interaction.isButton()) {          /* sanguo:travel:start → startTravel; sanguo:travel:ack → clear pause */ }
+if (interaction.isButton()) {          /* customId.startsWith('sanguo:travel:start') → startTravel (F1 — destination in customId suffix); sanguo:travel:ack → clear pause */ }
 ```
 **Source:** discord.js 14 `StringSelectMenuBuilder`/`ButtonBuilder`/`ButtonStyle` (installed 14.27.0); in-repo button branch `interactionCreate.ts:380-445`.
 
