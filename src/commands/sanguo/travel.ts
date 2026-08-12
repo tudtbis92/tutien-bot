@@ -142,7 +142,7 @@ async function dispatchCheckIn(
         {
           destinationName: toNode ? pickName(toNode, locale) : '?',
           fromNodeName: fromNode ? pickName(fromNode, locale) : '?',
-          etaSeconds: result.remaining,
+          etaSeconds: result.remaining ?? 0, // 09-03 CheckInResult.remaining is optional — status always carries it
           shardId,
         },
         t,

@@ -36,5 +36,14 @@
     "no_route_title": "Không có đường đi",
     "no_route_body": "Vị trí hiện tại của bạn không kết nối với địa danh nào. Hãy mở /sanguo map để xem bản đồ.",
     "error": "Có lỗi khi bắt đầu hành trình. Hãy thử lại."
+  },
+  "arrival": {
+    "title": "📍 Đã đến nơi",
+    "body": "Bạn đã đến **{node}**.",
+    "cta": "Dùng /sanguo travel để chọn điểm đến tiếp theo."
+  },
+  "encounter": {
+    "pending_title": "⚔️ Kỳ ngộ",
+    "pending_body": "Bạn đang giữa một kỳ ngộ. Bấm **Tiếp tục hành trình** để đi tiếp."
   }
 }

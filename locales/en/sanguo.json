@@ -36,5 +36,14 @@
     "no_route_title": "No route available",
     "no_route_body": "Your current position is not connected to any landmark. Open /sanguo map to view the map.",
     "error": "There was an error starting the journey. Please try again."
+  },
+  "arrival": {
+    "title": "📍 Destination reached",
+    "body": "You have arrived at **{node}**.",
+    "cta": "Use /sanguo travel to choose your next destination."
+  },
+  "encounter": {
+    "pending_title": "⚔️ Encounter",
+    "pending_body": "You are in the middle of an encounter. Press **Continue journey** to move on."
   }
 }

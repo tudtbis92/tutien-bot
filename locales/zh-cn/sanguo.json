@@ -36,5 +36,14 @@
     "no_route_title": "没有可行路线",
     "no_route_body": "你当前的位置未连接任何地名。请打开 /sanguo map 查看地图。",
     "error": "开始旅程时出错，请重试。"
+  },
+  "arrival": {
+    "title": "📍 已到达",
+    "body": "你已到达**{node}**。",
+    "cta": "使用 /sanguo travel 选择下一个目的地。"
+  },
+  "encounter": {
+    "pending_title": "⚔️ 奇遇",
+    "pending_body": "你正处于一场奇遇中。按下**继续旅程**继续前行。"
   }
 }
