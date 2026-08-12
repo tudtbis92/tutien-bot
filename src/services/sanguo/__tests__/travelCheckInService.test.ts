@@ -1,15 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import crypto from 'node:crypto';
 import { db } from '../../../db/client.js';
 import { checkInTravel } from '../travelCheckInService.js';
 import { playerTravelState } from '../../../db/schema/playerTravelState.js';
+import { encounterRuns } from '../../../db/schema/encounterRuns.js';
+import { redis } from '../../../cache/redis.js';
 
 vi.mock('../../../db/client.js', () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
 }));
 
 vi.mock('../../../cache/redis.js', () => ({
-  redis: { zcard: vi.fn().mockResolvedValue(0) },
+  redis: {
+    zremrangebyscore: vi.fn().mockResolvedValue(0),
+    zcard: vi.fn().mockResolvedValue(0),
+    zadd: vi.fn().mockResolvedValue(1),
+    expire: vi.fn().mockResolvedValue(1),
+  },
 }));
 
 /** Base traveling row — updatedAt is patched per-test for deterministic elapsed. */
@@ -54,6 +62,8 @@ function makeTx(readResults: unknown[][]) {
   const updateWhere = vi.fn((_q: any) => undefined);
   const updateSet = vi.fn((_v: any) => ({ where: updateWhere }));
   const update = vi.fn((_t: any) => ({ set: updateSet }));
+  const insertValues = vi.fn((_v: any) => undefined);
+  const insert = vi.fn((_t: any) => ({ values: insertValues }));
   const chain: any = {
     where: vi.fn(() => chain),
     for: vi.fn(() => Promise.resolve(next())),
@@ -62,7 +72,7 @@ function makeTx(readResults: unknown[][]) {
   };
   const from = vi.fn(() => chain);
   const select = vi.fn(() => ({ from }));
-  return { tx: { select, update }, chain, update, updateSet, updateWhere };
+  return { tx: { select, update, insert }, chain, update, updateSet, updateWhere, insert, insertValues };
 }
 
 /** Stub-path mock for db.select() (the 09-01 stub reads outside a transaction). */
@@ -79,10 +89,10 @@ function mockDbSelect(results: unknown[][]) {
 
 function runCheckIn(readResults: unknown[][], rollMinute?: (ctx: any) => Promise<any>) {
   mockDbSelect(readResults);
-  const { tx, chain, update, updateSet, updateWhere } = makeTx(readResults);
+  const { tx, chain, update, updateSet, updateWhere, insert, insertValues } = makeTx(readResults);
   (db.transaction as any).mockImplementation(async (cb: any) => cb(tx));
   const result = checkInTravel(42, rollMinute ? { rollMinute } : undefined);
-  return { result, chain, update, updateSet, updateWhere };
+  return { result, chain, update, updateSet, updateWhere, insert, insertValues };
 }
 
 describe('checkInTravel — pull-based check-in engine (D-22/D-24/D-25/D-28)', () => {
@@ -210,5 +220,108 @@ describe('checkInTravel — pull-based check-in engine (D-22/D-24/D-25/D-28)', (
     expect(chain.for).toHaveBeenCalledWith('update'); // FOR UPDATE row lock (single writer)
     // every write goes through tx.update(playerTravelState) — nothing else mutates the row
     expect(update).toHaveBeenCalledWith(playerTravelState);
+  });
+});
+
+// ── 09-04 Task 2: the REAL default rollMinute (cap-first, blend, boss, record) ──
+
+const NODES = [
+  { id: 5, zone: 'trung_nguyen' }, // fromNodeId
+  { id: 7, zone: 'du_chau' }, // toNodeId
+];
+// F8: hero_zone_rates.rate arrives as a numeric(4,2) STRING — the roll must Number() it.
+const RATES = [
+  { id: 1, heroId: 10, zone: 'trung_nguyen', rate: '1.0' },
+  { id: 2, heroId: 11, zone: 'du_chau', rate: '0.5' },
+];
+const ZONE_TRUNG_NGUYEN = {
+  id: 1,
+  code: 'trung_nguyen',
+  nameVi: 'Trung Nguyên',
+  nameEn: 'Central Plains',
+  nameZh: '中原',
+  sortOrder: 1,
+  encounterRate: '0.35',
+  bossRate: '0.07',
+};
+
+describe('checkInTravel — default rollMinute (09-04 encounterService-backed)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('T8 (D-13): cap window >= 20 → silent skip — no encounter_runs insert, no zadd, travel continues', async () => {
+    const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 }); // 1 counted minute
+    vi.mocked(redis.zcard).mockResolvedValueOnce(20); // window at the limit
+    const { result, insert, insertValues } = runCheckIn([[row], [EDGE], [NODES], [RATES], [ZONE_TRUNG_NGUYEN]]);
+
+    await expect(result).resolves.toMatchObject({ mode: 'status', remaining: 540 });
+    expect(insert).not.toHaveBeenCalled(); // no record
+    expect(insertValues).not.toHaveBeenCalled();
+    expect(redis.zadd).not.toHaveBeenCalled(); // no inline encounter, no cap ZADD
+    expect(redis.zremrangebyscore).toHaveBeenCalled(); // cap window cleaned first
+  });
+
+  it('T9 (D-10/D-24/F8): cap open + roll true → weighted pick → encounter_runs INSERT hero → zadd → result', async () => {
+    vi.spyOn(crypto, 'randomInt').mockReturnValue(200_000 as never); // uniform 0.2
+    const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 });
+    const { result, insert, insertValues, updateSet } = runCheckIn(
+      [[row], [EDGE], [NODES], [RATES], [ZONE_TRUNG_NGUYEN]],
+    );
+
+    await expect(result).resolves.toMatchObject({
+      mode: 'encounter',
+      remaining: 540,
+      encounter: { heroId: 10, zone: 'trung_nguyen', boss: false },
+    });
+    // position = 1 − (540/900) = 0.4 → dominant trung_nguyen; pick = hero10
+    expect(insert).toHaveBeenCalledWith(encounterRuns);
+    expect(insertValues).toHaveBeenCalledWith({
+      userId: 42,
+      travelId: 1,
+      zone: 'trung_nguyen',
+      heroId: 10,
+      encounterType: 'hero',
+      status: 'pending',
+    });
+    expect(redis.zadd).toHaveBeenCalledTimes(1); // cap ZADD on a successful roll
+    // single-writer rule (Pitfall 5): the ONLY playerTravelState write carries
+    // exactly the owned columns — nothing else.
+    expect(Object.keys(updateSet.mock.calls[0]?.[0] ?? {}).sort()).toEqual([
+      'encounterActive',
+      'travelSecondsRemaining',
+      'updatedAt',
+    ]);
+  });
+
+  it('T10 (D-14): roll true + boss sub-roll true → encounter_runs INSERT boss, hero_id NULL, zone=dominant; boss counts toward the cap', async () => {
+    vi.spyOn(crypto, 'randomInt').mockReturnValue(30_000 as never); // uniform 0.03 → hero AND boss roll true
+    const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 });
+    const { result, insertValues } = runCheckIn(
+      [[row], [EDGE], [NODES], [RATES], [ZONE_TRUNG_NGUYEN]],
+    );
+
+    await expect(result).resolves.toMatchObject({
+      mode: 'encounter',
+      encounter: { heroId: null, zone: 'trung_nguyen', boss: true },
+    });
+    expect(insertValues).toHaveBeenCalledWith({
+      userId: 42,
+      travelId: 1,
+      zone: 'trung_nguyen', // dominant zone at pos 0.4
+      heroId: null, // boss → hero_id NULL (D-14)
+      encounterType: 'boss',
+      status: 'pending',
+    });
+    expect(redis.zadd).toHaveBeenCalledTimes(1); // boss IS an encounter → counts toward the cap
+  });
+
+  it('T11: missing edge → the minute is skipped with a warn (no crash), no record, no zadd', async () => {
+    const row = rowUpdatedAgo(120_000, { travelSecondsRemaining: 600 }); // 2 counted minutes
+    const { result, insert } = runCheckIn([[row], []]); // edge read → empty → totalSeconds 0
+
+    await expect(result).resolves.toMatchObject({ mode: 'status', remaining: 480 });
+    expect(insert).not.toHaveBeenCalled();
+    expect(redis.zadd).not.toHaveBeenCalled();
   });
 });
