@@ -16,8 +16,8 @@ import {
   getCurrentPosition,
   getAdjacentNodes,
   startTravel,
-} from '../../services/sanguo/travelService.js';
-import { checkInTravel } from '../../services/sanguo/travelCheckInService.js';
+} from '../../../services/sanguo/travelService.js';
+import { checkInTravel } from '../../../services/sanguo/travelCheckInService.js';
 
 vi.mock('../../../db/client.js', () => ({
   db: { select: vi.fn() },
@@ -27,18 +27,27 @@ vi.mock('../../../utils/commandContext.js', () => ({
   fetchCommandContext: vi.fn(),
 }));
 
-vi.mock('../../services/sanguo/travelService.js', () => ({
+// Component handlers resolve their own t via getT() — stub i18next so no
+// uninitialized-singleton crash in tests (initI18n runs only at app startup).
+const { t } = vi.hoisted(() => ({
+  t: ((key: string) => key) as (key: string) => string,
+}));
+
+vi.mock('../../../i18n/index.js', () => ({
+  resolveLocale: (_stored?: string | null, _interaction?: string | null) => 'vi' as const,
+  getT: () => t,
+}));
+
+vi.mock('../../../services/sanguo/travelService.js', () => ({
   START_NODE: 'luoyang',
   getCurrentPosition: vi.fn(),
   getAdjacentNodes: vi.fn(),
   startTravel: vi.fn(),
 }));
 
-vi.mock('../../services/sanguo/travelCheckInService.js', () => ({
+vi.mock('../../../services/sanguo/travelCheckInService.js', () => ({
   checkInTravel: vi.fn(),
 }));
-
-const t = ((key: string) => key) as (key: string) => string;
 
 /**
  * db.select().from(table).where(cond).limit(1) — resolves the terminal results
@@ -145,12 +154,15 @@ describe('/sanguo travel command', () => {
     expect(row.components[0]).toBeInstanceOf(StringSelectMenuBuilder);
     expect(row.components[1]).toBeInstanceOf(ButtonBuilder);
 
-    const menu = (row.components[0] as StringSelectMenuBuilder).data;
+    const menu = (row.components[0] as StringSelectMenuBuilder).toJSON();
     expect(menu.custom_id).toBe('sanguo:travel:dest');
     expect(menu.options).toHaveLength(2);
     expect(menu.options?.[0]?.value).toBe('xuchang');
 
-    const startBtn = (row.components[1] as ButtonBuilder).data;
+    const startBtn = (row.components[1] as ButtonBuilder).toJSON() as {
+      custom_id: string;
+      disabled?: boolean;
+    };
     expect(startBtn.custom_id).toBe('sanguo:travel:start');
     expect(startBtn.disabled).toBe(true);
   });
@@ -175,7 +187,10 @@ describe('/sanguo travel command', () => {
     ]);
 
     const row = reply.components?.[0] as ActionRowBuilder<any>;
-    const startBtn = (row.components[1] as ButtonBuilder).data;
+    const startBtn = (row.components[1] as ButtonBuilder).toJSON() as {
+      custom_id: string;
+      disabled?: boolean;
+    };
     expect(startBtn.disabled).toBe(false);
     expect(startBtn.custom_id).toBe('sanguo:travel:start:xuchang');
   });
