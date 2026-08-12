@@ -51,6 +51,8 @@ Game phụ kiểu Pokemon cho bot, dùng chung Linh thạch (`users.balance`) l�
 
 3 tầng liên kết — **family** (mạnh nhất, xuyên faction — Gia Cát Lượng/Thục + Gia Cát Cẩn/Ngô vẫn bond) > **faction** (match phẳng) > **role** (yếu nhất). Chemistry chỉ active khi hero xếp **đúng vị trí theo class** trong đội hình.
 
+**Marriage bond (spouse trực tiếp)** = tier-1, **ngang family** (user decision 2026-08-11). Bảng `hero_relations` (hero_a < hero_b, relation_type enum, chỉ `spouse`). In-law (anh/em vợ) KHÔNG tính — đối tác không có trong roster. Seed 2 cặp: Hán Linh Đế ↔ Hà Hoàng Hậu, Hán Linh Đế ↔ Vương Mỹ Nhân.
+
 ## Trận hình (đã chốt post-gate Phase 8)
 
 - Không cố định — người chơi **mua trận hình**; mỗi trận hình phân bổ class + số lượng + vị trí slot khác nhau.
