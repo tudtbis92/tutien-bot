@@ -39,11 +39,13 @@
   },
   "arrival": {
     "title": "📍 Đã đến nơi",
-    "body": "Bạn đã đến **{node}**.",
+    "body": "Bạn đã đến **{{node}}**.",
     "cta": "Dùng /sanguo travel để chọn điểm đến tiếp theo."
   },
   "encounter": {
-    "pending_title": "⚔️ Kỳ ngộ",
-    "pending_body": "Bạn đang giữa một kỳ ngộ. Bấm **Tiếp tục hành trình** để đi tiếp."
+    "title": "⚔️ Kỳ ngộ",
+    "body": "Trên đường đến **{{node}}**, bạn chạm trán **{{hero_emoji}} {{hero}}**.",
+    "boss_title": "👑 Boss thường xuất hiện!",
+    "boss_body": "Một Boss thường trấn giữ **{{zone}}** đã xuất hiện trên đường của bạn. Hãy chuẩn bị!"
   }
 }

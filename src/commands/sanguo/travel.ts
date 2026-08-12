@@ -11,12 +11,16 @@ import { eq } from 'drizzle-orm';
 import type { TFunction } from 'i18next';
 import { db } from '../../db/client.js';
 import { users } from '../../db/schema/users.js';
+import { heroes } from '../../db/schema/heroes.js';
 import { mapNodes } from '../../db/schema/mapNodes.js';
+import { mapZones } from '../../db/schema/mapZones.js';
 import { playerTravelState } from '../../db/schema/playerTravelState.js';
+import { heroEmoji } from '../../assets/sanguoEmojis.js';
 import { resolveLocale, getT, type SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { buildSanguoTravelReplyEmbed } from '../../ui/embeds/buildSanguoTravelReplyEmbed.js';
+import { buildSanguoEncounterEmbed } from '../../ui/embeds/buildSanguoEncounterEmbed.js';
 import { buildDestinationMenu } from '../../ui/components/sanguoTravelDestinationMenu.js';
 import { START_BTN_ID, buildStartButton, buildAckButton } from '../../ui/components/sanguoTravelButtons.js';
 import {
@@ -103,21 +107,69 @@ function buildTravelRow(
 }
 
 /**
- * Minimal inline encounter renderer — 09-04 lands buildSanguoEncounterEmbed
- * (hero name + heroEmoji resolution, boss copy); this wave renders the
- * pending-style line from the check-in payload + ack button (D-25).
+ * Resolve the encounter embed display data (09-04 finalization): the
+ * destination node name, the hero's per-locale name + heroEmoji markup (with
+ * the EMOJI_NOT_FOUND name-only guard, map.ts:98 pattern), and — for boss
+ * encounters — the dominant zone's per-locale name. All names come from DB
+ * per-locale columns (D-07 content-in-DB, never i18n keys).
  */
-function buildMinimalEncounterEmbed(
+interface EncounterDisplay {
+  nodeName: string;
+  heroName?: string;
+  heroEmoji?: string;
+  zoneName: string;
+}
+
+async function resolveEncounterDisplay(
   encounter: CheckInEncounter | undefined,
-  t: TFunction,
-  shardId?: number,
-): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(encounter?.boss ? COLORS.GOLD : COLORS.SEASON) // UI-SPEC: GOLD accent reserved for boss
-    .setTitle(t('sanguo:encounter.pending_title'))
-    .setDescription(t('sanguo:encounter.pending_body'))
-    .setFooter(embedFooter(shardId))
-    .setTimestamp();
+  userId: number,
+  locale: SupportedLocale,
+): Promise<EncounterDisplay> {
+  // "Trên đường đến {node}" — the journey destination (toNode).
+  const [travelRow] = await db
+    .select({ toNodeId: playerTravelState.toNodeId })
+    .from(playerTravelState)
+    .where(eq(playerTravelState.userId, userId))
+    .limit(1);
+  let nodeName = '?';
+  if (travelRow?.toNodeId != null) {
+    const node = await fetchNodeName(travelRow.toNodeId);
+    if (node) nodeName = pickName(node, locale);
+  }
+
+  let zoneName = '';
+  if (encounter?.zone) {
+    const [zoneRow] = await db
+      .select({ nameVi: mapZones.nameVi, nameEn: mapZones.nameEn, nameZh: mapZones.nameZh })
+      .from(mapZones)
+      .where(eq(mapZones.code, encounter.zone))
+      .limit(1);
+    if (zoneRow) zoneName = pickName(zoneRow, locale);
+  }
+
+  if (!encounter || encounter.heroId == null || encounter.boss) {
+    return { nodeName, zoneName }; // boss / unknown hero → name-only
+  }
+
+  const [heroRow] = await db
+    .select({
+      heroId: heroes.heroId,
+      nameVi: heroes.nameVi,
+      nameEn: heroes.nameEn,
+      nameZh: heroes.nameZh,
+    })
+    .from(heroes)
+    .where(eq(heroes.id, encounter.heroId))
+    .limit(1);
+  if (!heroRow) return { nodeName, zoneName };
+
+  let heroEmojiMarkup: string | undefined;
+  try {
+    heroEmojiMarkup = heroEmoji(heroRow.heroId);
+  } catch {
+    // EMOJI_NOT_FOUND → name-only rendering (map.ts:98 pattern)
+  }
+  return { nodeName, zoneName, heroName: pickName(heroRow, locale), heroEmoji: heroEmojiMarkup };
 }
 
 function buildAckRow(t: TFunction): ActionRowBuilder<MessageActionRowComponentBuilder> {
@@ -203,8 +255,21 @@ async function dispatchCheckIn(
 
     case 'encounter':
     case 'encounterPending': {
+      const display = await resolveEncounterDisplay(result.encounter, userId, locale);
       await interaction.editReply({
-        embeds: [buildMinimalEncounterEmbed(result.encounter, t, shardId)],
+        embeds: [
+          buildSanguoEncounterEmbed(
+            {
+              nodeName: display.nodeName,
+              heroName: display.heroName,
+              heroEmoji: display.heroEmoji,
+              zoneName: display.zoneName,
+              boss: result.encounter?.boss ?? false,
+              shardId,
+            },
+            t,
+          ),
+        ],
         components: [buildAckRow(t)],
       });
       return;

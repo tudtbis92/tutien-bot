@@ -246,6 +246,9 @@ const ZONE_TRUNG_NGUYEN = {
 };
 
 describe('checkInTravel — default rollMinute (09-04 encounterService-backed)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -253,7 +256,7 @@ describe('checkInTravel — default rollMinute (09-04 encounterService-backed)',
   it('T8 (D-13): cap window >= 20 → silent skip — no encounter_runs insert, no zadd, travel continues', async () => {
     const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 }); // 1 counted minute
     vi.mocked(redis.zcard).mockResolvedValueOnce(20); // window at the limit
-    const { result, insert, insertValues } = runCheckIn([[row], [EDGE], [NODES], [RATES], [ZONE_TRUNG_NGUYEN]]);
+    const { result, insert, insertValues } = runCheckIn([[row], [EDGE], NODES, RATES, [ZONE_TRUNG_NGUYEN]]);
 
     await expect(result).resolves.toMatchObject({ mode: 'status', remaining: 540 });
     expect(insert).not.toHaveBeenCalled(); // no record
@@ -266,7 +269,7 @@ describe('checkInTravel — default rollMinute (09-04 encounterService-backed)',
     vi.spyOn(crypto, 'randomInt').mockReturnValue(200_000 as never); // uniform 0.2
     const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 });
     const { result, insert, insertValues, updateSet } = runCheckIn(
-      [[row], [EDGE], [NODES], [RATES], [ZONE_TRUNG_NGUYEN]],
+      [[row], [EDGE], NODES, RATES, [ZONE_TRUNG_NGUYEN]],
     );
 
     await expect(result).resolves.toMatchObject({
@@ -298,7 +301,7 @@ describe('checkInTravel — default rollMinute (09-04 encounterService-backed)',
     vi.spyOn(crypto, 'randomInt').mockReturnValue(30_000 as never); // uniform 0.03 → hero AND boss roll true
     const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 });
     const { result, insertValues } = runCheckIn(
-      [[row], [EDGE], [NODES], [RATES], [ZONE_TRUNG_NGUYEN]],
+      [[row], [EDGE], NODES, RATES, [ZONE_TRUNG_NGUYEN]],
     );
 
     await expect(result).resolves.toMatchObject({

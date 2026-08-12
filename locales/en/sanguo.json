@@ -39,11 +39,13 @@
   },
   "arrival": {
     "title": "📍 Destination reached",
-    "body": "You have arrived at **{node}**.",
+    "body": "You have arrived at **{{node}}**.",
     "cta": "Use /sanguo travel to choose your next destination."
   },
   "encounter": {
-    "pending_title": "⚔️ Encounter",
-    "pending_body": "You are in the middle of an encounter. Press **Continue journey** to move on."
+    "title": "⚔️ Encounter",
+    "body": "On your way to **{{node}}**, you run into **{{hero_emoji}} {{hero}}**.",
+    "boss_title": "👑 A Boss has appeared!",
+    "boss_body": "A Boss guarding **{{zone}}** has appeared on your path. Get ready!"
   }
 }

@@ -334,7 +334,7 @@ describe('/sanguo travel command', () => {
     expect(row.components[1]).toBeInstanceOf(ButtonBuilder);
   });
 
-  it('execute with an active journey — encounter mode replies the encounter embed + ack button (D-24)', async () => {
+  it('execute with an active journey — encounter mode replies the encounter embed (hero name/emoji) + ack button (D-24)', async () => {
     vi.mocked(fetchCommandContext).mockResolvedValue({
       locale: 'vi',
       t,
@@ -347,20 +347,27 @@ describe('/sanguo travel command', () => {
       remaining: 300,
       encounter: { heroId: 5, zone: 'du_chau', boss: false },
     });
-    mockDbReads([[{ status: 'traveling', encounterActive: false }]]);
+    mockDbReads([
+      [{ status: 'traveling', encounterActive: false }], // execute() status gate → check-in path
+      [{ toNodeId: 7 }], // resolveEncounterDisplay: destination node id
+      [{ nameVi: 'Hứa Xương', nameEn: 'Xuchang', nameZh: null }], // fetchNodeName(7) — node display name
+      [{ nameVi: 'Dự Châu', nameEn: 'Yuzhou', nameZh: null }], // zone name lookup
+      [{ heroId: 'cao_cao', nameVi: 'Tào Tháo', nameEn: 'Cao Cao', nameZh: null }], // hero lookup
+    ]);
 
     const interaction = mockChatInputInteraction();
     await execute(interaction);
 
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
-    expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:encounter.pending_title');
+    expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:encounter.title');
+    expect(reply.embeds?.[0]?.data?.description).toContain('sanguo:encounter.body');
     expect(reply.embeds?.[0]?.data?.color).toBe(0x8b5cf6); // COLORS.SEASON normal encounter
     const row = reply.components?.[0] as ActionRowBuilder<any>;
     const ackBtn = (row.components[0] as ButtonBuilder).toJSON() as { custom_id: string };
     expect(ackBtn.custom_id).toBe('sanguo:travel:ack');
   });
 
-  it('execute with an active journey — encounterPending mode replies the pending embed (boss → GOLD), NO re-roll (F2/D-25)', async () => {
+  it('execute with an active journey — encounterPending mode replies the boss GOLD embed, NO re-roll (F2/D-25)', async () => {
     vi.mocked(fetchCommandContext).mockResolvedValue({
       locale: 'vi',
       t,
@@ -373,14 +380,20 @@ describe('/sanguo travel command', () => {
       remaining: 300,
       encounter: { heroId: null, zone: 'du_chau', boss: true },
     });
-    mockDbReads([[{ status: 'traveling', encounterActive: false }]]);
+    mockDbReads([
+      [{ status: 'traveling', encounterActive: false }], // execute() status gate → check-in path
+      [{ toNodeId: 7 }], // resolveEncounterDisplay: destination node id
+      [{ nameVi: 'Hứa Xương', nameEn: 'Xuchang', nameZh: null }], // fetchNodeName(7) — node display name
+      [{ nameVi: 'Dự Châu', nameEn: 'Yuzhou', nameZh: null }], // boss → zone name only, NO hero read
+    ]);
 
     const interaction = mockChatInputInteraction();
     await execute(interaction);
 
     expect(checkInTravel).toHaveBeenCalledTimes(1); // pending comes from the DB, never re-rolled
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
-    expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:encounter.pending_title');
+    expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:encounter.boss_title');
+    expect(reply.embeds?.[0]?.data?.description).toContain('sanguo:encounter.boss_body');
     expect(reply.embeds?.[0]?.data?.color).toBe(0xf59e0b); // COLORS.GOLD boss variant (UI-SPEC)
     const row = reply.components?.[0] as ActionRowBuilder<any>;
     const ackBtn = (row.components[0] as ButtonBuilder).toJSON() as { custom_id: string };

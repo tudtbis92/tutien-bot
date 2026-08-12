@@ -1,9 +1,21 @@
-import { eq, and, or, desc } from 'drizzle-orm';
+import { eq, and, or, desc, inArray } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { playerTravelState } from '../../db/schema/playerTravelState.js';
 import { encounterRuns } from '../../db/schema/encounterRuns.js';
 import { mapEdges } from '../../db/schema/mapEdges.js';
+import { mapNodes } from '../../db/schema/mapNodes.js';
+import { mapZones } from '../../db/schema/mapZones.js';
+import { heroZoneRates } from '../../db/schema/heroZoneRates.js';
 import { redis } from '../../cache/redis.js';
+import { logger } from '../../utils/logger.js';
+import {
+  capHit,
+  pickEncounterHero,
+  positionFraction,
+  shouldRoll,
+  shouldRollBoss,
+  type ZoneRate,
+} from './encounterService.js';
 
 /**
  * Pull-based travel check-in engine (TQC-07, D-22/D-24/D-25/D-28).
@@ -15,13 +27,9 @@ import { redis } from '../../cache/redis.js';
  *
  * Single-writer rule (Pitfall 5): THIS transaction is the only writer of
  * travel_seconds_remaining/updatedAt for traveling rows. startTravel (09-01)
- * and the ack handler (Task 2) are the only other writers and both set
- * updatedAt deliberately.
- *
- * The per-minute roll is an INJECTED callback (deps.rollMinute) this wave —
- * plan 09-04 lands encounterService and replaces the default no-hit roll with
- * the cap-first / position-blended / boss-sub-roll implementation. The loop
- * skeleton, arrival branch, and ack pause are order-independent of 09-04.
+ * and the ack handler are the only other writers and both set updatedAt
+ * deliberately. The per-minute roll (09-04) writes ONLY encounter_runs + the
+ * Redis cap window — never player_travel_state.
  */
 export type CheckInMode = 'start' | 'encounter' | 'encounterPending' | 'arrived' | 'status';
 
@@ -51,7 +59,7 @@ export interface RollMinuteContext {
   totalSeconds: number;
   fromNodeId: number | null;
   toNodeId: number | null;
-  /** D-13 cap predicate — 09-04's rollMinute calls it BEFORE rolling. */
+  /** D-13 cap predicate — the roll calls it BEFORE rolling (Pitfall 7). */
   capCheck: () => Promise<boolean>;
 }
 
@@ -60,16 +68,115 @@ export interface RollMinuteResult {
   heroId?: number | null;
   zone?: string;
   boss?: boolean;
+  /** True when the roll was silently skipped by the ~20/hr cap (D-13). */
+  skipped?: boolean;
 }
 
 export type RollMinuteFn = (ctx: RollMinuteContext) => Promise<RollMinuteResult>;
 
+/** Tx type of db.transaction's callback (drizzle 0.45.2 — established pattern). */
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
- * Default roll — no hits. 09-04 replaces this with the encounterService-backed
- * implementation (cap-first ZSET, position blend, boss sub-roll, encounter_runs
- * record). With the default, a check-in resolves arrival/status only.
+ * The 09-04 real rollMinute — cap-first (D-13, Pitfall 7), position-blended
+ * pick (D-15), boss sub-roll (D-14), encounter_runs record (D-24).
+ * Runs INSIDE the check-in tx (single writer, Pitfall 5) and writes ONLY
+ * encounter_runs + the Redis cap window.
  */
-const defaultRollMinute: RollMinuteFn = async () => ({ hit: false });
+function makeDefaultRollMinute(tx: Tx, userId: number, travelId: number): RollMinuteFn {
+  return async (ctx: RollMinuteContext): Promise<RollMinuteResult> => {
+    const now = Date.now();
+    const capKey = `sanguo:enc:win:${userId}`;
+
+    // 1. Cap check FIRST (D-13, Pitfall 7) — silent skip: no record, no inline
+    // encounter, travel continues. F7: best-effort key TTL so an inactive user
+    // does not leave the cap window persisting forever.
+    // eslint-disable-next-line i18next/no-literal-string -- Redis ZSET bound, not user-facing
+    await redis.zremrangebyscore(capKey, '-inf', `(${now - 3600_000}`);
+    try {
+      await redis.expire(capKey, 86_400);
+    } catch {
+      // best-effort only (F7) — a TTL failure never blocks the roll
+    }
+    const windowCount = await redis.zcard(capKey);
+    if (capHit(windowCount)) return { hit: false, skipped: true };
+
+    // 2. Position (D-15) — a missing edge skips the minute (no crash).
+    if (ctx.totalSeconds <= 0) {
+      logger.warn('EncounterRoll', `missing edge ${ctx.fromNodeId}->${ctx.toNodeId}, skipping minute`);
+      return { hit: false };
+    }
+    const pos = positionFraction(ctx.remainingAfter, ctx.totalSeconds);
+
+    // 3. Zone codes + per-zone rates. F8: hero_zone_rates.rate is numeric(4,2)
+    // → Drizzle returns a STRING — explicit Number() before the blend math.
+    const nodes = await tx
+      .select({ id: mapNodes.id, zone: mapNodes.zone })
+      .from(mapNodes)
+      .where(inArray(mapNodes.id, [ctx.fromNodeId!, ctx.toNodeId!]))
+      .limit(2);
+    const fromZone = nodes.find((n) => n.id === ctx.fromNodeId)?.zone;
+    const toZone = nodes.find((n) => n.id === ctx.toNodeId)?.zone;
+    if (!fromZone || !toZone) {
+      logger.warn('EncounterRoll', `missing zone for nodes ${ctx.fromNodeId}/${ctx.toNodeId}, skipping minute`);
+      return { hit: false };
+    }
+    const dominantZone = pos < 0.5 ? fromZone : toZone;
+
+    const rateRows = await tx
+      .select()
+      .from(heroZoneRates)
+      .where(inArray(heroZoneRates.zone, [fromZone, toZone]))
+      .limit(50);
+    const poolFrom: ZoneRate[] = rateRows
+      .filter((r) => r.zone === fromZone)
+      .map((r) => ({ heroId: r.heroId, zone: r.zone, rate: Number(r.rate) }));
+    const poolTo: ZoneRate[] = rateRows
+      .filter((r) => r.zone === toZone)
+      .map((r) => ({ heroId: r.heroId, zone: r.zone, rate: Number(r.rate) }));
+
+    // 4. Hero roll (D-10/D-24) — zone-configurable encounter_rate (A7 default 0.35).
+    const [zoneRow] = await tx
+      .select()
+      .from(mapZones)
+      .where(eq(mapZones.code, dominantZone))
+      .limit(1);
+    const encounterRate = zoneRow ? Number(zoneRow.encounterRate) : 0.35;
+    if (!shouldRoll(encounterRate)) return { hit: false };
+
+    // 5. Boss sub-roll (D-14) — zone-configurable boss_rate (A7 default 0.07).
+    const bossRate = zoneRow ? Number(zoneRow.bossRate) : 0.07;
+    const isBoss = shouldRollBoss(bossRate);
+
+    // 6. Pick + record. Stop-at-first-hit is the 09-03 loop's job (D-24).
+    let heroId: number | null;
+    let zone: string;
+    if (isBoss) {
+      heroId = null;
+      zone = dominantZone;
+    } else {
+      if (poolFrom.length === 0 && poolTo.length === 0) {
+        logger.warn('EncounterRoll', `empty pool for zones ${fromZone}/${toZone}, skipping minute`);
+        return { hit: false };
+      }
+      const pick = pickEncounterHero(poolFrom, poolTo, pos);
+      heroId = pick.heroId;
+      zone = pick.zone;
+    }
+
+    await tx.insert(encounterRuns).values({
+      userId,
+      travelId,
+      zone,
+      heroId,
+      encounterType: isBoss ? 'boss' : 'hero',
+      status: 'pending',
+    });
+    await redis.zadd(capKey, now, String(now)); // boss counts toward the cap (it IS an encounter)
+
+    return { hit: true, heroId, zone, boss: isBoss };
+  };
+}
 
 /** Add whole minutes to a base date (hit-minute pin, D-25). */
 function addMinutes(base: Date, mins: number): Date {
@@ -84,7 +191,7 @@ export async function checkInTravel(
   userId: number,
   deps: { rollMinute?: RollMinuteFn } = {},
 ): Promise<CheckInResult> {
-  const rollMinute = deps.rollMinute ?? defaultRollMinute;
+  const injectedRoll = deps.rollMinute;
 
   return db.transaction(async (tx) => {
     // Locked row read — the second concurrent check-in waits, then reads the
@@ -130,7 +237,7 @@ export async function checkInTravel(
     const countedMinutes = Math.floor(elapsedSec / 60);
 
     // Total hop seconds for the roll's position fraction (D-15) — OR-match both
-    // edge orientations; a missing edge yields totalSeconds 0 (09-04 skips it).
+    // edge orientations; a missing edge yields totalSeconds 0 (the roll skips it).
     let totalSeconds = 0;
     if (countedMinutes > 0) {
       const [edge] = await tx
@@ -151,6 +258,10 @@ export async function checkInTravel(
       const count = await redis.zcard(capKey);
       return count < 20; // D-13 ~20/hr sliding window
     };
+
+    // The real roll (09-04): cap-first ZSET, position blend, boss sub-roll,
+    // encounter_runs record. Tests inject their own for deterministic paths.
+    const rollMinute = injectedRoll ?? makeDefaultRollMinute(tx, userId, row.id);
 
     // Per-counted-minute roll loop — STOP at the first hit (D-24). The hit
     // minute IS counted (F4, D-28 amended): remaining decrements through it and

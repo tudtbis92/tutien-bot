@@ -39,11 +39,13 @@
   },
   "arrival": {
     "title": "📍 已到达",
-    "body": "你已到达**{node}**。",
+    "body": "你已到达**{{node}}**。",
     "cta": "使用 /sanguo travel 选择下一个目的地。"
   },
   "encounter": {
-    "pending_title": "⚔️ 奇遇",
-    "pending_body": "你正处于一场奇遇中。按下**继续旅程**继续前行。"
+    "title": "⚔️ 奇遇",
+    "body": "在前往**{{node}}**的路上，你遭遇了**{{hero_emoji}} {{hero}}**。",
+    "boss_title": "👑 首领出现了！",
+    "boss_body": "一位镇守**{{zone}}**的首领出现在你的路上。做好准备！"
   }
 }
