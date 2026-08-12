@@ -137,6 +137,17 @@ const FAMILIES: FamilyDef[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Spouse relations (Phase 8 post-gate — hero_relations, direct marriage only).
+// In-law relations excluded by design: bond targets (Mi phu nhân, Thái phu
+// nhân...) are NOT roster heroes, so no pair can be formed. hero_a < hero_b
+// is enforced by caller (lexicographic hero_id order).
+// ---------------------------------------------------------------------------
+const SPOUSE_PAIRS: [string, string][] = [
+  ['han_ling_di', 'ha_thai_hau'],
+  ['han_ling_di', 'vuong_my_nhan'],
+];
+
+// ---------------------------------------------------------------------------
 // Hero classification (Phase 8 post-gate) — committed Tavily-researched map.
 // Keyed by hero_id; each entry { faction, role, class, family }.
 // ---------------------------------------------------------------------------
@@ -441,7 +452,29 @@ async function seed() {
     itemCount++;
   }
 
-  console.log(`[Seed] ${factionCount} factions, ${familyCount} families, ${heroCount} heroes, ${nodeCount} map_nodes, ${itemCount} items upserted`);
+  // --- Hero relations (Phase 8 post-gate — direct spouse pairs only) ---------
+  let relationCount = 0;
+  const heroIdToDbId = new Map<string, number>();
+  const heroesOut = await db.select({ heroId: schema.heroes.heroId, id: schema.heroes.id }).from(schema.heroes);
+  for (const h of heroesOut) heroIdToDbId.set(h.heroId, h.id);
+  for (const [a, b] of SPOUSE_PAIRS) {
+    const aId = heroIdToDbId.get(a);
+    const bId = heroIdToDbId.get(b);
+    if (!aId || !bId) throw new Error(`[Seed] Spouse pair references unknown hero: ${a}/${b}`);
+    // Undirected pair: enforce hero_a < hero_b (numeric) to avoid duplicates
+    const [inserted] = await db
+      .insert(schema.heroRelations)
+      .values({
+        heroAId: Math.min(aId, bId),
+        heroBId: Math.max(aId, bId),
+        relationType: 'spouse',
+      })
+      .onConflictDoNothing()
+      .returning({ id: schema.heroRelations.id });
+    if (inserted) relationCount++;
+  }
+
+  console.log(`[Seed] ${factionCount} factions, ${familyCount} families, ${relationCount} relations, ${heroCount} heroes, ${nodeCount} map_nodes, ${itemCount} items upserted`);
   console.log('[Seed] Sanguo seed complete!');
 }
 

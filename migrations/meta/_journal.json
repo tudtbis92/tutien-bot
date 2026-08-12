@@ -120,6 +120,13 @@
       "when": 1786442262900,
       "tag": "0016_hero_families_reference",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786498727829,
+      "tag": "0017_hero_spouse_relations",
+      "breakpoints": true
     }
   ]
 }

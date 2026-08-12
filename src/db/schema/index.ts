@@ -30,6 +30,7 @@ export * from './walletTransactions.js';
 export * from './heroes.js';
 export * from './heroFactions.js';
 export * from './heroFamilies.js';
+export * from './heroRelations.js';
 export * from './userHeroes.js';
 export * from './playerTravelState.js';
 export * from './sanguoBattles.js';
