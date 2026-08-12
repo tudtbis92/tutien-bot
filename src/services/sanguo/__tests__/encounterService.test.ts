@@ -54,10 +54,13 @@ describe('pickEncounterHero — D-15 position-blended weighted pick', () => {
   });
 
   it('T2b: pos=1 returns ONLY zone-B heroes (zone-A weights × 0)', () => {
-    const low = pickEncounterHero(POOL_A, POOL_B, 1, () => 0.1); // roll=0.2 → hero3
-    expect(low.heroId).toBe(3);
-    expect(low.zone).toBe('du_chau');
-    const high = pickEncounterHero(POOL_A, POOL_B, 1, () => 0.9); // roll=1.8 → hero2
+    // Weights at pos=1: hero1=0 (A-only ×0, filtered out), hero2=1.0, hero4=1.0,
+    // hero3=1.0 → walk order [hero2, hero4, hero3]. total=3.0
+    const low = pickEncounterHero(POOL_A, POOL_B, 1, () => 0.1); // roll=0.3 → hero2
+    expect(low.heroId).toBe(2);
+    expect(low.zone).toBe('du_chau'); // hero2 is B6-attributed to B at pos=1
+    const high = pickEncounterHero(POOL_A, POOL_B, 1, () => 0.9); // roll=2.7 → hero3
+    expect(high.heroId).toBe(3);
     expect(high.zone).toBe('du_chau'); // never a trung_nguyen hero at pos=1
   });
 
@@ -75,11 +78,18 @@ describe('pickEncounterHero — D-15 position-blended weighted pick', () => {
 
   it('T4 (B6 fix): hero in BOTH pools returns the pos-dominant zone — NOT a loop-order overwrite', () => {
     // hero4 rate 1.0 in both pools: rateA·(1−pos) vs rateB·pos.
+    // rng=0.7 forces the walk into hero4's band at both positions.
     // pos=0.4 → A-side 0.6 >= B-side 0.4 → trung_nguyen (dominant A).
-    expect(pickEncounterHero(POOL_A, POOL_B, 0.4, () => 0.5).zone).toBe('trung_nguyen');
+    expect(pickEncounterHero(POOL_A, POOL_B, 0.4, () => 0.7)).toEqual({
+      heroId: 4,
+      zone: 'trung_nguyen',
+    });
     // pos=0.6 → A-side 0.4 < B-side 0.6 → du_chau (dominant B) — a naive
     // loop-order overwrite would return trung_nguyen here.
-    expect(pickEncounterHero(POOL_A, POOL_B, 0.6, () => 0.5).zone).toBe('du_chau');
+    expect(pickEncounterHero(POOL_A, POOL_B, 0.6, () => 0.7)).toEqual({
+      heroId: 4,
+      zone: 'du_chau',
+    });
   });
 
   it('smoke: default cryptoUniform path returns a union hero with a valid zone', () => {
