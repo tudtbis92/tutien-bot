@@ -1,7 +1,8 @@
 ---
 phase: 9
 slug: travel-encounters
-status: draft
+status: approved
+reviewed_at: 2026-08-12
 shadcn_initialized: false
 preset: none
 created: 2026-08-12
@@ -150,14 +151,17 @@ Applicable state considerations resolved: 7 covered, 1 backstop, 1 unresolved
 | empty | travel autocomplete (0 adjacent nodes) | ✅ covered | "Autocomplete returns `[]` → Discord renders no options; direct invocation replies with `no_route_title`/`no_route_body` DANGER embed" |
 | error | travel in-progress (D-09) | ✅ covered | "`userId.unique()` blocks new journey; command replies `in_progress_title`/`in_progress_body` DANGER embed" |
 | error | not registered | ✅ covered | "Replies existing `common:errors.notRegistered` via `buildErrorEmbed` (map.ts pattern)" |
+| error | generic failure | ✅ covered | "Generic failure replies `sanguo:travel.error` DANGER embed" |
 | populated | travel confirmation reply | ✅ covered | "SEASON embed with destination/ETA/from fields; ETA humanized from `travel_seconds_remaining`" |
 | populated | arrival DM | ✅ covered | "SEASON embed via REST DM; locale = user-level resolution, fallback vi" |
 | populated | encounter DM (normal) | ✅ covered | "SEASON embed, hero name + `heroEmoji()` prefix, zone + destination context" |
 | populated | encounter DM (boss) | ✅ covered | "GOLD embed variant via `boss: true` flag; same field structure, boss copy" |
-| long-text | node/hero names in embeds | 🧪 backstop | "Names ≤100 chars per schema; verify longest seed names render inside Discord's 1024-char field limit without truncation" — lifts as `{ statement: "longest node/hero names render untruncated in embed fields", verification: backstop }` |
+| long-text | node/hero names in embeds | 🧪 backstop | `{ statement: "longest node/hero names render untruncated in embed fields", verification: backstop }` |
 | overflow | DM failure (user has DMs closed, `50007`) | ⚠ unresolved | "Planner treats as assumption: skip + log + Redis 3-strike counter (matchLifecycleService pattern); user receives no notification and travel continues" |
 
 Zero-one-many: adjacent nodes 0/1/25+ → covered by the autocomplete contract above (empty array / single choice / nearest-25 capped).
+
+**Probe dismissal (recorded):** `loading` / `partial` — not applicable: Discord embeds render atomically (no skeleton/spinner or partial-field state exists); `error`/`empty` on the boss DM — always-populated by construction (D-14 roll+notify, boss copy is static); `loading`/`error` on autocomplete — advisory surface, Discord renders its own typing state, and validation failures surface through the command reply error path above.
 
 ---
 
@@ -174,11 +178,11 @@ Zero-one-many: adjacent nodes 0/1/25+ → covered by the autocomplete contract a
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved (2026-08-12)
