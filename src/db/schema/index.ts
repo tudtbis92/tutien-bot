@@ -41,3 +41,9 @@ export * from './encounterRuns.js';
 // Phase 8 post-gate schemas
 export * from './heroFactions.js';
 export * from './formations.js';
+
+// Phase 9 schemas (mapEdges authored in 09-01 — re-exported here so drizzle-kit
+// generate, which reads index.ts, sees the table at 09-05 migration time)
+export * from './mapZones.js';
+export * from './mapEdges.js';
+export * from './heroZoneRates.js';
