@@ -51,9 +51,9 @@ const PENDING_HERO = {
 function makeTx(readResults: unknown[][]) {
   let i = 0;
   const next = (): unknown[] => readResults[i++] ?? [];
-  const updateWhere = vi.fn().mockResolvedValue(undefined);
-  const updateSet = vi.fn(() => ({ where: updateWhere }));
-  const update = vi.fn(() => ({ set: updateSet }));
+  const updateWhere = vi.fn((_q: any) => undefined);
+  const updateSet = vi.fn((_v: any) => ({ where: updateWhere }));
+  const update = vi.fn((_t: any) => ({ set: updateSet }));
   const chain: any = {
     where: vi.fn(() => chain),
     for: vi.fn(() => Promise.resolve(next())),
@@ -180,7 +180,7 @@ describe('checkInTravel — pull-based check-in engine (D-22/D-24/D-25/D-28)', (
 
   it('T6: no hits in the window → remaining decremented, updatedAt=now, { mode: "status" }', async () => {
     const row = rowUpdatedAgo(180_000, { travelSecondsRemaining: 900 }); // 3 counted minutes
-    const rollMinute = vi.fn().mockResolvedValue({ hit: false });
+    const rollMinute = vi.fn((_ctx: any) => Promise.resolve({ hit: false }));
     const { result, update, updateSet } = runCheckIn([[row], [EDGE]], rollMinute);
 
     await expect(result).resolves.toMatchObject({ mode: 'status', remaining: 720 });
