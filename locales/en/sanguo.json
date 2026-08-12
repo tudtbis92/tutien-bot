@@ -2,6 +2,9 @@
   "cmd": {
     "map": {
       "description": "View the Three Kingdoms map"
+    },
+    "travel": {
+      "description": "Start a journey to a landmark"
     }
   },
   "map": {
@@ -12,5 +15,26 @@
     "empty": "The map has not been drawn yet",
     "empty_hint": "This land has no data yet. Please come back later.",
     "error": "There was an error loading the map. Please try again."
+  },
+  "travel": {
+    "started_title": "🧭 Journey started",
+    "pick_title": "🧭 Choose a destination",
+    "pick_body": "Current position: **{{node}}**",
+    "destination_label": "Destination",
+    "eta_label": "Estimated time",
+    "from_label": "Departure",
+    "destination": "Destination: **{{node}}**",
+    "eta": "Estimated time: **{{eta}}**",
+    "from": "Departure: **{{from_node}}**",
+    "eta_minutes_one": "~{{n}} minute",
+    "eta_minutes_other": "~{{n}} minutes",
+    "eta_hours_minutes_one": "~{{h}} hour {{m}} minutes",
+    "eta_hours_minutes_other": "~{{h}} hours {{m}} minutes",
+    "dest_placeholder": "Choose a destination",
+    "start_button": "Start journey",
+    "ack_button": "Continue journey",
+    "no_route_title": "No route available",
+    "no_route_body": "Your current position is not connected to any landmark. Open /sanguo map to view the map.",
+    "error": "There was an error starting the journey. Please try again."
   }
 }

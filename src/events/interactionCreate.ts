@@ -1,4 +1,4 @@
-import { Events, type Interaction } from 'discord.js';
+import { Events, type Interaction, type StringSelectMenuInteraction, type ButtonInteraction } from 'discord.js';
 import { eq, asc, inArray } from 'drizzle-orm';
 import { logger } from '../utils/logger.js';
 import { buildErrorEmbed } from '../ui/embeds/buildErrorEmbed.js';
@@ -17,10 +17,18 @@ import { buildBagPage } from '../commands/game/bag.js';
 import { handlePredictResult, handlePredictButtonMarket, handlePredictModalSubmit } from '../components/predictions/index.js';
 import { buildHistoryPage } from '../commands/predictions/predictions.js';
 import { handleFarmingStartButton, handleFarmingTokenModal, handleFarmingBuyWeeklyButton, handleFarmingBuyMonthlyButton, handleFarmingUpgradeVIPButton, handleConfirmBuyWeekly, handleConfirmBuyMonthly, handleConfirmUpgradeVIP, handleFarmingBuyVipMonthlyButton, handleConfirmBuyVipMonthly } from '../commands/game/farming.js';
+import { DEST_MENU_ID } from '../ui/components/sanguoTravelDestinationMenu.js';
+import { START_BTN_ID, ACK_BTN_ID } from '../ui/components/sanguoTravelButtons.js';
 
 export const name = Events.InteractionCreate;
 
 const RECIPES_PER_PAGE = 5;
+
+/** Component handlers exposed by the 'sanguo' command module (map.ts re-exports). */
+interface SanguoComponentHandlers {
+  handleDestinationSelect?: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  handleStartPress?: (interaction: ButtonInteraction) => Promise<void>;
+}
 
 export async function execute(interaction: Interaction): Promise<void> {
   // ── StringSelectMenu interaction routing ────────────────────────────────────
@@ -31,6 +39,21 @@ export async function execute(interaction: Interaction): Promise<void> {
         await handlePredictResult(interaction);
       } catch (err) {
         logger.error('InteractionCreate', 'Error in handlePredictResult', err);
+      }
+      return;
+    }
+    // sanguo travel destination select (D-26) — dispatches to the 'sanguo'
+    // command module's handler (map.ts re-exports it from travel.ts)
+    if (customId === DEST_MENU_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleDestinationSelect === 'function') {
+          await cmd.handleDestinationSelect(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo travel destination select', err);
       }
       return;
     }
@@ -61,6 +84,30 @@ export async function execute(interaction: Interaction): Promise<void> {
   // ── Button interaction routing ──────────────────────────────────────────────
   if (interaction.isButton()) {
     const customId = interaction.customId;
+
+    // sanguo travel Start button (D-26 confirm gate). F1: the destination rides
+    // in the customId suffix ('sanguo:travel:start:{code}'), so the match is a
+    // PREFIX match, not === — a ButtonInteraction carries no select values.
+    if (customId.startsWith(START_BTN_ID)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleStartPress === 'function') {
+          await cmd.handleStartPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo travel start button', err);
+      }
+      return;
+    }
+
+    // sanguo travel encounter ack (D-25) — 09-03 replaces this stub with the
+    // real encounter-resume handler; this wave just acknowledges the press.
+    if (customId === ACK_BTN_ID) {
+      await interaction.deferUpdate();
+      return;
+    }
 
     if (
       customId.startsWith('predict:score:') ||

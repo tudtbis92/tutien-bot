@@ -2,6 +2,9 @@
   "cmd": {
     "map": {
       "description": "Xem bản đồ Tam Quốc"
+    },
+    "travel": {
+      "description": "Bắt đầu hành trình đến một địa danh"
     }
   },
   "map": {
@@ -12,5 +15,26 @@
     "empty": "Bản đồ chưa được vẽ",
     "empty_hint": "Vùng đất này chưa có dữ liệu. Hãy quay lại sau.",
     "error": "Có lỗi khi tải bản đồ. Hãy thử lại."
+  },
+  "travel": {
+    "started_title": "🧭 Hành trình bắt đầu",
+    "pick_title": "🧭 Chọn điểm đến",
+    "pick_body": "Vị trí hiện tại: **{{node}}**",
+    "destination_label": "Điểm đến",
+    "eta_label": "Thời gian dự kiến",
+    "from_label": "Xuất phát",
+    "destination": "Điểm đến: **{{node}}**",
+    "eta": "Thời gian dự kiến: **{{eta}}**",
+    "from": "Xuất phát: **{{from_node}}**",
+    "eta_minutes_one": "~{{n}} phút",
+    "eta_minutes_other": "~{{n}} phút",
+    "eta_hours_minutes_one": "~{{h}} giờ {{m}} phút",
+    "eta_hours_minutes_other": "~{{h}} giờ {{m}} phút",
+    "dest_placeholder": "Chọn điểm đến",
+    "start_button": "Bắt đầu hành trình",
+    "ack_button": "Tiếp tục hành trình",
+    "no_route_title": "Không có đường đi",
+    "no_route_body": "Vị trí hiện tại của bạn không kết nối với địa danh nào. Hãy mở /sanguo map để xem bản đồ.",
+    "error": "Có lỗi khi bắt đầu hành trình. Hãy thử lại."
   }
 }

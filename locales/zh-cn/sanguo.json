@@ -2,6 +2,9 @@
   "cmd": {
     "map": {
       "description": "查看三国地图"
+    },
+    "travel": {
+      "description": "开始前往一处地名的旅程"
     }
   },
   "map": {
@@ -12,5 +15,26 @@
     "empty": "地图尚未绘制",
     "empty_hint": "此地暂无数据，请稍后再来。",
     "error": "加载地图时出错，请重试。"
+  },
+  "travel": {
+    "started_title": "🧭 旅程开始",
+    "pick_title": "🧭 选择目的地",
+    "pick_body": "当前位置：**{{node}}**",
+    "destination_label": "目的地",
+    "eta_label": "预计时间",
+    "from_label": "出发地",
+    "destination": "目的地：**{{node}}**",
+    "eta": "预计时间：**{{eta}}**",
+    "from": "出发地：**{{from_node}}**",
+    "eta_minutes_one": "约{{n}}分钟",
+    "eta_minutes_other": "约{{n}}分钟",
+    "eta_hours_minutes_one": "约{{h}}小时{{m}}分钟",
+    "eta_hours_minutes_other": "约{{h}}小时{{m}}分钟",
+    "dest_placeholder": "选择目的地",
+    "start_button": "开始旅程",
+    "ack_button": "继续旅程",
+    "no_route_title": "没有可行路线",
+    "no_route_body": "你当前的位置未连接任何地名。请打开 /sanguo map 查看地图。",
+    "error": "开始旅程时出错，请重试。"
   }
 }
