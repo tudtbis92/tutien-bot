@@ -28,6 +28,7 @@ const RECIPES_PER_PAGE = 5;
 interface SanguoComponentHandlers {
   handleDestinationSelect?: (interaction: StringSelectMenuInteraction) => Promise<void>;
   handleStartPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleAckPress?: (interaction: ButtonInteraction) => Promise<void>;
 }
 
 export async function execute(interaction: Interaction): Promise<void> {
@@ -102,10 +103,19 @@ export async function execute(interaction: Interaction): Promise<void> {
       return;
     }
 
-    // sanguo travel encounter ack (D-25) — 09-03 replaces this stub with the
-    // real encounter-resume handler; this wave just acknowledges the press.
+    // sanguo travel encounter ack (D-25) — clears encounterActive, resumes the
+    // travel clock; the next /sanguo travel counts elapsed from the resume moment.
     if (customId === ACK_BTN_ID) {
-      await interaction.deferUpdate();
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleAckPress === 'function') {
+          await cmd.handleAckPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo travel ack button', err);
+      }
       return;
     }
 

@@ -16,7 +16,7 @@ import { travelSubcommand, execute as travelExecute } from './travel.js';
 // Re-export the travel component handlers so the interaction router can find
 // them on the 'sanguo' command module (client.commands.get('sanguo') — Pitfall 3:
 // travel.ts must NOT export its own `data`; one command file owns the name).
-export { handleDestinationSelect, handleStartPress } from './travel.js';
+export { handleDestinationSelect, handleStartPress, handleAckPress } from './travel.js';
 
 /* eslint-disable i18next/no-literal-string -- slash commands name/description are static Discord API strings */
 export const data = new SlashCommandBuilder()

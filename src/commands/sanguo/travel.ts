@@ -18,14 +18,15 @@ import { fetchCommandContext } from '../../utils/commandContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { buildSanguoTravelReplyEmbed } from '../../ui/embeds/buildSanguoTravelReplyEmbed.js';
 import { buildDestinationMenu } from '../../ui/components/sanguoTravelDestinationMenu.js';
-import { START_BTN_ID, buildStartButton } from '../../ui/components/sanguoTravelButtons.js';
+import { START_BTN_ID, buildStartButton, buildAckButton } from '../../ui/components/sanguoTravelButtons.js';
 import {
   getCurrentPosition,
   getAdjacentNodes,
   startTravel,
   type AdjacentNode,
 } from '../../services/sanguo/travelService.js';
-import { checkInTravel } from '../../services/sanguo/travelCheckInService.js';
+import { checkInTravel, type CheckInEncounter } from '../../services/sanguo/travelCheckInService.js';
+import { buildSanguoArrivalEmbed } from '../../ui/embeds/buildSanguoArrivalEmbed.js';
 import { COLORS, embedFooter } from '../../ui/theme.js';
 import { EMOJI } from '../../assets/emojis.js';
 
@@ -102,8 +103,32 @@ function buildTravelRow(
 }
 
 /**
- * Check-in dispatch (D-22) — this wave the stub returns { mode: 'status' };
- * 09-03 replaces the stub with the full engine (encounter/arrival/status).
+ * Minimal inline encounter renderer — 09-04 lands buildSanguoEncounterEmbed
+ * (hero name + heroEmoji resolution, boss copy); this wave renders the
+ * pending-style line from the check-in payload + ack button (D-25).
+ */
+function buildMinimalEncounterEmbed(
+  encounter: CheckInEncounter | undefined,
+  t: TFunction,
+  shardId?: number,
+): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(encounter?.boss ? COLORS.GOLD : COLORS.SEASON) // UI-SPEC: GOLD accent reserved for boss
+    .setTitle(t('sanguo:encounter.pending_title'))
+    .setDescription(t('sanguo:encounter.pending_body'))
+    .setFooter(embedFooter(shardId))
+    .setTimestamp();
+}
+
+function buildAckRow(t: TFunction): ActionRowBuilder<MessageActionRowComponentBuilder> {
+  return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(buildAckButton(t));
+}
+
+/**
+ * Check-in dispatch (D-22/D-24/D-25/D-28) — full result routing inline in the
+ * interaction (D-23): status → travel reply embed; arrived → arrival embed +
+ * re-opened destination menu; encounter / encounterPending → encounter embed +
+ * ack button (pending re-fetches the stored row, never re-rolls — F2).
  */
 async function dispatchCheckIn(
   interaction: ChatInputCommandInteraction | ButtonInteraction,
@@ -113,42 +138,78 @@ async function dispatchCheckIn(
   shardId: number | undefined,
 ): Promise<void> {
   const result = await checkInTravel(userId);
-  if (result.mode !== 'status') {
-    await interaction.editReply({ embeds: [buildNoRouteEmbed(t, shardId)] });
-    return;
-  }
 
-  const [row] = await db
-    .select({
-      fromNodeId: playerTravelState.fromNodeId,
-      toNodeId: playerTravelState.toNodeId,
-    })
-    .from(playerTravelState)
-    .where(eq(playerTravelState.userId, userId))
-    .limit(1);
-  if (!row) {
-    await interaction.editReply({ embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)] });
-    return;
-  }
+  switch (result.mode) {
+    case 'start':
+      // Unreachable on the check-in path — execute gates on traveling/encounterActive.
+      await interaction.editReply({ embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)] });
+      return;
 
-  const [fromNode, toNode] = await Promise.all([
-    row.fromNodeId !== null ? fetchNodeName(row.fromNodeId) : undefined,
-    row.toNodeId !== null ? fetchNodeName(row.toNodeId) : undefined,
-  ]);
+    case 'status': {
+      const [row] = await db
+        .select({
+          fromNodeId: playerTravelState.fromNodeId,
+          toNodeId: playerTravelState.toNodeId,
+        })
+        .from(playerTravelState)
+        .where(eq(playerTravelState.userId, userId))
+        .limit(1);
+      if (!row) {
+        await interaction.editReply({ embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)] });
+        return;
+      }
 
-  await interaction.editReply({
-    embeds: [
-      buildSanguoTravelReplyEmbed(
-        {
-          destinationName: toNode ? pickName(toNode, locale) : '?',
-          fromNodeName: fromNode ? pickName(fromNode, locale) : '?',
-          etaSeconds: result.remaining ?? 0, // 09-03 CheckInResult.remaining is optional — status always carries it
-          shardId,
-        },
+      const [fromNode, toNode] = await Promise.all([
+        row.fromNodeId !== null ? fetchNodeName(row.fromNodeId) : undefined,
+        row.toNodeId !== null ? fetchNodeName(row.toNodeId) : undefined,
+      ]);
+
+      await interaction.editReply({
+        embeds: [
+          buildSanguoTravelReplyEmbed(
+            {
+              destinationName: toNode ? pickName(toNode, locale) : '?',
+              fromNodeName: fromNode ? pickName(fromNode, locale) : '?',
+              etaSeconds: result.remaining ?? 0, // status always carries remaining
+              shardId,
+            },
+            t,
+          ),
+        ],
+      });
+      return;
+    }
+
+    case 'arrived': {
+      const pos = await getCurrentPosition(userId);
+      const currentNode = await fetchNodeName(pos.nodeId);
+      const adjacent = await getAdjacentNodes(pos.nodeId);
+      const arrivalEmbed = buildSanguoArrivalEmbed(
+        { nodeName: currentNode ? pickName(currentNode, locale) : pos.nodeCode, shardId },
         t,
-      ),
-    ],
-  });
+      );
+      if (adjacent.length === 0) {
+        // Arrived at a dead end — arrival embed only, no menu (F6).
+        await interaction.editReply({ embeds: [arrivalEmbed] });
+        return;
+      }
+      // D-08/D-26: one hop per journey — re-open the picker at the arrived node.
+      await interaction.editReply({
+        embeds: [arrivalEmbed],
+        components: [buildTravelRow(adjacent, locale, t, true)],
+      });
+      return;
+    }
+
+    case 'encounter':
+    case 'encounterPending': {
+      await interaction.editReply({
+        embeds: [buildMinimalEncounterEmbed(result.encounter, t, shardId)],
+        components: [buildAckRow(t)],
+      });
+      return;
+    }
+  }
 }
 
 /**
@@ -345,6 +406,52 @@ export async function handleStartPress(interaction: ButtonInteraction): Promise<
       await interaction.editReply({ embeds: [buildNoRouteEmbed(t, shardId)] });
       return;
     }
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
+    });
+  }
+}
+
+/**
+ * Encounter ack button handler (sanguo:travel:ack, D-25) — "Tiếp tục hành
+ * trình". Clears encounterActive and sets updatedAt=now inside a FOR UPDATE
+ * transaction, so the next check-in counts elapsed from the resume moment.
+ * The reply is deferUpdate (the encounter embed stays; the resume is silent).
+ */
+export async function handleAckPress(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferUpdate();
+
+  const [userRow] = await db
+    .select({ id: users.id, locale: users.locale })
+    .from(users)
+    .where(eq(users.discordId, interaction.user.id))
+    .limit(1);
+  const locale = resolveLocale(userRow?.locale, interaction.locale);
+  const t = getT(locale);
+  const shardId = interaction.client.shard?.ids[0];
+
+  if (!userRow) {
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
+    });
+    return;
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(playerTravelState)
+        .where(eq(playerTravelState.userId, userRow.id))
+        .for('update');
+      if (row?.encounterActive) {
+        await tx
+          .update(playerTravelState)
+          .set({ encounterActive: false, updatedAt: new Date() })
+          .where(eq(playerTravelState.userId, userRow.id));
+      }
+    });
+  } catch {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
     });
