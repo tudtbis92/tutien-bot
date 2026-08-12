@@ -79,7 +79,7 @@
 ### Summary Checklist
 
 - [x] **Phase 8: Foundation, Economy Budget & Content Infrastructure** — Shared wallet, sanguo schemas + seed, i18n namespace, emoji registry, economy design-gate (✅ completed 2026-08-12, deployed to production)
-- [ ] **Phase 9: Travel & Encounters** — Real-time paid travel, sanguoTick cron, encounter rolls theo vùng + caps
+- [ ] **Phase 9: Travel & Encounters** — Real-time time-only travel (D-01), sanguoTick cron, encounter rolls theo vùng + caps
 - [ ] **Phase 10: Battle & Capture** — Seeded battleEngine, captureService, IV + starter, collection view (vertical loop đầu tiên)
 - [ ] **Phase 11: Progression, Chemistry & Economy Depth** — Dupe → hồn ngọc, evolution, shop + items, legion battle 3+9
 - [ ] **Phase 12: Anti-Abuse, Monitoring & Marketplace Gating** — Bot detection, economy monitoring, marketplace gating, automation policy
@@ -126,7 +126,25 @@ Plans:
   4. Encounter yield is capped per user (~20/hr) with cooldown enforced from day one — repeated travel cannot exceed the cap.
   5. Map/zone data research completed: node structure + 132 heroes distributed by zone/lore — consumed as seed data for travel and encounters.
 
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+**Wave 1**
+
+- [ ] 09-01-PLAN.md — Travel journey start (tracer): D-07 travel schema + travelService + /sanguo travel subcommand + first autocomplete + reply embed (TQC-06)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 09-02-PLAN.md — TQC-09 map data: map_zones/map_edges/hero_zone_rates schema + committed dataset + D-20 seed replace + zone-label switch (TQC-09)
+- [ ] 09-03-PLAN.md — Arrival resolution: sanguoTickArrivals cron (SKIP LOCKED, pause-aware, self-heal) + REST DM notification service + arrival embed (TQC-07)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 09-04-PLAN.md — Encounter system: position-blended roll engine (crypto RNG) + sanguoTickEncounters cron + ~20/hr sliding-window cap + boss sub-roll + encounter embed (TQC-08)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 09-05-PLAN.md — Integration: [BLOCKING] migration 0018 + D-20 reseed + ROADMAP SC1/SC2/Goal amendments + economy-budget re-sign flag + phase gate (TQC-06..09)
+
 **UI hint**: yes
 
 ### Phase 10: Battle & Capture
@@ -180,7 +198,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 8. Foundation, Economy Budget & Content Infrastructure | 4/4 | In Progress|  |
-| 9. Travel & Encounters | 0/TBD | Not started | - |
+| 9. Travel & Encounters | 0/5 | In Progress | - |
 | 10. Battle & Capture | 0/TBD | Not started | - |
 | 11. Progression, Chemistry & Economy Depth | 0/TBD | Not started | - |
 | 12. Anti-Abuse, Monitoring & Marketplace Gating | 0/TBD | Not started | - |

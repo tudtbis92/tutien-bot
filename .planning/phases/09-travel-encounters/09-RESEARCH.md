@@ -877,22 +877,28 @@ await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e =>
 | A9 | Phase 9 `encounter_active` is observably false between ticks (encounter resolves at record-write since there is no battle) — the pause flag is schema- and logic-ready for Phase 10 | Pattern 2 | If the user expects a real visible pause in Phase 9, a fixed pause window must be added — but that stalls journeys (D-05 tension) |
 | A10 | Node `nameZh` values are filled by the established Tavily zh-names pass (D-06 pattern) — the seed's clobber-safe spread tolerates NULL until then | Nodes §2 | Missing zh renders vi fallback in zh-cn locale (safe degradation) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should Phase 9 show an actual observable clock pause per encounter, or is the schema-ready pause (instant resolve) sufficient?**
+1. **Should Phase 9 show an actual observable clock pause per encounter, or is the schema-ready pause (instant resolve) sufficient?** — **RESOLVED: instant resolve (A9).**
    - What we know: D-07 locks the pause-aware remaining-seconds model; D-14 locks Phase 9 to roll+notify+record only (no battle to "resolve").
    - What's unclear: whether the user wants a real pause window in Phase 9 (e.g., 60s per encounter) despite there being nothing to do with the encounter yet.
-   - Recommendation: **instant resolve** (A9) — honors D-05 "never stuck" and D-14 scope; Phase 10 extends `encounter_active` to span battle duration.
+   - Recommendation: **instant resolve** (A9) — honors D-05 "never stuck" and D-14 scope; Phase 10 extends `encounter_active` to span battle duration. **Adopted:** the D-07 pause branch ships Phase-10-ready in 09-03 (anchor-advance without subtraction); 09-04 flagged assumption A9 records `encounter_active` as observably false in Phase 9.
 
-2. **Cap: sliding window vs fixed-hour — exact target (20/hr confirmed)?**
+2. **Cap: sliding window vs fixed-hour — exact target (20/hr confirmed)?** — **RESOLVED: sliding 60-min ZSET; boss counts toward the cap.**
    - What we know: D-13 locks ~20/hr + silent skip.
    - What's unclear: sliding (recommended, A1) vs fixed-hour; whether boss counts toward the cap (research says yes — it IS an encounter).
-   - Recommendation: sliding ZSET; boss counts. Confirmation needed from user (discretion).
+   - Recommendation: sliding ZSET; boss counts. Confirmation needed from user (discretion). **Adopted:** 09-04 flagged assumption A1 + prohibition "No fixed-hour cap bucket — sliding ZSET only"; boss ZADDs the cap window in the 09-04 tick.
 
-3. **Does `/sanguo map` need a current-position indicator this phase?**
+3. **Does `/sanguo map` need a current-position indicator this phase?** — **DEFERRED to Phase 10 SC5** (declared disposition below).
    - What we know: D-06 says no persistent status embed; map.ts currently shows "current position" as the first node by nodeOrder.
    - What's unclear: whether the map command should show the player's actual position (from `player_travel_state`) now or wait.
    - Recommendation: read actual position in the existing map command (cheap, no persistent embed — still a query-time snapshot); UI-SPEC does not forbid it. Flag for planner.
+
+### Disposition
+
+- **Q1 — RESOLVED (adopted in-plan):** instant resolve (A9). 09-03 ships the D-07 pause branch Phase-10-ready; 09-04 records `encounter_active` observably false. No code change needed.
+- **Q2 — RESOLVED (adopted in-plan):** sliding 60-min ZSET cap with boss-counts-toward-cap (A1). Locked as 09-04 prohibitions/flagged assumptions. No code change needed.
+- **Q3 — DEFERRED with declared disposition:** the current-position indicator is owned by **Phase 10 SC5** ("`/sanguo map` scaffold shows current position" — ROADMAP §Phase 10 Success Criterion 5). Phase 9 deliberately keeps the existing map command behavior (query-time snapshot via nodeOrder; the only Phase 9 map change is the A8 zone-label switch in 09-02). Rationale: the position read already exists in `travelService.getCurrentPosition` (09-01), so Phase 10 SC5 is a one-line map.ts addition — no Phase 9 work is stranded or double-built. Recorded 2026-08-12.
 
 ## Environment Availability
 
