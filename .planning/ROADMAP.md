@@ -126,7 +126,7 @@ Plans:
   4. Encounter yield is capped per user (~20/hr) with cooldown enforced from day one — repeated travel cannot exceed the cap.
   5. Map/zone data research completed: node structure + 132 heroes distributed by zone/lore — consumed as seed data for travel and encounters.
 
-**Plans**: 1/5 plans executed
+**Plans**: 3/5 plans executed
 Plans:
 **Wave 1**
 
@@ -134,8 +134,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 09-02-PLAN.md — TQC-09 map data: map_zones/map_edges/hero_zone_rates schema + committed dataset + D-20 seed replace + zone-label switch (TQC-09)
-- [ ] 09-03-PLAN.md — Arrival resolution: sanguoTickArrivals cron (SKIP LOCKED, pause-aware, self-heal) + REST DM notification service + arrival embed (TQC-07)
+- [x] 09-02-PLAN.md — TQC-09 map data: map_zones/map_edges/hero_zone_rates schema + committed dataset + D-20 seed replace + zone-label switch (TQC-09)
+- [x] 09-03-PLAN.md — Arrival resolution: sanguoTickArrivals cron (SKIP LOCKED, pause-aware, self-heal) + REST DM notification service + arrival embed (TQC-07)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -198,7 +198,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 8. Foundation, Economy Budget & Content Infrastructure | 4/4 | In Progress|  |
-| 9. Travel & Encounters | 1/5 | In Progress|  |
+| 9. Travel & Encounters | 3/5 | In Progress|  |
 | 10. Battle & Capture | 0/TBD | Not started | - |
 | 11. Progression, Chemistry & Economy Depth | 0/TBD | Not started | - |
 | 12. Anti-Abuse, Monitoring & Marketplace Gating | 0/TBD | Not started | - |
