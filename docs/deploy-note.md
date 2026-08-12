@@ -1,17 +1,16 @@
 # Deploy Note — TuTien Bot
 
 > Tài liệu tham khảo cho agent/bạn chạy deploy trên production server.
-> Cập nhật: 2026-08-11 — sau Phase 8 + post-gate (quick 260811-lld).
-> **Production hiện chạy `origin/main` trước Phase 8. Có 54 commits (toàn bộ Phase 8 + post-gate) chưa push.**
+> Cập nhật: 2026-08-12 — **ĐÃ DEPLOY** toàn bộ Phase 8 + post-gate lên production.
+> **Production hiện chạy `origin/main` = HEAD `023b2ba` (Phase 8 + post-gate đầy đủ).**
 
 ---
 
 ## 1. QUYẾT ĐỊNH QUAN TRỌNG NHẤT
 
-**PUSH code lên GitHub: AN TOÀN** — production không tự deploy (deploy.sh thủ công).
-**CHẠY `deploy.sh` trên production: CHƯA NÊN** — còn 2 UAT human tests PENDING + chưa xác nhận production env.
-
-Không deploy cho đến khi **TẤT CẢ** mục trong phần 4 "Gate bắt buộc" đạt.
+**Deploy lần đầu Phase 8 ĐÃ HOÀN TẤT an toàn (2026-08-12).**
+- Các bước deploy sau này vẫn đi theo gate trong mục 4 (đặc biệt là kiểm tra journal trước migrate — xem mục 3.1).
+- Lưu ý quan trọng về migration **0004** (mục 3.2): bản ghi trước đây SAI về trạng thái của nó.
 
 ---
 
@@ -39,9 +38,11 @@ Không deploy cho đến khi **TẤT CẢ** mục trong phần 4 "Gate bắt bu�
 ### ⚠️ Điểm cần biết về migration
 
 1. **`0015` có `TRUNCATE TABLE "heroes" RESTART IDENTITY CASCADE`** ở dòng 6.
-   - **An toàn cho LẦN DEPLOY ĐẦU TIÊN**: production chưa có heroes table (chưa chạy 0014) → 0014 tạo bảng rỗng → 0015 TRUNCATE trên bảng rỗng = vô hại.
-   - **NGUY HIỂM nếu production đã chạy 0014 + seed từ trước**: TRUNCATE sẽ xóa toàn bộ data heroes production. → **Tuyệt đối kiểm tra journal production trước khi deploy** (xem phần 4.4).
-2. **`0004` được restore** (thêm `dk_event_id` cho football_matches). Journal production đã ghi 0004 đã chạy → drizzle-kit KHÔNG chạy lại → vô hại. Chỉ ảnh hưởng fresh-DB.
+   - **AN TOÀN**: đã xác nhận journal production trước deploy (2026-08-12) KHÔNG chứa 0014 → heroes chưa từng tồn tại → TRUNCATE trên bảng rỗng = vô hại. Đã deploy thành công.
+   - **NGUY HIỂM nếu deploy lại lần nữa mà 0014+seed đã chạy**: TRUNCATE sẽ xóa data heroes production. → **Luôn kiểm tra journal production trước mỗi deploy** (mục 4.4).
+2. **`0004` (dk_event_id)**: ⚠️ **Bản ghi deploy-note cũ SAI** khi nói "journal production đã ghi 0004 đã chạy".
+   - THỰC TẾ (verify 2026-08-12): journal production KHÔNG có hash 0004, column `dk_event_id` chưa từng tồn tại. Migration 0004 CHƯA BAO GIỜ chạy trên production.
+   - **drizzle-kit chỉ áp dụng migration SAU migration cuối đã ghi journal** — production journal kết thúc ở 0013 (sau đó là 0014-0017). Vì 0004 (idx 4) CŨ HƠN 0013 nên **KHÔNG bao giờ bị chạy lại** trên production. Hệ quả ròng tương đương fresh-DB (0004 add rồi 0006 drop → không có `dk_event_id`) → **vô hại, đã xác nhận schema production không có dk_event_id**.
 3. Tất cả migration 0014–0017 đều **additive** trên production → không cần rollback migration nếu có lỗi (chỉ rollback code).
 
 ### Seed: `scripts/seed-sanguo.ts` (chạy MỖI lần deploy)
@@ -96,9 +97,11 @@ npx tsx scripts/seed-sanguo.ts   # lần 2 (counts không đổi)
 ### 4.4 — Kiểm tra journal migration production
 
 ```bash
-# Đảm bảo production chưa chạy 0014 (nếu đã chạy → TRUNCATE heroes nguy hiểm)
-psql "$DATABASE_URL_DIRECT" -c "SELECT tag FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 5;"
-# Nếu thấy 0014_next_chimera → DỪNG, báo cáo người quản lý trước khi deploy
+# Đảm bảo 0014 CHƯA chạy (nếu đã chạy → TRUNCATE heroes trong 0015 SẼ XÓA DATA khi deploy lại)
+psql "$DATABASE_URL_DIRECT" -c "SELECT id, hash FROM drizzle.__drizzle_migrations ORDER BY id;"
+# Đã deploy 2026-08-12: journal có 17 rows (0000-0013 cũ + 0014,0015,0016,0017).
+# Nếu deploy KẾ TIẾP thấy 17 rows → CHỪNG LẠI, TRUNCATE 0015 sẽ xóa 132 heroes production.
+# Lưu ý: drizzle-kit không chạy lại 0004 (cũ hơn journal cuối) — xem mục 3.2.
 ```
 
 ### 4.5 — Backup production DB
@@ -169,16 +172,17 @@ cd /path/to/tutien-bot
 
 ---
 
-## 8. TRẠNG THÁI HIỆN TẠI (2026-08-11)
+## 8. TRẠNG THÁI HIỆN TẠI (2026-08-12 — ĐÃ DEPLOY)
 
 | Hạng mục | Trạng thái |
 |---|---|
 | Code quality gates (build/test/lint/typecheck) | ✅ xanh |
-| Migrations additive trên production | ✅ |
-| Push lên origin/main | ⏸️ chưa (54 commits chờ) |
-| Production env (CLIENT_ID) | ❓ chưa xác nhận |
-| UAT #1 (live boot + emoji) | ⏳ PENDING |
-| UAT #2 (fresh DB chain) | ⏳ PENDING |
-| Backup production DB | ❓ chưa chạy |
+| Migrations additive trên production | ✅ (0014–0017 đã apply) |
+| Push lên origin/main | ✅ (HEAD `023b2ba`, sync) |
+| Production env (CLIENT_ID) | ✅ xác nhận = 1381818375633899562 |
+| UAT #1 (live boot + emoji) | ✅ PASS 2026-08-12 |
+| UAT #2 (fresh DB chain) | ✅ PASS 2026-08-12 |
+| Backup production DB | ✅ `/root/backups/tutien_20260812_0203.sql` (29M) |
+| Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, journal 17 rows, heroes=132/nodes=7/items=3/factions=14/families=12/relations=2 |
 
-**Kết luận: CHƯA deploy.** Sau khi hoàn thành mục 4.1–4.5, có thể deploy theo mục 7.
+**Kết luận: ĐÃ DEPLOY thành công.** Lần deploy kế tiếp phải lặp lại gate 4.4–4.6 (journal check trước migrate là bắt buộc — TRUNCATE 0015 nguy hiểm nếu 0014 đã chạy).

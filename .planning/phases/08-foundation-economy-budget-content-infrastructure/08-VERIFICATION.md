@@ -135,15 +135,17 @@ behavior_unverified_items:
 **Test:** Boot the production bot shard (CLIENT_ID=1381818375633899562), confirm startup proceeds past the appId assertion, then invoke `/sanguo map` in a test server and confirm all 7 zone markers render as emoji (never literal text). Optionally boot with a wrong CLIENT_ID and confirm hard-fail `process.exit(1)`.
 **Expected:** Correct app → boots + emojis render; wrong app → logged mismatch + non-zero exit.
 **Why human:** Needs live Discord gateway + real application-owned 1056-emoji set + running dev DB; not exercisable in CI.
+**Result:** ✅ PASS 2026-08-12 — D-14 hard-fail verified (wrong CLIENT_ID → exit 1). Emoji render FAILED first attempt (`:dtr_t0:` literal) → root-caused: ALL sanguo emojis are animated, need `<a:name:id>` markup (D-21). Fixed + redeployed → emoji render confirmed live. Zone markers moved to message content `# ` headers for larger emoji (D-22).
 
 ### 2. Fresh-database migrate + seed chain (SC2 / TQC-02 / D-11)
 **Test:** On a fresh dev DB, run `npx drizzle-kit migrate` (DATABASE_URL_DIRECT) then `npx tsx scripts/seed-sanguo.ts` twice; query counts: heroes=132, map_nodes=7, sanguo_items=3, and `name_zh NOT NULL` = 132.
 **Expected:** Both runs exit 0; second run unchanged counts; 132/132 name_zh populated.
 **Why human:** Requires a reachable dev PostgreSQL and a clean from-scratch (0000→0014) chain; environment-dependent.
+**Result:** ✅ PASS 2026-08-12 — staging DB `tutien_staging`: migrate 0000→0017 exit 0 (18 journal rows), seed ×2 exit 0 counts unchanged. heroes=132, map_nodes=7, sanguo_items=3, hero_factions=14, hero_families=12, hero_relations=2, name_zh=132.
 
 ## Gaps Summary
 
-**No critical gaps found.** All 30 must-haves verified (28 programmatically, 2 pending human smoke tests that are environment-dependent, not code defects). Phase goal achieved.
+**No critical gaps found.** All 30 must-haves verified (28 programmatically, 2 human smoke tests PASSED 2026-08-12). Phase goal achieved + deployed to production.
 
 ### Non-Critical (Can Defer)
 
@@ -159,8 +161,9 @@ None — no gaps requiring fix plans.
 **Must-haves source:** PLAN.md frontmatter (08-01..08-04)
 **Automated checks:** 28 passed, 0 failed (typecheck ✓, lint ✓, check-i18n ✓, 140/140 tests ✓)
 **Human checks required:** 2
-**Total verification time:** ~8 min
+**Human checks passed:** 2 (2026-08-12) — plus 1 follow-up finding resolved (animated emoji prefix D-21, header-in-content D-22)
+**Total verification time:** ~8 min automated + deploy verification 2026-08-12
 
 ---
-*Verified: 2026-08-11T07:30:00Z*
+*Verified: 2026-08-11T07:30:00Z (automated) — human smoke tests passed + production deploy: 2026-08-12*
 *Verifier: orchestrator inline (verifier agent disabled per workflow.verifier=false)*

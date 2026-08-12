@@ -4,11 +4,11 @@ milestone: v3.0
 milestone_name: Tam Quốc Collection
 current_phase: 08
 current_phase_name: foundation-economy-budget-content-infrastructure
-status: verifying
-stopped_at: Completed 08-04-PLAN.md (all 4 plans of phase 08 done)
-last_updated: "2026-08-11T06:01:24.728Z"
-last_activity: 2026-08-11
-last_activity_desc: Phase 08 execution started
+status: completed
+stopped_at: Phase 08 COMPLETE — deployed to production (2026-08-12)
+last_updated: "2026-08-12T02:45:00.000Z"
+last_activity: 2026-08-12
+last_activity_desc: Phase 08 verification + production deploy completed (UAT 2/3 pass, emoji animated-prefix fix, /sanguo map emoji render confirmed)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -32,10 +32,10 @@ See: .planning/PROJECT.md (updated 2026-08-10)
 
 ## Current Position
 
-Phase: 08 (foundation-economy-budget-content-infrastructure) — EXECUTING
+Phase: 08 (foundation-economy-budget-content-infrastructure) — ✅ COMPLETE
 Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-08-11 - Completed quick task 260811-lld: Post-gate Phase 8 schema redesign (IV rename, flat factions, role/class/family, formations schema, Tavily classifications, reseed)
+Status: Deployed to production (2026-08-12) — UAT #1/#1b/#2 pass, emoji render confirmed live
+Last activity: 2026-08-12 - Production deploy + verification: migrations 0014-0017, seed sanguo (132 heroes/7 nodes/3 items/14 factions/12 families/2 relations), emoji animated-prefix fix (`<a:name:id>`), zone markers → message content `# ` headers
 
 Progress: [██████████] 100%
 
@@ -43,7 +43,7 @@ Progress: [██████████] 100%
 
 | # | Phase | Requirements | Status | Completed |
 |---|-------|-------------|--------|-----------|
-| 08 | Foundation, Economy Budget & Content Infrastructure | TQC-01..05 | ░░ Not started | - |
+| 08 | Foundation, Economy Budget & Content Infrastructure | TQC-01..05 | ✅ COMPLETE | 2026-08-12 (deployed) |
 | 09 | Travel & Encounters | TQC-06..09 | ░░ Not started | - |
 | 10 | Battle & Capture | TQC-10..13 | ░░ Not started | - |
 | 11 | Progression, Chemistry & Economy Depth | TQC-14..17 | ░░ Not started | - |
@@ -56,11 +56,11 @@ Progress: [██████████] 100%
 | Metric | Value |
 |--------|-------|
 | Phases total | 5 |
-| Phases complete | 0 |
+| Phases complete | 1 |
 | Requirements total | 21 |
-| Requirements delivered | 0 |
-| Plans created | 0 |
-| Plans complete | 0 |
+| Requirements delivered | 5 (TQC-01..05) |
+| Plans created | 4 |
+| Plans complete | 4 |
 
 ## Accumulated Context (v3)
 
@@ -84,11 +84,13 @@ Progress: [██████████] 100%
 | Family = bảng reference `hero_families` theo DÒNG MÁU, không theo họ | Lưu là họ phổ biến thứ 4 (~70M), bị ban cho Hung Nô/du mục → nhiều gia tộc Lưu khác nhau; chemistry match exact family_id tránh bond giả (VD: Công Tôn Toản ≠ Công Tôn Độ — research xác nhận không họ hàng) | Phase 8 post-gate |
 | Hoàng tộc Hán = `liu_hoang_toc` (9: 3 vua + Lưu Bị/Biểu/Yên/Diêu/Đại/Ngu); Hà thị = `ha_ngoai_thich` (3: Hà Tiến/Hà Hoàng Hậu/Hà Miêu); Trương Khăn Vàng = `zhang_khan_vang` (3 anh em) | Hai dòng máu khác nhau nối qua hôn nhân — KHÔNG gộp chung vua + ngoại thích | Phase 8 post-gate |
 | Marriage bond = `hero_relations` (chỉ spouse trực tiếp, tier-1 ngang family); bỏ in_law | Chỉ vợ chồng trực tiếp có mặt trong roster (Hán Linh Đế ↔ Hà Hoàng Hậu/Vương Mỹ Nhân); in_law không seed vì đối tác (Mi phu nhân/Thái phu nhân) không trong roster | Phase 8 post-gate |
+| Sanguo emoji đều animated → markup `<a:name:id>` | Verify live app: 1056/1056 GIF. `<:name:id>` render literal `:dtr_t0:` (user xác nhận lỗi). `heroEmoji()` + generator emit `a:` prefix (D-21) | Phase 8 verification |
+| Zone markers → message CONTENT với `# ` (H1) header | Discord heading chỉ render trong content, KHÔNG trong embed field/description (discord-api-docs#7167). `# ` = H1 lớn nhất → emoji render to (D-22) | Phase 8 verification |
 
 ### Pending Todos / Blockers
 
 - [ ] Resolve charge-on-arrival vs deduct-at-departure conflict (research gap) — Phase 9 planning; verification cần cancel/arrive/fail matrix test
-- [ ] Emoji rendering deployment smoke-test (application-owned emoji, MEDIUM confidence) — trước khi Phase 9 phụ thuộc
+- [x] Emoji rendering deployment smoke-test (application-owned emoji) — ✅ DONE 2026-08-12: `<a:name:id>` animated-prefix fix, /sanguo map render confirmed live
 - [ ] Economy budget numbers cần tu vi caps + VWAP band values hiện tại — Phase 8
 - [ ] Research-phase khả năng cao: Phase 12 (bot detection vs farming captcha infra), Phase 11 (pacing balance + chemistry values)
 
@@ -96,9 +98,9 @@ Progress: [██████████] 100%
 
 **Resume file:** None
 
-Last session: 2026-08-11T06:01:24.712Z
-Stopped at: Completed 08-04-PLAN.md (all 4 plans of phase 08 done)
-Resume: `/gsd-plan-phase 8`
+Last session: 2026-08-12T02:45:00.000Z
+Stopped at: Phase 08 complete + deployed (UAT 2/3 pass, emoji fix live)
+Resume: `/gsd-plan-phase 9` (next: Travel & Encounters)
 
 ---
 

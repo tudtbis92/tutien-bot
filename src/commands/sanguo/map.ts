@@ -8,6 +8,7 @@ import { mapNodes, type MapNode } from '../../db/schema/mapNodes.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { buildSanguoMapEmbed, type SanguoMapEmbedData } from '../../ui/embeds/buildSanguoMapEmbed.js';
+import { heroEmoji } from '../../assets/sanguoEmojis.js';
 import type { SupportedLocale } from '../../i18n/index.js';
 
 /* eslint-disable i18next/no-literal-string -- slash commands name/description are static Discord API strings */
@@ -79,17 +80,28 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       }
     }
 
+    const zones = [...zoneMap.entries()].map(([, v]) => ({
+      label: v.label,
+      heroId: v.heroId ?? undefined,
+    }));
+
     const data: SanguoMapEmbedData = {
       currentZoneName: rows.length > 0 ? pickName(rows[0]!, locale) : '',
-      zones: [...zoneMap.entries()].map(([, v]) => ({
-        label: v.label,
-        heroId: v.heroId ?? undefined,
-      })),
       nodes: rows.map((row) => pickName(row, locale)),
       shardId,
     };
 
-    await interaction.editReply({ embeds: [buildSanguoMapEmbed(data, t)] });
+    // Zone markers go in message CONTENT — Discord render emoji inside '# ' headers
+    // larger than in embed fields, and markdown headings only work in content,
+    // never in embed field/description values (verified 2026-08-12).
+    const zonesContent = zones
+      .map((z) => `# ${z.heroId ? `${heroEmoji(z.heroId)} ${z.label}` : z.label}`)
+      .join('\n');
+
+    await interaction.editReply({
+      content: zonesContent || null,
+      embeds: [buildSanguoMapEmbed(data, t)],
+    });
   } catch {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:map.error'), shardId)],

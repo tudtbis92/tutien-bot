@@ -180,8 +180,10 @@ export function heroEmojiPrefix(heroId: string): string {
 
 /**
  * Sole render point for sanguo emoji (D-15).
- * Returns renderable Discord markup '<:name:id>' — Discord renders custom/app
- * emoji ONLY via this markup; a bare id would render as literal text (SC3).
+ * Returns renderable Discord markup '<a:name:id>' — all sanguo emojis are
+ * animated (GIF), and Discord renders animated emoji ONLY via the '<a:' prefix;
+ * '<:name:id>' would show as literal text (SC3 / verified 2026-08-12: 1056/1056
+ * sanguo emojis are animated in the app).
  * Missing tier variant falls back to the hero's t0 entry; an unknown hero id
  * throws — never returns '' or a raw literal.
  */
@@ -196,7 +198,7 @@ export function heroEmoji(heroId: string, tier: SanguoTier = 0, star = false): s
   if (id === undefined) {
     throw new Error(\`EMOJI_NOT_FOUND:\${heroId}\`);
   }
-  return \`<:\${resolvedKey}:\${id}>\`;
+  return \`<a:\${resolvedKey}:\${id}>\`;
 }
 
 /** Pure startup contract (D-14): registry applicationId must equal CLIENT_ID. */

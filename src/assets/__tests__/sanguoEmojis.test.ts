@@ -9,17 +9,18 @@ import {
 } from '../sanguoEmojis.js';
 
 describe('heroEmoji', () => {
-  it('returns renderable Discord markup <:name:id> — never a bare ID (SC3)', () => {
-    // Discord renders custom/app emoji ONLY via <:name:id> markup; a bare ID would render as literal text.
-    expect(heroEmoji('abt', 0)).toBe('<:abt_t0:1536202064185524378>');
+  it('returns renderable Discord markup <a:name:id> — never a bare ID (SC3)', () => {
+    // Sanguo emojis are ALL animated (GIF) — Discord renders animated emoji ONLY via
+    // <a:name:id> markup; '<:name:id>' or a bare ID would render as literal text (SC3).
+    expect(heroEmoji('abt', 0)).toBe('<a:abt_t0:1536202064185524378>');
   });
 
   it('supports tier + star variants, falls back to hero t0, throws for unknown hero', () => {
     // Tier 3 star variant — name = registry key, id = registry value
-    expect(heroEmoji('abt', 3, true)).toBe(`<:abt_t3_star:${SANSUO_EMOJIS.abt_t3_star}>`);
+    expect(heroEmoji('abt', 3, true)).toBe(`<a:abt_t3_star:${SANSUO_EMOJIS.abt_t3_star}>`);
 
     // Missing tier variant (tier 5 does not exist) → falls back to the hero's t0 entry
-    expect(heroEmoji('abt', 5 as SanguoTier)).toBe('<:abt_t0:1536202064185524378>');
+    expect(heroEmoji('abt', 5 as SanguoTier)).toBe('<a:abt_t0:1536202064185524378>');
 
     // Unknown hero (no prefix in registry) → throws — never '' or a raw literal
     expect(() => heroEmoji('no_such_hero')).toThrow('EMOJI_NOT_FOUND:no_such_hero');
@@ -29,8 +30,8 @@ describe('heroEmoji', () => {
     // The seed writes map_nodes.representative_hero_id in the heroes.hero_id
     // (snake_case) space — e.g. dong_trac, cao_cao. heroEmoji() must resolve
     // these to their 3-letter emoji prefix and render markup, not throw.
-    expect(heroEmoji('dong_trac')).toBe(`<:dtr_t0:${SANSUO_EMOJIS.dtr_t0}>`);
-    expect(heroEmoji('cao_cao', 1, true)).toBe(`<:cao_t1_star:${SANSUO_EMOJIS.cao_t1_star}>`);
+    expect(heroEmoji('dong_trac')).toBe(`<a:dtr_t0:${SANSUO_EMOJIS.dtr_t0}>`);
+    expect(heroEmoji('cao_cao', 1, true)).toBe(`<a:cao_t1_star:${SANSUO_EMOJIS.cao_t1_star}>`);
     expect(heroEmojiPrefix('dong_trac')).toBe('dtr');
     expect(heroEmojiPrefix('abt')).toBe('abt');
   });
@@ -43,7 +44,7 @@ describe('heroEmoji', () => {
       const prefix = codes[heroId]!;
       // The resolved key must exist in the registry — heroEmoji must never throw for a mapped hero
       expect(SANSUO_EMOJIS[`${prefix}_t0` as keyof typeof SANSUO_EMOJIS]).toBeDefined();
-      expect(heroEmoji(heroId)).toMatch(/^<:[a-z0-9_]+:\d{17,20}>$/);
+      expect(heroEmoji(heroId)).toMatch(/^<a:[a-z0-9_]+:\d{17,20}>$/);
     }
   });
 });

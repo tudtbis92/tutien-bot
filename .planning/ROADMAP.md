@@ -78,7 +78,7 @@
 
 ### Summary Checklist
 
-- [ ] **Phase 8: Foundation, Economy Budget & Content Infrastructure** — Shared wallet, sanguo schemas + seed, i18n namespace, emoji registry, economy design-gate
+- [x] **Phase 8: Foundation, Economy Budget & Content Infrastructure** — Shared wallet, sanguo schemas + seed, i18n namespace, emoji registry, economy design-gate (✅ completed 2026-08-12, deployed to production)
 - [ ] **Phase 9: Travel & Encounters** — Real-time paid travel, sanguoTick cron, encounter rolls theo vùng + caps
 - [ ] **Phase 10: Battle & Capture** — Seeded battleEngine, captureService, IV + starter, collection view (vertical loop đầu tiên)
 - [ ] **Phase 11: Progression, Chemistry & Economy Depth** — Dupe → hồn ngọc, evolution, shop + items, legion battle 3+9
@@ -97,7 +97,7 @@
   4. User sees `sanguo` UI strings in their locale (VI/EN/ZH-CN) with zero hardcoded strings — i18n lint passes; content names (hero/zone/item) come from DB per-locale columns.
   5. Economy budget document is approved: expected Linh thạch/hour of the optimal loop documented and below tu vi caps; convertibility decisions recorded (net-sink/neutral constraint) — design gate passed before content authoring.
 
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans executed ✅ (phase completed + deployed 2026-08-12)
 Plans:
 **Wave 1**
 
@@ -108,6 +108,8 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 08-04-PLAN.md — Dev-DB env + sanguo schemas + migration 0014 (9 tables incl. map_nodes) + seed + deploy (TQC-02)
+
+**Verification**: ✅ UAT 1/1b/2 PASS (2026-08-12) — deploy production, emoji render live (animated `<a:name:id>` fix D-21, zone markers → content `# ` headers D-22)
 
 **UI hint**: yes
 

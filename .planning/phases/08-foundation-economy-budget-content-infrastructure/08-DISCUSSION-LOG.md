@@ -162,3 +162,38 @@
 - Full map/zone structure + hero-per-zone distribution — Phase 9 research (TQC-09)
 - Boss server + PvP — post-v1
 - t3 evolution tiers / `tiers.json` forms — potential future expansion
+
+---
+
+## Post-gate Verification Findings (2026-08-12, production deploy)
+
+> **Audit trail for findings discovered during verification + production deploy.**
+> Recorded per user request — "ghi nhận phát hiện" — the deploy-note error, the animated-emoji bug, and the Discord header rendering constraint.
+
+### Finding 1 — deploy-note sai về migration 0004
+- deploy-note.md trước đó khẳng định "journal production đã ghi 0004 đã chạy → drizzle-kit KHÔNG chạy lại → vô hại".
+- **Thực tế:** journal production KHÔNG chứa hash 0004; column `dk_event_id` chưa từng tồn tại. 0004 chưa bao giờ chạy trên production.
+- drizzle-kit chỉ áp dụng migration SAU migration cuối đã ghi journal (production kết thúc ở 0013) → 0004 (idx 4, cũ hơn) không bao giờ bị chạy lại. Schema production khớp staging (không có `dk_event_id`). Vô hại, nhưng deploy-note ghi sai lý do.
+- **Hệ quả thực tế:** journal production = 17 rows, staging = 18 rows (chênh 1 — 0004). Đã cập nhật deploy-note.md.
+
+### Finding 2 — Sanguo emoji đều animated → cần `<a:name:id>` (D-21)
+- User confirm FAIL đợt 1: `/sanguo map` trả `:dtr_t0:` literal, không phải emoji.
+- Root cause (verify Discord API 2026-08-12): **1056/1056 sanguo emoji là animated (GIF)**. Discord bắt buộc markup `<a:name:id>`; `<:name:id>` (thiếu `a:`) render literal text.
+- D-14 appId check pass (đúng CLIENT_ID) nhưng không phát hiện được prefix sai — gap ngoài phạm vi D-14.
+- **Fix:** `heroEmoji()` + generator template + 4 test files → emit `<a:${key}:${id}>`. 140/140 tests pass, redeploy, emoji render confirmed live.
+
+### Finding 3 — Discord heading chỉ render trong message content (D-22)
+- User đề xuất dùng `#` header để emoji to hơn → thử trong embed field → `#` hiện literal.
+- **Research (Tavily, 2026-08-12):** `# ` = H1 lớn nhất (Discord blog); heading KHÔNG render trong `embed.fields[*].value` (discord/discord-api-docs#7167) — chỉ hoạt động trong message content.
+- **Fix:** zone markers chuyển từ embed field sang **message content** với `# ` prefix → emoji render to, dễ nhìn. Embed giữ current-position + node list (tránh duplicate).
+
+## Options Considered — Header/emoji size
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Giữ emoji trong embed field (size mặc định) | Không cần đổi gì, nhưng emoji nhỏ khó nhìn | |
+| `# ` header trong embed field | User thử → literal `#`, không render (embed field không hỗ trợ heading) | |
+| `# ` header trong embed description | Research: description cũng không render heading (chỉ content) | |
+| **`# ` header trong message content** | Discord hỗ trợ heading trong content; emoji render to | ✓ |
+
+**User's choice:** Zone markers → message content với `# ` (H1) header (D-22).

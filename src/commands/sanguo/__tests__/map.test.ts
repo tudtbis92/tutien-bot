@@ -95,16 +95,16 @@ describe('/sanguo map command', () => {
     await execute(interaction);
 
     expect(interaction.editReply).toHaveBeenCalledTimes(1);
-    const embeds = (interaction.editReply as any).mock.calls[0]?.[0]?.embeds ?? [];
-    const zonesField = embeds[0]?.data?.fields?.find(
-      (f: { name: string }) => f.name === 'sanguo:map.zones',
-    );
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    // Zone markers render in message CONTENT with '# ' headers (D-15) — Discord
+    // renders emoji larger there and markdown headings don't work in embeds.
+    const content = reply.content as string;
     // Zone label now derives from the representative node's per-locale name (WR-02),
-    // and the marker renders via heroEmoji('<:dtr_t0:...>' markup) — no raw zone code.
-    expect(zonesField?.value).toContain('<:dtr_t0:');
-    expect(zonesField?.value).toContain('Lạc Dương');
-    expect(zonesField?.value).not.toContain('trung_nguyen');
-    expect(zonesField?.value).toContain('<:hxd_t0:');
-    expect(zonesField?.value).toContain('Trường An');
+    // and the marker renders via heroEmoji('<a:dtr_t0:...>' markup, animated prefix) — no raw zone code.
+    expect(content).toContain('# <a:dtr_t0:');
+    expect(content).toContain('Lạc Dương');
+    expect(content).not.toContain('trung_nguyen');
+    expect(content).toContain('# <a:hxd_t0:');
+    expect(content).toContain('Trường An');
   });
 });
