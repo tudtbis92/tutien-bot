@@ -124,7 +124,7 @@ Resume: `/gsd-plan-phase 9` (next: Travel & Encounters)
 |---|-------------|------|--------|-----------|
 | 260811-lld | Post-gate Phase 8 schema redesign — IV rename, flat factions, role/class/family (bloodline table), spouse relations, formations schema, Tavily classifications, reseed | 2026-08-11 | 0a069c7 | [260811-lld](./quick/260811-lld-post-gate-phase-8-schema-redesign-locked/) |
 | 260812-j7r | Phase 9 pull-based travel check-in redesign (D-22..D-28): rewrite CONTEXT/UI-SPEC/RESEARCH/PATTERNS + plans 01/03/04, fix 02/05 — no cron, no REST DM, select menu + ack button | 2026-08-12 | 9fe8f31 | [260812-j7r](./quick/260812-j7r-phase-9-pull-based-travel-check-in-redes/) |
-| 260812-k9m | Phase 9 plan fixes F1..F8 (context7/tavily-verified review): F1 Start-button destination in customId, F2 encounterPending payload + encounter_runs index, F3 startTravel FOR UPDATE, F4 D-28 hit-minute wording, F5 sub-minute remainder assumption, F6 zero-adjacent no_route, F7 cap-key TTL, F8 Number(rate) | 2026-08-12 | TBD | [260812-k9m](./quick/260812-k9m-phase-9-plan-fixes/) |
+| 260812-k9m | Phase 9 plan fixes F1..F8 (context7/tavily-verified review): F1 Start-button destination in customId, F2 encounterPending payload + encounter_runs index, F3 startTravel FOR UPDATE, F4 D-28 hit-minute wording, F5 sub-minute remainder assumption, F6 zero-adjacent no_route, F7 cap-key TTL, F8 Number(rate) | 2026-08-12 | d775caa | [260812-k9m](./quick/260812-k9m-phase-9-plan-fixes/) |
 
 ## Decisions
 
