@@ -5,11 +5,17 @@
  * heroes reference faction_id FK.
  *
  * Seeds: 14 hero_factions, 132 heroes (heroes-v1.json + classifications),
- * 5-10 placeholder map_nodes, 2-4 sanguo_items.
+ * TQC-09 map data (18 map_zones, 73 map_nodes, 162 map_edges, 208
+ * hero_zone_rates from scripts/data/sanguo-map-data.json — D-20 full-replace),
+ * 2-4 sanguo_items, 2 spouse relations.
  *
  * Idempotent: INSERT ... ON CONFLICT DO UPDATE keyed on natural keys
  * (heroes.heroId, map_nodes.code, sanguo_items.code) — re-running updates
- * changed content and never duplicates rows (D-11).
+ * changed content and never duplicates rows (D-11). The map-data section is a
+ * FULL-REPLACE flow (B3): mapEdges + heroZoneRates + mapNodes are deleted
+ * (child→parent) and re-inserted from the committed dataset every run, so the
+ * final state is always exactly 18/73/162/208 rows — never accumulating
+ * duplicates across re-runs (D-20 idempotency fix).
  *
  * name_zh is sourced from scripts/data/sanguo-zh-names.json (D-06) — the
  * committed Tavily-researched ZH-CN map keyed by hero_id / node code / item
@@ -18,7 +24,9 @@
  * runs, seeding name_zh NULL. The upsert set clauses carry nameZh via a
  * clobber-safe conditional spread: nameZh is written whenever a researched
  * value exists, and an entry-less re-run can never clobber a researched value
- * with NULL (D-11/D-06).
+ * with NULL (D-11/D-06). TQC-09 map nodes/zones carry their nameZh inside the
+ * committed map dataset itself (transcribed from the RESEARCH zh column where
+ * provided; the same clobber-safe spread applies).
  *
  * Dev-time source: scripts/data/heroes-v1.json (committed repo copy — deploy-safe
  * default; override with env SANGUO_HEROES_SOURCE for the sibling repo). Requires:
@@ -169,6 +177,63 @@ function loadClassifications(): Record<string, HeroClassification> {
 }
 
 // ---------------------------------------------------------------------------
+// TQC-09 map dataset (D-16/D-17/D-20/D-21) — committed dev-time data consumed
+// by the seed. 18 zones / 73 nodes / 162 edges / 208 hero_zone_rates rows
+// (machine-verified counts, RESEARCH §TQC-09 Dataset Design). This dataset is
+// REQUIRED — a missing/corrupt file is FATAL (unlike zh-names, whose absence
+// only yields NULL name_zh). The D-20 full-replace flow deletes the previous
+// map data (mapEdges + heroZoneRates + mapNodes, child→parent) and re-inserts
+// from this file, so re-runs always end with the same row counts.
+// ---------------------------------------------------------------------------
+const MAP_DATA_PATH = fileURLToPath(new URL('./data/sanguo-map-data.json', import.meta.url));
+
+interface ZoneDef {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  nameZh?: string;
+  sortOrder: number;
+}
+
+interface NodeDef {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  nameZh?: string;
+  zone: string;
+  nodeOrder: number;
+  representativeHeroId: string;
+}
+
+interface EdgeDef {
+  nodeA: string;
+  nodeB: string;
+  travelSeconds: number;
+}
+
+interface HeroZoneRateDef {
+  heroId: string;
+  zone: string;
+  rate: number;
+}
+
+interface SanguoMapData {
+  zones: ZoneDef[];
+  nodes: NodeDef[];
+  edges: EdgeDef[];
+  heroZoneRates: HeroZoneRateDef[];
+}
+
+function loadSanguoMapData(): SanguoMapData {
+  try {
+    return JSON.parse(fs.readFileSync(MAP_DATA_PATH, 'utf8')) as SanguoMapData;
+  } catch {
+    console.error('[Seed] FATAL: scripts/data/sanguo-map-data.json not found or corrupt — TQC-09 map dataset (18 zones/73 nodes/162 edges/208 rates) required');
+    process.exit(1);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Content definitions
 // ---------------------------------------------------------------------------
 interface HeroJsonEntry {
@@ -183,68 +248,6 @@ interface HeroJsonEntry {
   people: string;
   role: string;
 }
-
-// Placeholder map nodes (D-10, 5-10 nodes) — unique code per node, each
-// carrying a representativeHeroId (registered hero id) as the /sanguo map
-// zone marker (D-07 content-in-DB).
-const MAP_NODES = [
-  {
-    code: 'luoyang',
-    nameVi: 'Lạc Dương',
-    nameEn: 'Luoyang',
-    zone: 'trung_nguyen',
-    nodeOrder: 1,
-    representativeHeroId: 'dong_trac',
-  },
-  {
-    code: 'changan',
-    nameVi: 'Trường An',
-    nameEn: 'Chang\u2019an',
-    zone: 'quan_trung',
-    nodeOrder: 2,
-    representativeHeroId: 'han_xian_di',
-  },
-  {
-    code: 'xuchang',
-    nameVi: 'Hứa Xương',
-    nameEn: 'Xuchang',
-    zone: 'trung_nguyen',
-    nodeOrder: 3,
-    representativeHeroId: 'cao_cao',
-  },
-  {
-    code: 'yecheng',
-    nameVi: 'Nghiệp Thành',
-    nameEn: 'Yecheng',
-    zone: 'trung_nguyen',
-    nodeOrder: 4,
-    representativeHeroId: 'yuan_shao',
-  },
-  {
-    code: 'jianye',
-    nameVi: 'Kiến Nghiệp',
-    nameEn: 'Jianye',
-    zone: 'giang_dong',
-    nodeOrder: 5,
-    representativeHeroId: 'sun_jian',
-  },
-  {
-    code: 'jiangling',
-    nameVi: 'Giang Lăng',
-    nameEn: 'Jiangling',
-    zone: 'kinh_chau',
-    nodeOrder: 6,
-    representativeHeroId: 'liu_biao',
-  },
-  {
-    code: 'chengdu',
-    nameVi: 'Thành Đô',
-    nameEn: 'Chengdu',
-    zone: 'thuc_trung',
-    nodeOrder: 7,
-    representativeHeroId: 'liu_bei',
-  },
-];
 
 // Placeholder sanguo_items (2-4) — unique code per item.
 const SANGUO_ITEMS = [
@@ -390,10 +393,53 @@ async function seed() {
     heroCount++;
   }
 
-  // --- Map nodes (D-10 placeholders) ---------------------------------------
+  // --- Map data (TQC-09, D-20 full-replace) ---------------------------------
+  // The committed dataset (scripts/data/sanguo-map-data.json) fully owns the
+  // map data: 18 zones, 73 nodes, 162 edges, 208 hero_zone_rates. The D-20
+  // reseed REPLACES the Phase 8 placeholder nodes. Full-replace flow (B3):
+  // delete child collections FIRST (mapEdges, heroZoneRates) then mapNodes —
+  // the delete+re-insert assigns NEW serial ids each run, so edges/rates keyed
+  // on those ids must be cleared before re-inserting, otherwise they accumulate
+  // (onConflictDoNothing can never collide with fresh ids). Hero/faction/family/
+  // relation/item seeding above is untouched (D-20 replaces ONLY map data).
+  const mapData = loadSanguoMapData();
+
+  await db.delete(schema.mapEdges); // child first (no FK)
+  await db.delete(schema.heroZoneRates); // child (references heroes + zone code)
+  await db.delete(schema.mapNodes); // D-20 placeholder replacement (heroes untouched)
+
+  // Zones (D-19 reference table) — clobber-safe nameZh spread (Pitfall 6)
+  let zoneCount = 0;
+  for (const zone of mapData.zones) {
+    const zh = zone.nameZh ?? null;
+    const [inserted] = await db
+      .insert(schema.mapZones)
+      .values({
+        code: zone.code,
+        nameVi: zone.nameVi,
+        nameEn: zone.nameEn,
+        nameZh: zh,
+        sortOrder: zone.sortOrder,
+      })
+      .onConflictDoUpdate({
+        target: schema.mapZones.code,
+        set: {
+          nameVi: zone.nameVi,
+          nameEn: zone.nameEn,
+          sortOrder: zone.sortOrder,
+          ...(zh ? { nameZh: zh } : {}),
+        },
+      })
+      .returning({ id: schema.mapZones.id });
+    if (!inserted) throw new Error(`[Seed] Failed to upsert map zone: ${zone.code}`);
+    zoneCount++;
+  }
+
+  // Nodes — upsert on code, build the code→id map for edges/rates (D-20-resilient)
   let nodeCount = 0;
-  for (const node of MAP_NODES) {
-    const zh = zhNames.mapNodes[node.code] ?? null;
+  const nodeIdByCode = new Map<string, number>();
+  for (const node of mapData.nodes) {
+    const zh = node.nameZh ?? null;
     const [inserted] = await db
       .insert(schema.mapNodes)
       .values({
@@ -418,7 +464,44 @@ async function seed() {
       })
       .returning({ id: schema.mapNodes.id });
     if (!inserted) throw new Error(`[Seed] Failed to upsert map node: ${node.code}`);
+    nodeIdByCode.set(node.code, inserted.id);
     nodeCount++;
+  }
+
+  // Edges — canonical undirected pair (node_a < node_b) + onConflictDoNothing
+  // keyed on the unique pair index; only inserted rows count (T-09-06).
+  let edgeCount = 0;
+  for (const edge of mapData.edges) {
+    const aId = nodeIdByCode.get(edge.nodeA);
+    const bId = nodeIdByCode.get(edge.nodeB);
+    if (!aId || !bId) throw new Error(`[Seed] Edge references unknown map node: ${edge.nodeA}/${edge.nodeB}`);
+    const [inserted] = await db
+      .insert(schema.mapEdges)
+      .values({
+        nodeAId: Math.min(aId, bId),
+        nodeBId: Math.max(aId, bId),
+        travelSeconds: edge.travelSeconds,
+      })
+      .onConflictDoNothing()
+      .returning({ id: schema.mapEdges.id });
+    if (inserted) edgeCount++;
+  }
+
+  // hero_zone_rates (D-16/A3 per-zone granularity) — heroId resolved via the
+  // heroIdToDbId map built for the spouse relations below (built before use).
+  let rateCount = 0;
+  const heroIdToDbId = new Map<string, number>();
+  const heroesOut = await db.select({ heroId: schema.heroes.heroId, id: schema.heroes.id }).from(schema.heroes);
+  for (const h of heroesOut) heroIdToDbId.set(h.heroId, h.id);
+  for (const rate of mapData.heroZoneRates) {
+    const heroDbId = heroIdToDbId.get(rate.heroId);
+    if (!heroDbId) throw new Error(`[Seed] hero_zone_rate references unknown hero: ${rate.heroId}`);
+    const [inserted] = await db
+      .insert(schema.heroZoneRates)
+      .values({ heroId: heroDbId, zone: rate.zone, rate: rate.rate })
+      .onConflictDoNothing()
+      .returning({ id: schema.heroZoneRates.id });
+    if (inserted) rateCount++;
   }
 
   // --- Sanguo items ----------------------------------------------------------
@@ -453,10 +536,8 @@ async function seed() {
   }
 
   // --- Hero relations (Phase 8 post-gate — direct spouse pairs only) ---------
+  // heroIdToDbId was built for the hero_zone_rates loop above (map-data section).
   let relationCount = 0;
-  const heroIdToDbId = new Map<string, number>();
-  const heroesOut = await db.select({ heroId: schema.heroes.heroId, id: schema.heroes.id }).from(schema.heroes);
-  for (const h of heroesOut) heroIdToDbId.set(h.heroId, h.id);
   for (const [a, b] of SPOUSE_PAIRS) {
     const aId = heroIdToDbId.get(a);
     const bId = heroIdToDbId.get(b);
@@ -474,7 +555,7 @@ async function seed() {
     if (inserted) relationCount++;
   }
 
-  console.log(`[Seed] ${factionCount} factions, ${familyCount} families, ${relationCount} relations, ${heroCount} heroes, ${nodeCount} map_nodes, ${itemCount} items upserted`);
+  console.log(`[Seed] ${factionCount} factions, ${familyCount} families, ${relationCount} relations, ${heroCount} heroes, ${nodeCount} map_nodes, ${zoneCount} map_zones, ${edgeCount} map_edges, ${rateCount} hero_zone_rates, ${itemCount} items upserted`);
   console.log('[Seed] Sanguo seed complete!');
 }
 

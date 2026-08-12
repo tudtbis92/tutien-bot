@@ -1,0 +1,2577 @@
+{
+  "zones": [
+    {
+      "code": "trung_nguyen",
+      "nameVi": "Trung Nguyên",
+      "nameEn": "Central Plains (Sili)",
+      "nameZh": "中原",
+      "sortOrder": 1
+    },
+    {
+      "code": "quan_trung",
+      "nameVi": "Quan Trung",
+      "nameEn": "Guanzhong",
+      "nameZh": "关中",
+      "sortOrder": 2
+    },
+    {
+      "code": "du_chau",
+      "nameVi": "Dự Châu",
+      "nameEn": "Yuzhou",
+      "nameZh": "豫州",
+      "sortOrder": 3
+    },
+    {
+      "code": "duyen_chau",
+      "nameVi": "Duyện Châu",
+      "nameEn": "Yanzhou",
+      "nameZh": "兖州",
+      "sortOrder": 4
+    },
+    {
+      "code": "tu_chau",
+      "nameVi": "Từ Châu",
+      "nameEn": "Xuzhou",
+      "nameZh": "徐州",
+      "sortOrder": 5
+    },
+    {
+      "code": "thanh_chau",
+      "nameVi": "Thanh Châu",
+      "nameEn": "Qingzhou",
+      "nameZh": "青州",
+      "sortOrder": 6
+    },
+    {
+      "code": "ky_chau",
+      "nameVi": "Ký Châu",
+      "nameEn": "Jizhou",
+      "nameZh": "冀州",
+      "sortOrder": 7
+    },
+    {
+      "code": "u_chau",
+      "nameVi": "U Châu",
+      "nameEn": "Youzhou",
+      "nameZh": "幽州",
+      "sortOrder": 8
+    },
+    {
+      "code": "tinh_chau",
+      "nameVi": "Tỉnh Châu",
+      "nameEn": "Bingzhou",
+      "nameZh": "并州",
+      "sortOrder": 9
+    },
+    {
+      "code": "luong_chau",
+      "nameVi": "Lương Châu",
+      "nameEn": "Liangzhou",
+      "nameZh": "凉州",
+      "sortOrder": 10
+    },
+    {
+      "code": "kinh_chau",
+      "nameVi": "Kinh Châu",
+      "nameEn": "Jingzhou",
+      "nameZh": "荆州",
+      "sortOrder": 11
+    },
+    {
+      "code": "duong_chau",
+      "nameVi": "Dương Châu",
+      "nameEn": "Yangzhou",
+      "nameZh": "扬州",
+      "sortOrder": 12
+    },
+    {
+      "code": "ich_chau",
+      "nameVi": "Ích Châu",
+      "nameEn": "Yizhou",
+      "nameZh": "益州",
+      "sortOrder": 13
+    },
+    {
+      "code": "giao_chau",
+      "nameVi": "Giao Châu",
+      "nameEn": "Jiaozhou",
+      "nameZh": "交州",
+      "sortOrder": 14
+    },
+    {
+      "code": "trieu_tien",
+      "nameVi": "Triều Tiên",
+      "nameEn": "Korean Kingdoms",
+      "nameZh": "朝鲜古国",
+      "sortOrder": 15
+    },
+    {
+      "code": "o_hoan",
+      "nameVi": "Ô Hoàn",
+      "nameEn": "Wuhuan Steppe",
+      "nameZh": "乌桓",
+      "sortOrder": 16
+    },
+    {
+      "code": "tien_ti",
+      "nameVi": "Tiên Ti",
+      "nameEn": "Xianbei Steppe",
+      "nameZh": "鲜卑",
+      "sortOrder": 17
+    },
+    {
+      "code": "hung_no",
+      "nameVi": "Hung Nô",
+      "nameEn": "Xiongnu Steppe",
+      "nameZh": "匈奴",
+      "sortOrder": 18
+    }
+  ],
+  "nodes": [
+    {
+      "code": "luoyang",
+      "nameVi": "Lạc Dương",
+      "nameEn": "Luoyang",
+      "zone": "trung_nguyen",
+      "representativeHeroId": "dong_trac",
+      "nodeOrder": 1,
+      "nameZh": "洛阳"
+    },
+    {
+      "code": "hongnong",
+      "nameVi": "Hoằng Nông",
+      "nameEn": "Hongnong",
+      "zone": "trung_nguyen",
+      "representativeHeroId": "hoang_phu_tung",
+      "nodeOrder": 2
+    },
+    {
+      "code": "hulao",
+      "nameVi": "Hổ Lao Quan",
+      "nameEn": "Hulao Pass",
+      "zone": "trung_nguyen",
+      "representativeHeroId": "lu_thuc",
+      "nodeOrder": 3
+    },
+    {
+      "code": "wan",
+      "nameVi": "Uyển Thành",
+      "nameEn": "Wancheng",
+      "zone": "kinh_chau",
+      "representativeHeroId": "zhang_xiu",
+      "nodeOrder": 40
+    },
+    {
+      "code": "changan",
+      "nameVi": "Trường An",
+      "nameEn": "Changan",
+      "zone": "quan_trung",
+      "representativeHeroId": "han_xian_di",
+      "nodeOrder": 4,
+      "nameZh": "长安"
+    },
+    {
+      "code": "xianyang",
+      "nameVi": "Hàm Dương",
+      "nameEn": "Xianyang",
+      "zone": "quan_trung",
+      "representativeHeroId": "gai_xun",
+      "nodeOrder": 5
+    },
+    {
+      "code": "tongguan",
+      "nameVi": "Đồng Quan",
+      "nameEn": "Tongguan Pass",
+      "zone": "quan_trung",
+      "representativeHeroId": "bac_cung_ba_ngoc",
+      "nodeOrder": 6
+    },
+    {
+      "code": "tianshui",
+      "nameVi": "Thiên Thủy",
+      "nameEn": "Tianshui",
+      "zone": "quan_trung",
+      "representativeHeroId": "ma_dang",
+      "nodeOrder": 7
+    },
+    {
+      "code": "xuchang",
+      "nameVi": "Hứa Xương",
+      "nameEn": "Xuchang",
+      "zone": "du_chau",
+      "representativeHeroId": "cao_cao",
+      "nodeOrder": 8,
+      "nameZh": "许昌"
+    },
+    {
+      "code": "yingchuan",
+      "nameVi": "Dĩnh Xuyên",
+      "nameEn": "Yingchuan",
+      "zone": "du_chau",
+      "representativeHeroId": "ly_ung",
+      "nodeOrder": 9
+    },
+    {
+      "code": "runan",
+      "nameVi": "Nhữ Nam",
+      "nameEn": "Runan",
+      "zone": "du_chau",
+      "representativeHeroId": "yuan_shao",
+      "nodeOrder": 10
+    },
+    {
+      "code": "qiao",
+      "nameVi": "Tiêu Quận",
+      "nameEn": "Qiao County",
+      "zone": "du_chau",
+      "representativeHeroId": "xiahou_dun",
+      "nodeOrder": 11
+    },
+    {
+      "code": "chenliu",
+      "nameVi": "Trần Lưu",
+      "nameEn": "Chenliu",
+      "zone": "duyen_chau",
+      "representativeHeroId": "zhang_miao",
+      "nodeOrder": 12
+    },
+    {
+      "code": "puyang",
+      "nameVi": "Bộc Dương",
+      "nameEn": "Puyang",
+      "zone": "duyen_chau",
+      "representativeHeroId": "bao_hong",
+      "nodeOrder": 13
+    },
+    {
+      "code": "taishan",
+      "nameVi": "Thái Sơn",
+      "nameEn": "Mount Tai",
+      "zone": "duyen_chau",
+      "representativeHeroId": "bao_tin",
+      "nodeOrder": 14
+    },
+    {
+      "code": "pengcheng",
+      "nameVi": "Bành Thành",
+      "nameEn": "Pengcheng",
+      "zone": "tu_chau",
+      "representativeHeroId": "tao_qian",
+      "nodeOrder": 15
+    },
+    {
+      "code": "xiapi",
+      "nameVi": "Hạ Phì",
+      "nameEn": "Xiapi",
+      "zone": "tu_chau",
+      "representativeHeroId": "chen_deng",
+      "nodeOrder": 16
+    },
+    {
+      "code": "guangling",
+      "nameVi": "Quảng Lăng",
+      "nameEn": "Guangling",
+      "zone": "tu_chau",
+      "representativeHeroId": "tran_lam",
+      "nodeOrder": 17
+    },
+    {
+      "code": "tan",
+      "nameVi": "Đàm Thành",
+      "nameEn": "Tancheng",
+      "zone": "tu_chau",
+      "representativeHeroId": "mi_zhu",
+      "nodeOrder": 18
+    },
+    {
+      "code": "beihai",
+      "nameVi": "Bắc Hải",
+      "nameEn": "Beihai",
+      "zone": "thanh_chau",
+      "representativeHeroId": "kong_rong",
+      "nodeOrder": 19
+    },
+    {
+      "code": "jinan",
+      "nameVi": "Tế Nam",
+      "nameEn": "Jinan",
+      "zone": "thanh_chau",
+      "representativeHeroId": "quan_hoi",
+      "nodeOrder": 20
+    },
+    {
+      "code": "dongan",
+      "nameVi": "Đông A",
+      "nameEn": "Dong'an",
+      "zone": "thanh_chau",
+      "representativeHeroId": "liu_yao",
+      "nodeOrder": 21
+    },
+    {
+      "code": "yecheng",
+      "nameVi": "Nghiệp Thành",
+      "nameEn": "Yecheng",
+      "zone": "ky_chau",
+      "representativeHeroId": "yuan_shao",
+      "nodeOrder": 22,
+      "nameZh": "邺城"
+    },
+    {
+      "code": "julu",
+      "nameVi": "Cự Lộc",
+      "nameEn": "Julu",
+      "zone": "ky_chau",
+      "representativeHeroId": "truong_giac",
+      "nodeOrder": 23
+    },
+    {
+      "code": "handan",
+      "nameVi": "Hàm Đan",
+      "nameEn": "Handan",
+      "zone": "ky_chau",
+      "representativeHeroId": "ju_shou",
+      "nodeOrder": 24
+    },
+    {
+      "code": "bohai",
+      "nameVi": "Bột Hải",
+      "nameEn": "Bohai",
+      "zone": "ky_chau",
+      "representativeHeroId": "tian_feng",
+      "nodeOrder": 25
+    },
+    {
+      "code": "zhengding",
+      "nameVi": "Chân Định",
+      "nameEn": "Zhengding",
+      "zone": "ky_chau",
+      "representativeHeroId": "han_fu",
+      "nodeOrder": 26
+    },
+    {
+      "code": "zhuo",
+      "nameVi": "Trác Quận",
+      "nameEn": "Zhuo Commandery",
+      "zone": "u_chau",
+      "representativeHeroId": "liu_bei",
+      "nodeOrder": 27
+    },
+    {
+      "code": "beiping",
+      "nameVi": "Bắc Bình",
+      "nameEn": "Beiping",
+      "zone": "u_chau",
+      "representativeHeroId": "gongsun_zan",
+      "nodeOrder": 28
+    },
+    {
+      "code": "liaodong",
+      "nameVi": "Liêu Đông",
+      "nameEn": "Liaodong",
+      "zone": "u_chau",
+      "representativeHeroId": "gongsun_du",
+      "nodeOrder": 29
+    },
+    {
+      "code": "ji",
+      "nameVi": "Kế Thành",
+      "nameEn": "Ji City",
+      "zone": "u_chau",
+      "representativeHeroId": "liu_yu",
+      "nodeOrder": 30
+    },
+    {
+      "code": "shanggu",
+      "nameVi": "Thượng Cốc",
+      "nameEn": "Shanggu",
+      "zone": "u_chau",
+      "representativeHeroId": "wang_kuang",
+      "nodeOrder": 31
+    },
+    {
+      "code": "taiyuan",
+      "nameVi": "Thái Nguyên",
+      "nameEn": "Taiyuan",
+      "zone": "tinh_chau",
+      "representativeHeroId": "dinh_nguyen",
+      "nodeOrder": 32
+    },
+    {
+      "code": "shangdang",
+      "nameVi": "Thượng Đảng",
+      "nameEn": "Shangdang",
+      "zone": "tinh_chau",
+      "representativeHeroId": "zhang_yan",
+      "nodeOrder": 33
+    },
+    {
+      "code": "yunzhong",
+      "nameVi": "Vân Trung",
+      "nameEn": "Yunzhong",
+      "zone": "tinh_chau",
+      "representativeHeroId": "zhang_yang",
+      "nodeOrder": 34
+    },
+    {
+      "code": "longxi",
+      "nameVi": "Lũng Tây",
+      "nameEn": "Longxi",
+      "zone": "luong_chau",
+      "representativeHeroId": "han_toai",
+      "nodeOrder": 35
+    },
+    {
+      "code": "jincheng",
+      "nameVi": "Kim Thành",
+      "nameEn": "Jincheng",
+      "zone": "luong_chau",
+      "representativeHeroId": "ma_dang",
+      "nodeOrder": 36
+    },
+    {
+      "code": "wudu",
+      "nameVi": "Vũ Đô",
+      "nameEn": "Wudu",
+      "zone": "luong_chau",
+      "representativeHeroId": "dianwu",
+      "nodeOrder": 37
+    },
+    {
+      "code": "anding",
+      "nameVi": "An Định",
+      "nameEn": "Anding",
+      "zone": "luong_chau",
+      "representativeHeroId": "hoang_phu_tung",
+      "nodeOrder": 38
+    },
+    {
+      "code": "liangzhou_city",
+      "nameVi": "Lương Châu thành",
+      "nameEn": "Liang Province Seat",
+      "zone": "luong_chau",
+      "representativeHeroId": "bian_chuong",
+      "nodeOrder": 39
+    },
+    {
+      "code": "xiangyang",
+      "nameVi": "Tương Dương",
+      "nameEn": "Xiangyang",
+      "zone": "kinh_chau",
+      "representativeHeroId": "liu_biao",
+      "nodeOrder": 41
+    },
+    {
+      "code": "jiangling",
+      "nameVi": "Giang Lăng",
+      "nameEn": "Jiangling",
+      "zone": "kinh_chau",
+      "representativeHeroId": "cai_mao",
+      "nodeOrder": 42,
+      "nameZh": "江陵"
+    },
+    {
+      "code": "changsha",
+      "nameVi": "Trường Sa",
+      "nameEn": "Changsha",
+      "zone": "kinh_chau",
+      "representativeHeroId": "sun_jian",
+      "nodeOrder": 43
+    },
+    {
+      "code": "wuling",
+      "nameVi": "Vũ Lăng",
+      "nameEn": "Wuling",
+      "zone": "kinh_chau",
+      "representativeHeroId": "huang_gai",
+      "nodeOrder": 44
+    },
+    {
+      "code": "guiyang",
+      "nameVi": "Quế Dương",
+      "nameEn": "Guiyang",
+      "zone": "kinh_chau",
+      "representativeHeroId": "luong_long",
+      "nodeOrder": 45
+    },
+    {
+      "code": "jianye",
+      "nameVi": "Kiến Nghiệp",
+      "nameEn": "Jianye",
+      "zone": "duong_chau",
+      "representativeHeroId": "sun_jian",
+      "nodeOrder": 46,
+      "nameZh": "建业"
+    },
+    {
+      "code": "kuaiji",
+      "nameVi": "Cối Kê",
+      "nameEn": "Kuaiji",
+      "zone": "duong_chau",
+      "representativeHeroId": "xu_gong",
+      "nodeOrder": 47
+    },
+    {
+      "code": "lujiang",
+      "nameVi": "Lư Giang",
+      "nameEn": "Lujiang",
+      "zone": "duong_chau",
+      "representativeHeroId": "xi_jian",
+      "nodeOrder": 48
+    },
+    {
+      "code": "shouchun",
+      "nameVi": "Thọ Xuân",
+      "nameEn": "Shouchun",
+      "zone": "duong_chau",
+      "representativeHeroId": "yuan_shu",
+      "nodeOrder": 49
+    },
+    {
+      "code": "wu",
+      "nameVi": "Ngô Quận",
+      "nameEn": "Wu Commandery",
+      "zone": "duong_chau",
+      "representativeHeroId": "huang_gai",
+      "nodeOrder": 50
+    },
+    {
+      "code": "chengdu",
+      "nameVi": "Thành Đô",
+      "nameEn": "Chengdu",
+      "zone": "ich_chau",
+      "representativeHeroId": "liu_bei",
+      "nodeOrder": 51,
+      "nameZh": "成都"
+    },
+    {
+      "code": "hanzhong",
+      "nameVi": "Hán Trung",
+      "nameEn": "Hanzhong",
+      "zone": "ich_chau",
+      "representativeHeroId": "zhang_lu",
+      "nodeOrder": 52
+    },
+    {
+      "code": "mianzhu",
+      "nameVi": "Miên Trúc",
+      "nameEn": "Mianzhu",
+      "zone": "ich_chau",
+      "representativeHeroId": "liu_yan",
+      "nodeOrder": 53
+    },
+    {
+      "code": "jiangzhou",
+      "nameVi": "Giang Châu",
+      "nameEn": "Jiangzhou",
+      "zone": "ich_chau",
+      "representativeHeroId": "zhao_wei",
+      "nodeOrder": 54
+    },
+    {
+      "code": "yongan",
+      "nameVi": "Vĩnh An",
+      "nameEn": "Yong'an",
+      "zone": "ich_chau",
+      "representativeHeroId": "zhang_fei",
+      "nodeOrder": 55
+    },
+    {
+      "code": "longbian",
+      "nameVi": "Long Biên",
+      "nameEn": "Longbian",
+      "zone": "giao_chau",
+      "representativeHeroId": "shi_xie",
+      "nodeOrder": 56
+    },
+    {
+      "code": "jiuzhen",
+      "nameVi": "Cửu Chân",
+      "nameEn": "Jiuzhen",
+      "zone": "giao_chau",
+      "representativeHeroId": "shi_yi",
+      "nodeOrder": 57
+    },
+    {
+      "code": "rinan",
+      "nameVi": "Nhật Nam",
+      "nameEn": "Rinan",
+      "zone": "giao_chau",
+      "representativeHeroId": "si_tu",
+      "nodeOrder": 58
+    },
+    {
+      "code": "cangwu",
+      "nameVi": "Thương Ngô",
+      "nameEn": "Cangwu",
+      "zone": "giao_chau",
+      "representativeHeroId": "ngo_cu",
+      "nodeOrder": 59
+    },
+    {
+      "code": "gungnae",
+      "nameVi": "Quốc Nội",
+      "nameEn": "Gungnae",
+      "zone": "trieu_tien",
+      "representativeHeroId": "tan_dai_vuong",
+      "nodeOrder": 60
+    },
+    {
+      "code": "buyeo",
+      "nameVi": "Phù Dư",
+      "nameEn": "Buyeo",
+      "zone": "trieu_tien",
+      "representativeHeroId": "uy_cuu_dai",
+      "nodeOrder": 61
+    },
+    {
+      "code": "baekje",
+      "nameVi": "Bách Tế",
+      "nameEn": "Baekje (Wirye)",
+      "zone": "trieu_tien",
+      "representativeHeroId": "tieu_co_vuong",
+      "nodeOrder": 62
+    },
+    {
+      "code": "lelang",
+      "nameVi": "Lạc Lãng",
+      "nameEn": "Lelang",
+      "zone": "trieu_tien",
+      "representativeHeroId": "co_quoc_xuyen_vuong",
+      "nodeOrder": 63
+    },
+    {
+      "code": "okjeo",
+      "nameVi": "Ốc Trở",
+      "nameEn": "Okjeo",
+      "zone": "trieu_tien",
+      "representativeHeroId": "at_ba_to",
+      "nodeOrder": 64
+    },
+    {
+      "code": "liucheng",
+      "nameVi": "Liễu Thành",
+      "nameEn": "Liucheng",
+      "zone": "o_hoan",
+      "representativeHeroId": "tadun",
+      "nodeOrder": 65
+    },
+    {
+      "code": "shanggu_oh",
+      "nameVi": "Thượng Cốc (Ô Hoàn)",
+      "nameEn": "Shanggu (Wuhuan)",
+      "zone": "o_hoan",
+      "representativeHeroId": "qiuliju",
+      "nodeOrder": 66
+    },
+    {
+      "code": "liaoxi",
+      "nameVi": "Liêu Tây",
+      "nameEn": "Liaoxi",
+      "zone": "o_hoan",
+      "representativeHeroId": "nanlou",
+      "nodeOrder": 67
+    },
+    {
+      "code": "mobei",
+      "nameVi": "Mạc Bắc",
+      "nameEn": "Mobei",
+      "zone": "tien_ti",
+      "representativeHeroId": "tan_shihuai",
+      "nodeOrder": 68
+    },
+    {
+      "code": "yinshan",
+      "nameVi": "Âm Sơn",
+      "nameEn": "Yinshan",
+      "zone": "tien_ti",
+      "representativeHeroId": "helian",
+      "nodeOrder": 69
+    },
+    {
+      "code": "dai",
+      "nameVi": "Đại Quận",
+      "nameEn": "Dai Commandery",
+      "zone": "tien_ti",
+      "representativeHeroId": "kuitou",
+      "nodeOrder": 70
+    },
+    {
+      "code": "heshuo",
+      "nameVi": "Hà Sóc",
+      "nameEn": "Heshuo",
+      "zone": "hung_no",
+      "representativeHeroId": "qiangqu",
+      "nodeOrder": 71
+    },
+    {
+      "code": "longcheng",
+      "nameVi": "Long Thành",
+      "nameEn": "Longcheng",
+      "zone": "hung_no",
+      "representativeHeroId": "yufuluo",
+      "nodeOrder": 72
+    },
+    {
+      "code": "xihe",
+      "nameVi": "Tây Hà",
+      "nameEn": "Xihe",
+      "zone": "hung_no",
+      "representativeHeroId": "huchuquan",
+      "nodeOrder": 73
+    }
+  ],
+  "edges": [
+    {
+      "nodeA": "luoyang",
+      "nodeB": "hongnong",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "luoyang",
+      "nodeB": "hulao",
+      "travelSeconds": 600
+    },
+    {
+      "nodeA": "luoyang",
+      "nodeB": "wan",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "luoyang",
+      "nodeB": "yingchuan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "luoyang",
+      "nodeB": "xuchang",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "luoyang",
+      "nodeB": "chenliu",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "hongnong",
+      "nodeB": "tongguan",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "hongnong",
+      "nodeB": "wan",
+      "travelSeconds": 2100
+    },
+    {
+      "nodeA": "hulao",
+      "nodeB": "chenliu",
+      "travelSeconds": 600
+    },
+    {
+      "nodeA": "hulao",
+      "nodeB": "puyang",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "changan",
+      "nodeB": "xianyang",
+      "travelSeconds": 600
+    },
+    {
+      "nodeA": "changan",
+      "nodeB": "tongguan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "changan",
+      "nodeB": "tianshui",
+      "travelSeconds": 3600
+    },
+    {
+      "nodeA": "changan",
+      "nodeB": "anding",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "changan",
+      "nodeB": "longxi",
+      "travelSeconds": 5400
+    },
+    {
+      "nodeA": "tianshui",
+      "nodeB": "anding",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "tianshui",
+      "nodeB": "longxi",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "tianshui",
+      "nodeB": "wudu",
+      "travelSeconds": 3000
+    },
+    {
+      "nodeA": "anding",
+      "nodeB": "longxi",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "anding",
+      "nodeB": "wudu",
+      "travelSeconds": 3000
+    },
+    {
+      "nodeA": "anding",
+      "nodeB": "heshuo",
+      "travelSeconds": 3600
+    },
+    {
+      "nodeA": "xuchang",
+      "nodeB": "yingchuan",
+      "travelSeconds": 600
+    },
+    {
+      "nodeA": "xuchang",
+      "nodeB": "runan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "xuchang",
+      "nodeB": "qiao",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "xuchang",
+      "nodeB": "chenliu",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "yingchuan",
+      "nodeB": "runan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "yingchuan",
+      "nodeB": "wan",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "runan",
+      "nodeB": "qiao",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "runan",
+      "nodeB": "shouchun",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "runan",
+      "nodeB": "xiangyang",
+      "travelSeconds": 2100
+    },
+    {
+      "nodeA": "qiao",
+      "nodeB": "pengcheng",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "qiao",
+      "nodeB": "shouchun",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "chenliu",
+      "nodeB": "puyang",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "chenliu",
+      "nodeB": "taishan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "puyang",
+      "nodeB": "taishan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "puyang",
+      "nodeB": "yecheng",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "puyang",
+      "nodeB": "jinan",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "taishan",
+      "nodeB": "jinan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "taishan",
+      "nodeB": "pengcheng",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "taishan",
+      "nodeB": "beihai",
+      "travelSeconds": 2100
+    },
+    {
+      "nodeA": "pengcheng",
+      "nodeB": "xiapi",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "pengcheng",
+      "nodeB": "tan",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "pengcheng",
+      "nodeB": "guangling",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "pengcheng",
+      "nodeB": "beihai",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "xiapi",
+      "nodeB": "guangling",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "xiapi",
+      "nodeB": "tan",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "guangling",
+      "nodeB": "jianye",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "guangling",
+      "nodeB": "lujiang",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "tan",
+      "nodeB": "jinan",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "beihai",
+      "nodeB": "jinan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "beihai",
+      "nodeB": "dongan",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "jinan",
+      "nodeB": "dongan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "jinan",
+      "nodeB": "zhengding",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "dongan",
+      "nodeB": "liaodong",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "yecheng",
+      "nodeB": "handan",
+      "travelSeconds": 600
+    },
+    {
+      "nodeA": "yecheng",
+      "nodeB": "julu",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "yecheng",
+      "nodeB": "zhengding",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "yecheng",
+      "nodeB": "taiyuan",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "handan",
+      "nodeB": "julu",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "handan",
+      "nodeB": "shangdang",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "handan",
+      "nodeB": "zhengding",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "julu",
+      "nodeB": "bohai",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "julu",
+      "nodeB": "shanggu",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "julu",
+      "nodeB": "liucheng",
+      "travelSeconds": 2100
+    },
+    {
+      "nodeA": "bohai",
+      "nodeB": "shanggu",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "bohai",
+      "nodeB": "liaoxi",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "zhengding",
+      "nodeB": "taiyuan",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "zhengding",
+      "nodeB": "ji",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "zhengding",
+      "nodeB": "liucheng",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "zhuo",
+      "nodeB": "beiping",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "zhuo",
+      "nodeB": "ji",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "zhuo",
+      "nodeB": "shanggu",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "zhuo",
+      "nodeB": "dai",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "beiping",
+      "nodeB": "ji",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "beiping",
+      "nodeB": "liaodong",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "beiping",
+      "nodeB": "liaoxi",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "ji",
+      "nodeB": "shanggu",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "ji",
+      "nodeB": "liaodong",
+      "travelSeconds": 2100
+    },
+    {
+      "nodeA": "liaodong",
+      "nodeB": "liaoxi",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "liaodong",
+      "nodeB": "lelang",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "liaodong",
+      "nodeB": "gungnae",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "liaodong",
+      "nodeB": "liucheng",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "shanggu",
+      "nodeB": "shanggu_oh",
+      "travelSeconds": 600
+    },
+    {
+      "nodeA": "shanggu",
+      "nodeB": "dai",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "taiyuan",
+      "nodeB": "shangdang",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "taiyuan",
+      "nodeB": "yunzhong",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "taiyuan",
+      "nodeB": "xihe",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "shangdang",
+      "nodeB": "yunzhong",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "shangdang",
+      "nodeB": "xihe",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "yunzhong",
+      "nodeB": "xihe",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "yunzhong",
+      "nodeB": "dai",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "yunzhong",
+      "nodeB": "yinshan",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "yunzhong",
+      "nodeB": "mobei",
+      "travelSeconds": 3600
+    },
+    {
+      "nodeA": "xihe",
+      "nodeB": "heshuo",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "xihe",
+      "nodeB": "longcheng",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "xihe",
+      "nodeB": "yinshan",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "longxi",
+      "nodeB": "jincheng",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "longxi",
+      "nodeB": "wudu",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "longxi",
+      "nodeB": "liangzhou_city",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "jincheng",
+      "nodeB": "liangzhou_city",
+      "travelSeconds": 600
+    },
+    {
+      "nodeA": "jincheng",
+      "nodeB": "mobei",
+      "travelSeconds": 4800
+    },
+    {
+      "nodeA": "wudu",
+      "nodeB": "hanzhong",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "wudu",
+      "nodeB": "mianzhu",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "liangzhou_city",
+      "nodeB": "heshuo",
+      "travelSeconds": 3000
+    },
+    {
+      "nodeA": "xiangyang",
+      "nodeB": "jiangling",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "xiangyang",
+      "nodeB": "changsha",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "xiangyang",
+      "nodeB": "wuling",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "xiangyang",
+      "nodeB": "hanzhong",
+      "travelSeconds": 3000
+    },
+    {
+      "nodeA": "xiangyang",
+      "nodeB": "wan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "jiangling",
+      "nodeB": "changsha",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "jiangling",
+      "nodeB": "wuling",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "jiangling",
+      "nodeB": "guiyang",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "jiangling",
+      "nodeB": "yongan",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "jiangling",
+      "nodeB": "lujiang",
+      "travelSeconds": 2100
+    },
+    {
+      "nodeA": "changsha",
+      "nodeB": "wuling",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "changsha",
+      "nodeB": "guiyang",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "changsha",
+      "nodeB": "kuaiji",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "wuling",
+      "nodeB": "guiyang",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "guiyang",
+      "nodeB": "cangwu",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "jianye",
+      "nodeB": "kuaiji",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "jianye",
+      "nodeB": "lujiang",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "jianye",
+      "nodeB": "wu",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "kuaiji",
+      "nodeB": "wu",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "kuaiji",
+      "nodeB": "shouchun",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "lujiang",
+      "nodeB": "shouchun",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "lujiang",
+      "nodeB": "wu",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "shouchun",
+      "nodeB": "guangling",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "wu",
+      "nodeB": "changsha",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "chengdu",
+      "nodeB": "mianzhu",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "chengdu",
+      "nodeB": "jiangzhou",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "chengdu",
+      "nodeB": "hanzhong",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "chengdu",
+      "nodeB": "yongan",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "chengdu",
+      "nodeB": "wudu",
+      "travelSeconds": 2700
+    },
+    {
+      "nodeA": "mianzhu",
+      "nodeB": "hanzhong",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "mianzhu",
+      "nodeB": "jiangzhou",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "hanzhong",
+      "nodeB": "jiangzhou",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "jiangzhou",
+      "nodeB": "yongan",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "longbian",
+      "nodeB": "jiuzhen",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "longbian",
+      "nodeB": "cangwu",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "longbian",
+      "nodeB": "rinan",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "jiuzhen",
+      "nodeB": "rinan",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "cangwu",
+      "nodeB": "rinan",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "gungnae",
+      "nodeB": "lelang",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "gungnae",
+      "nodeB": "buyeo",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "gungnae",
+      "nodeB": "okjeo",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "gungnae",
+      "nodeB": "liucheng",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "buyeo",
+      "nodeB": "okjeo",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "buyeo",
+      "nodeB": "liaodong",
+      "travelSeconds": 2100
+    },
+    {
+      "nodeA": "baekje",
+      "nodeB": "lelang",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "baekje",
+      "nodeB": "okjeo",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "lelang",
+      "nodeB": "okjeo",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "liucheng",
+      "nodeB": "shanggu_oh",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "liucheng",
+      "nodeB": "liaoxi",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "shanggu_oh",
+      "nodeB": "liaoxi",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "shanggu_oh",
+      "nodeB": "ji",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "liaoxi",
+      "nodeB": "lelang",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "mobei",
+      "nodeB": "yinshan",
+      "travelSeconds": 1500
+    },
+    {
+      "nodeA": "mobei",
+      "nodeB": "dai",
+      "travelSeconds": 1800
+    },
+    {
+      "nodeA": "mobei",
+      "nodeB": "heshuo",
+      "travelSeconds": 2400
+    },
+    {
+      "nodeA": "yinshan",
+      "nodeB": "dai",
+      "travelSeconds": 1200
+    },
+    {
+      "nodeA": "heshuo",
+      "nodeB": "longcheng",
+      "travelSeconds": 900
+    },
+    {
+      "nodeA": "longcheng",
+      "nodeB": "yinshan",
+      "travelSeconds": 2400
+    }
+  ],
+  "heroZoneRates": [
+    {
+      "heroId": "han_ling_di",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "han_shao_di",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "han_xian_di",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "han_xian_di",
+      "zone": "quan_trung",
+      "rate": 0.5
+    },
+    {
+      "heroId": "ha_thai_hau",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "dong_thai_hau",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "vuong_my_nhan",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "truong_nhuong",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "trieu_trung",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "kien_thac",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "doan_khue",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "phong_tu",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "tao_tiet",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "hau_lam",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "ha_uan",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "quach_thang",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "trinh_khoang",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "ha_tien",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "ha_mieu",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "vuong_doan",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "thai_ung",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "tran_lam",
+      "zone": "tu_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "tran_lam",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "luu_dao",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "truong_quan",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "huang_wan",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "huang_wan",
+      "zone": "kinh_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "dau_vu",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "dau_vu",
+      "zone": "quan_trung",
+      "rate": 0.5
+    },
+    {
+      "heroId": "tran_phien",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "tran_phien",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "ly_ung",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "ly_ung",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "pham_bang",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "pham_bang",
+      "zone": "trung_nguyen",
+      "rate": 0.3
+    },
+    {
+      "heroId": "quach_thai",
+      "zone": "tinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "quach_thai",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "hoang_phu_tung",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "hoang_phu_tung",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "chu_tuan",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "chu_tuan",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "lu_thuc",
+      "zone": "u_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "lu_thuc",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "pho_tiep",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "pho_tiep",
+      "zone": "trung_nguyen",
+      "rate": 0.3
+    },
+    {
+      "heroId": "bao_tin",
+      "zone": "duyen_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "bao_tin",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "bao_hong",
+      "zone": "duyen_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "bao_hong",
+      "zone": "trung_nguyen",
+      "rate": 0.3
+    },
+    {
+      "heroId": "thuan_vu_quynh",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "thuan_vu_quynh",
+      "zone": "trung_nguyen",
+      "rate": 0.3
+    },
+    {
+      "heroId": "gongsun_zan",
+      "zone": "u_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "gai_xun",
+      "zone": "quan_trung",
+      "rate": 1
+    },
+    {
+      "heroId": "gai_xun",
+      "zone": "luong_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "gai_xun",
+      "zone": "trung_nguyen",
+      "rate": 0.3
+    },
+    {
+      "heroId": "zhang_wen",
+      "zone": "trung_nguyen",
+      "rate": 1
+    },
+    {
+      "heroId": "zhang_wen",
+      "zone": "kinh_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "truong_giac",
+      "zone": "ky_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "truong_giac",
+      "zone": "du_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "truong_bao",
+      "zone": "ky_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "truong_luong",
+      "zone": "ky_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "ma_nguyen_nghia",
+      "zone": "ky_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "ma_nguyen_nghia",
+      "zone": "trung_nguyen",
+      "rate": 0.3
+    },
+    {
+      "heroId": "duong_chau",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "duong_chau",
+      "zone": "trung_nguyen",
+      "rate": 0.3
+    },
+    {
+      "heroId": "truong_man_thanh",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "truong_man_thanh",
+      "zone": "ky_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "ba_tai",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "banh_thoat",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "trieu_hoang",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "han_trung",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "ton_ha",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "bac_ky",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "trinh_vien_chi",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "quan_hoi",
+      "zone": "thanh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "quan_hoi",
+      "zone": "du_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "zhang_yan",
+      "zone": "tinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "zhang_yan",
+      "zone": "ky_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "zhang_lu",
+      "zone": "ich_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "zhang_xiu",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "zhang_xiu",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "zhang_xiu",
+      "zone": "luong_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "ma_xiang",
+      "zone": "ich_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "bian_chuong",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "han_toai",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "bac_cung_ba_ngoc",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "bac_cung_ba_ngoc",
+      "zone": "quan_trung",
+      "rate": 0.5
+    },
+    {
+      "heroId": "vuong_quoc",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "ma_dang",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "ma_dang",
+      "zone": "quan_trung",
+      "rate": 0.5
+    },
+    {
+      "heroId": "dianwu",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "dianwu",
+      "zone": "duyen_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "yang_teng",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "yang_teng",
+      "zone": "quan_trung",
+      "rate": 0.3
+    },
+    {
+      "heroId": "dong_trac",
+      "zone": "quan_trung",
+      "rate": 1
+    },
+    {
+      "heroId": "dong_trac",
+      "zone": "luong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "dong_trac",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "yuan_shao",
+      "zone": "ky_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "yuan_shao",
+      "zone": "du_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "yuan_shu",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "yuan_shu",
+      "zone": "duong_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "sun_jian",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "sun_jian",
+      "zone": "kinh_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "dinh_nguyen",
+      "zone": "tinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "dinh_nguyen",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "liu_bei",
+      "zone": "ich_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "liu_bei",
+      "zone": "u_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "liu_bei",
+      "zone": "tu_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "liu_bei",
+      "zone": "kinh_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "guan_yu",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "guan_yu",
+      "zone": "ich_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "guan_yu",
+      "zone": "u_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "zhang_fei",
+      "zone": "ich_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "zhang_fei",
+      "zone": "u_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "zhang_fei",
+      "zone": "kinh_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "cao_cao",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "cao_cao",
+      "zone": "trung_nguyen",
+      "rate": 0.5
+    },
+    {
+      "heroId": "cao_cao",
+      "zone": "duyen_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "xiahou_dun",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "xiahou_dun",
+      "zone": "trung_nguyen",
+      "rate": 0.3
+    },
+    {
+      "heroId": "xiahou_yuan",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "xiahou_yuan",
+      "zone": "luong_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "huang_gai",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "huang_gai",
+      "zone": "kinh_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "cheng_pu",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "cheng_pu",
+      "zone": "u_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "ze_rong",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "ze_rong",
+      "zone": "tu_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "liu_yu",
+      "zone": "u_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "han_fu",
+      "zone": "ky_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "han_fu",
+      "zone": "du_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "ju_shou",
+      "zone": "ky_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "tian_feng",
+      "zone": "ky_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "zhang_yang",
+      "zone": "tinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "gongsun_du",
+      "zone": "u_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "gongsun_du",
+      "zone": "trieu_tien",
+      "rate": 0.5
+    },
+    {
+      "heroId": "liu_biao",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "wang_rui",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "wang_rui",
+      "zone": "duyen_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "kuai_yue",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "kuai_liang",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "cai_mao",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "huang_zu",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "chen_wen",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "chen_wen",
+      "zone": "du_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "liu_yao",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "liu_yao",
+      "zone": "thanh_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "wang_lang",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "wang_lang",
+      "zone": "tu_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "xu_gong",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "shi_xie",
+      "zone": "giao_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "shi_yi",
+      "zone": "giao_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "zhang_jin",
+      "zone": "giao_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "zhang_jin",
+      "zone": "kinh_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "lai_gong",
+      "zone": "kinh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "lai_gong",
+      "zone": "ich_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "liu_yan",
+      "zone": "ich_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "liu_yan",
+      "zone": "kinh_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "zhao_wei",
+      "zone": "ich_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "xi_jian",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "xi_jian",
+      "zone": "tu_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "tao_qian",
+      "zone": "tu_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "tao_qian",
+      "zone": "duong_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "mi_zhu",
+      "zone": "tu_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "mi_zhu",
+      "zone": "ich_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "chen_deng",
+      "zone": "tu_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "liu_dai",
+      "zone": "duyen_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "liu_dai",
+      "zone": "du_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "zhang_miao",
+      "zone": "duyen_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "qiao_mao",
+      "zone": "duyen_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "qiao_mao",
+      "zone": "du_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "kong_zhou",
+      "zone": "du_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "kong_zhou",
+      "zone": "duyen_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "kong_rong",
+      "zone": "thanh_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "kong_rong",
+      "zone": "du_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "wang_kuang",
+      "zone": "u_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "wang_kuang",
+      "zone": "tinh_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "gia_tong",
+      "zone": "giao_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "si_tu",
+      "zone": "giao_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "ngo_cu",
+      "zone": "giao_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "ngo_cu",
+      "zone": "kinh_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "tan_shihuai",
+      "zone": "tien_ti",
+      "rate": 1
+    },
+    {
+      "heroId": "helian",
+      "zone": "tien_ti",
+      "rate": 1
+    },
+    {
+      "heroId": "kuitou",
+      "zone": "tien_ti",
+      "rate": 1
+    },
+    {
+      "heroId": "qianman",
+      "zone": "tien_ti",
+      "rate": 1
+    },
+    {
+      "heroId": "budugen",
+      "zone": "tien_ti",
+      "rate": 1
+    },
+    {
+      "heroId": "qiangqu",
+      "zone": "hung_no",
+      "rate": 1
+    },
+    {
+      "heroId": "qiangqu",
+      "zone": "tinh_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "yufuluo",
+      "zone": "hung_no",
+      "rate": 1
+    },
+    {
+      "heroId": "yufuluo",
+      "zone": "tinh_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "huchuquan",
+      "zone": "hung_no",
+      "rate": 1
+    },
+    {
+      "heroId": "huchuquan",
+      "zone": "tinh_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "xubu_guduhou",
+      "zone": "hung_no",
+      "rate": 1
+    },
+    {
+      "heroId": "xubu_guduhou",
+      "zone": "tinh_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "qiuliju",
+      "zone": "o_hoan",
+      "rate": 1
+    },
+    {
+      "heroId": "qiuliju",
+      "zone": "u_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "tadun",
+      "zone": "o_hoan",
+      "rate": 1
+    },
+    {
+      "heroId": "tadun",
+      "zone": "u_chau",
+      "rate": 0.5
+    },
+    {
+      "heroId": "nanlou",
+      "zone": "o_hoan",
+      "rate": 1
+    },
+    {
+      "heroId": "supuyan",
+      "zone": "o_hoan",
+      "rate": 1
+    },
+    {
+      "heroId": "supuyan",
+      "zone": "u_chau",
+      "rate": 0.3
+    },
+    {
+      "heroId": "tan_dai_vuong",
+      "zone": "trieu_tien",
+      "rate": 1
+    },
+    {
+      "heroId": "co_quoc_xuyen_vuong",
+      "zone": "trieu_tien",
+      "rate": 1
+    },
+    {
+      "heroId": "at_ba_to",
+      "zone": "trieu_tien",
+      "rate": 1
+    },
+    {
+      "heroId": "uy_cuu_dai",
+      "zone": "trieu_tien",
+      "rate": 1
+    },
+    {
+      "heroId": "tieu_co_vuong",
+      "zone": "trieu_tien",
+      "rate": 1
+    },
+    {
+      "heroId": "luong_long",
+      "zone": "duong_chau",
+      "rate": 1
+    },
+    {
+      "heroId": "luong_long",
+      "zone": "kinh_chau",
+      "rate": 0.5
+    }
+  ]
+}
