@@ -12,6 +12,7 @@ import {
 import { db } from '../../../db/client.js';
 import { fetchCommandContext } from '../../../utils/commandContext.js';
 import { execute, handleDestinationSelect, handleStartPress } from '../travel.js';
+import * as travelModule from '../travel.js';
 import {
   getCurrentPosition,
   getAdjacentNodes,
@@ -20,7 +21,7 @@ import {
 import { checkInTravel } from '../../../services/sanguo/travelCheckInService.js';
 
 vi.mock('../../../db/client.js', () => ({
-  db: { select: vi.fn() },
+  db: { select: vi.fn(), transaction: vi.fn() },
 }));
 
 vi.mock('../../../utils/commandContext.js', () => ({
@@ -301,5 +302,113 @@ describe('/sanguo travel command', () => {
     const embeds = reply.embeds ?? [];
     expect(embeds[0]?.data?.title).toBe('sanguo:travel.no_route_title');
     expect(reply.components).toBeUndefined();
+  });
+
+  // ── 09-03 Task 2: full check-in dispatch (D-22/D-24/D-25/D-28) + ack resume ──
+
+  it('execute with an active journey — arrived mode replies the arrival embed + re-opens the destination menu (D-08/D-26)', async () => {
+    vi.mocked(fetchCommandContext).mockResolvedValue({
+      locale: 'vi',
+      t,
+      char: { id: 1 },
+      user: { id: 42, balance: 0n },
+      shardId: 0,
+    } as never);
+    vi.mocked(checkInTravel).mockResolvedValue({ mode: 'arrived' });
+    vi.mocked(getCurrentPosition).mockResolvedValue({ nodeId: 7, nodeCode: 'xuchang' });
+    vi.mocked(getAdjacentNodes).mockResolvedValue(ADJACENT);
+    mockDbReads([
+      [{ status: 'traveling', encounterActive: false }], // execute() status gate → check-in path
+      [XUCHANG_NODE], // fetchNodeName(7) for the arrival embed
+    ]);
+
+    const interaction = mockChatInputInteraction();
+    await execute(interaction);
+
+    expect(checkInTravel).toHaveBeenCalledWith(42); // users.id, never char.id
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:arrival.title');
+    expect(reply.embeds?.[0]?.data?.description).toContain('sanguo:arrival.body');
+    const row = reply.components?.[0] as ActionRowBuilder<any>;
+    expect(row.components[0]).toBeInstanceOf(StringSelectMenuBuilder); // next-hop picker
+    expect(row.components[1]).toBeInstanceOf(ButtonBuilder);
+  });
+
+  it('execute with an active journey — encounter mode replies the encounter embed + ack button (D-24)', async () => {
+    vi.mocked(fetchCommandContext).mockResolvedValue({
+      locale: 'vi',
+      t,
+      char: { id: 1 },
+      user: { id: 42, balance: 0n },
+      shardId: 0,
+    } as never);
+    vi.mocked(checkInTravel).mockResolvedValue({
+      mode: 'encounter',
+      remaining: 300,
+      encounter: { heroId: 5, zone: 'du_chau', boss: false },
+    });
+    mockDbReads([[{ status: 'traveling', encounterActive: false }]]);
+
+    const interaction = mockChatInputInteraction();
+    await execute(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:encounter.pending_title');
+    expect(reply.embeds?.[0]?.data?.color).toBe(0x8b5cf6); // COLORS.SEASON normal encounter
+    const row = reply.components?.[0] as ActionRowBuilder<any>;
+    const ackBtn = (row.components[0] as ButtonBuilder).toJSON() as { custom_id: string };
+    expect(ackBtn.custom_id).toBe('sanguo:travel:ack');
+  });
+
+  it('execute with an active journey — encounterPending mode replies the pending embed (boss → GOLD), NO re-roll (F2/D-25)', async () => {
+    vi.mocked(fetchCommandContext).mockResolvedValue({
+      locale: 'vi',
+      t,
+      char: { id: 1 },
+      user: { id: 42, balance: 0n },
+      shardId: 0,
+    } as never);
+    vi.mocked(checkInTravel).mockResolvedValue({
+      mode: 'encounterPending',
+      remaining: 300,
+      encounter: { heroId: null, zone: 'du_chau', boss: true },
+    });
+    mockDbReads([[{ status: 'traveling', encounterActive: false }]]);
+
+    const interaction = mockChatInputInteraction();
+    await execute(interaction);
+
+    expect(checkInTravel).toHaveBeenCalledTimes(1); // pending comes from the DB, never re-rolled
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:encounter.pending_title');
+    expect(reply.embeds?.[0]?.data?.color).toBe(0xf59e0b); // COLORS.GOLD boss variant (UI-SPEC)
+    const row = reply.components?.[0] as ActionRowBuilder<any>;
+    const ackBtn = (row.components[0] as ButtonBuilder).toJSON() as { custom_id: string };
+    expect(ackBtn.custom_id).toBe('sanguo:travel:ack');
+  });
+
+  it('ack press (sanguo:travel:ack) clears encounterActive + sets updatedAt=now inside a FOR UPDATE tx (D-25)', async () => {
+    mockDbReads([[USER_ROW]]);
+    const where = vi.fn((_q: any) => undefined);
+    const set = vi.fn((_v: any) => ({ where }));
+    const update = vi.fn((_t: any) => ({ set }));
+    const forUpdate = vi.fn().mockResolvedValue([{ encounterActive: true, userId: 42 }]);
+    const txWhere = vi.fn(() => ({ for: forUpdate }));
+    const txFrom = vi.fn(() => ({ where: txWhere }));
+    const txSelect = vi.fn(() => ({ from: txFrom }));
+    (db.transaction as any).mockImplementation(async (cb: any) =>
+      cb({ select: txSelect, update }),
+    );
+
+    const interaction = mockButtonInteraction('sanguo:travel:ack');
+    await (travelModule as any).handleAckPress(interaction);
+
+    expect(interaction.deferUpdate).toHaveBeenCalled();
+    expect(forUpdate).toHaveBeenCalledWith('update'); // FOR UPDATE row lock (single writer)
+    expect(set.mock.calls[0]?.[0]).toMatchObject({
+      encounterActive: false,
+      updatedAt: expect.any(Date),
+    });
+    expect(where).toHaveBeenCalledTimes(1);
   });
 });
