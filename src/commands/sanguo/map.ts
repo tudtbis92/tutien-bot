@@ -5,6 +5,7 @@ import {
 import { asc } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { mapNodes, type MapNode } from '../../db/schema/mapNodes.js';
+import { mapZones, type MapZone } from '../../db/schema/mapZones.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { buildSanguoMapEmbed, type SanguoMapEmbedData } from '../../ui/embeds/buildSanguoMapEmbed.js';
@@ -48,6 +49,13 @@ function pickName(node: MapNode, locale: SupportedLocale): string {
   return node.nameVi;
 }
 
+/** Per-locale zone label from the map_zones reference table (A8 / D-19). */
+function pickZoneName(zone: MapZone, locale: SupportedLocale): string {
+  if (locale === 'en') return zone.nameEn;
+  if (locale === 'zh-cn') return zone.nameZh ?? zone.nameVi;
+  return zone.nameVi;
+}
+
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply();
 
@@ -78,14 +86,25 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       .from(mapNodes)
       .orderBy(asc(mapNodes.nodeOrder));
 
+    // Zone labels come from the map_zones reference table (A8 / D-19) — the
+    // researched per-locale zone names, NOT the first node's name in the zone.
+    const zoneRows = await db
+      .select()
+      .from(mapZones)
+      .orderBy(asc(mapZones.sortOrder));
+    const zoneCodeToLabel = new Map<string, string>();
+    for (const zone of zoneRows) {
+      zoneCodeToLabel.set(zone.code, pickZoneName(zone, locale));
+    }
+
     // Zones: distinct zone values, each with its representativeHeroId from DB (D-07).
-    // Zone label = the first node's per-locale name in that zone (zone codes like
-    // trung_nguyen are DB keys, never user-facing — WR-02 review fix).
+    // Zone label = map_zones name (fallback: the first node's per-locale name keeps
+    // label-only rendering safe when a zone row is missing — D-07 null-safe).
     const zoneMap = new Map<string, { label: string; heroId: string | null }>();
     for (const row of rows) {
       if (!zoneMap.has(row.zone)) {
         zoneMap.set(row.zone, {
-          label: pickName(row, locale),
+          label: zoneCodeToLabel.get(row.zone) ?? pickName(row, locale),
           heroId: row.representativeHeroId,
         });
       }

@@ -23,6 +23,42 @@ function mockInteraction(): ChatInputCommandInteraction {
   } as unknown as ChatInputCommandInteraction;
 }
 
+/**
+ * Mock the two db.select() chains execute() issues: the first is the map_nodes
+ * select (orderBy nodeOrder), the second is the map_zones select (orderBy
+ * sortOrder) — zone labels now come from map_zones (A8).
+ */
+function mockDbSelects(nodeRows: unknown[], zoneRows: unknown[]) {
+  const orderByNodes = vi.fn().mockResolvedValue(nodeRows);
+  const fromNodes = vi.fn().mockReturnValue({ orderBy: orderByNodes });
+  const orderByZones = vi.fn().mockResolvedValue(zoneRows);
+  const fromZones = vi.fn().mockReturnValue({ orderBy: orderByZones });
+  (db.select as any)
+    .mockReturnValueOnce({ from: fromNodes })
+    .mockReturnValueOnce({ from: fromZones });
+}
+
+// Mocked map_zones rows served by the second select (matches the seed dataset
+// for the zones the node fixtures below reference).
+const MOCK_ZONE_ROWS = [
+  {
+    id: 1,
+    code: 'trung_nguyen',
+    nameVi: 'Trung Nguyên',
+    nameEn: 'Central Plains (Sili)',
+    nameZh: '中原',
+    sortOrder: 1,
+  },
+  {
+    id: 2,
+    code: 'quan_trung',
+    nameVi: 'Quan Trung',
+    nameEn: 'Guanzhong',
+    nameZh: '关中',
+    sortOrder: 2,
+  },
+];
+
 describe('/sanguo map command', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -39,7 +75,7 @@ describe('/sanguo map command', () => {
 
     const orderBy = vi.fn().mockResolvedValue([]);
     const from = vi.fn().mockReturnValue({ orderBy });
-    (db.select as any).mockReturnValue({ from });
+    (db.select as any).mockReturnValueOnce({ from }).mockReturnValueOnce({ from });
 
     const interaction = mockInteraction();
     await execute(interaction);
@@ -87,9 +123,7 @@ describe('/sanguo map command', () => {
         representativeHeroId: 'han_xian_di',
       },
     ];
-    const orderBy = vi.fn().mockResolvedValue(rows);
-    const from = vi.fn().mockReturnValue({ orderBy });
-    (db.select as any).mockReturnValue({ from });
+    mockDbSelects(rows, MOCK_ZONE_ROWS);
 
     const interaction = mockInteraction();
     await execute(interaction);
@@ -99,12 +133,12 @@ describe('/sanguo map command', () => {
     // Zone markers render in message CONTENT with '# ' headers (D-15) — Discord
     // renders emoji larger there and markdown headings don't work in embeds.
     const content = reply.content as string;
-    // Zone label now derives from the representative node's per-locale name (WR-02),
-    // and the marker renders via heroEmoji('<a:dtr_t0:...>' markup, animated prefix) — no raw zone code.
-    expect(content).toContain('# <a:dtr_t0:');
-    expect(content).toContain('Lạc Dương');
+    // Zone label now comes from map_zones per-locale names (A8) — Trung Nguyên
+    // from the zone table, NOT 'Lạc Dương' (the node-derived label), and the
+    // marker renders via heroEmoji('<a:dtr_t0:...>' markup, animated prefix).
+    expect(content).toMatch(/# <a:dtr_t0:\d+> Trung Nguyên/);
+    expect(content).toMatch(/# <a:hxd_t0:\d+> Quan Trung/);
+    expect(content).not.toContain('Lạc Dương');
     expect(content).not.toContain('trung_nguyen');
-    expect(content).toContain('# <a:hxd_t0:');
-    expect(content).toContain('Trường An');
   });
 });
