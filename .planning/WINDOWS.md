@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 2
+open_count: 0
 waived_count: 0
-fixed_count: 2
+fixed_count: 4
 total_count: 4
-last_updated: 2026-08-12T09:32:39.451Z
+last_updated: 2026-08-12T10:21:37.221Z
 ---
 
 # Broken Windows Ledger
@@ -17,8 +17,8 @@ last_updated: 2026-08-12T09:32:39.451Z
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
 | 1 | 09 | stub | src/services/sanguo/travelCheckInService.ts | 13 | Thin check-in stub — full pull-based engine (elapsed → per-minute rolls → encounter/arrival/status, D-22/D-24) ships in plan 09-03 | fixed |  | 2026-08-12T08:35:11.166Z | 2026-08-12T09:32:36.883Z |
 | 2 | 09 | stub | src/events/interactionCreate.ts | 467 | sanguo:travel:ack button branch is a deferUpdate stub in wave 1 — real encounter-resume handler ships in plan 09-03 (D-25) | fixed |  | 2026-08-12T08:35:12.172Z | 2026-08-12T09:32:37.741Z |
-| 3 | 09 | stub | src/services/sanguo/travelCheckInService.ts | 55 | defaultRollMinute returns {hit:false} — plan 09-04 replaces with the encounterService-backed rollMinute (cap-first ZSET, position blend, boss sub-roll, encounter_runs record) | open |  | 2026-08-12T09:32:38.579Z |  |
-| 4 | 09 | stub | src/commands/sanguo/travel.ts | 85 | buildMinimalEncounterEmbed pending-style line — plan 09-04 finalizes with buildSanguoEncounterEmbed (hero name/emoji resolution, boss copy) | open |  | 2026-08-12T09:32:39.451Z |  |
+| 3 | 09 | stub | src/services/sanguo/travelCheckInService.ts | 55 | defaultRollMinute returns {hit:false} — plan 09-04 replaces with the encounterService-backed rollMinute (cap-first ZSET, position blend, boss sub-roll, encounter_runs record) | fixed |  | 2026-08-12T09:32:38.579Z | 2026-08-12T10:21:36.427Z |
+| 4 | 09 | stub | src/commands/sanguo/travel.ts | 85 | buildMinimalEncounterEmbed pending-style line — plan 09-04 finalizes with buildSanguoEncounterEmbed (hero name/emoji resolution, boss copy) | fixed |  | 2026-08-12T09:32:39.451Z | 2026-08-12T10:21:37.221Z |
 
 ````json
 [
@@ -53,10 +53,10 @@ last_updated: 2026-08-12T09:32:39.451Z
     "file": "src/services/sanguo/travelCheckInService.ts",
     "line": 55,
     "description": "defaultRollMinute returns {hit:false} — plan 09-04 replaces with the encounterService-backed rollMinute (cap-first ZSET, position blend, boss sub-roll, encounter_runs record)",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-08-12T09:32:38.579Z",
-    "resolved_at": null
+    "resolved_at": "2026-08-12T10:21:36.427Z"
   },
   {
     "id": 4,
@@ -65,10 +65,10 @@ last_updated: 2026-08-12T09:32:39.451Z
     "file": "src/commands/sanguo/travel.ts",
     "line": 85,
     "description": "buildMinimalEncounterEmbed pending-style line — plan 09-04 finalizes with buildSanguoEncounterEmbed (hero name/emoji resolution, boss copy)",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-08-12T09:32:39.451Z",
-    "resolved_at": null
+    "resolved_at": "2026-08-12T10:21:37.221Z"
   }
 ]
 ````
