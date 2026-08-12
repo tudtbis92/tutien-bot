@@ -126,11 +126,11 @@ Plans:
   4. Encounter yield is capped per user (~20/hr) with cooldown enforced from day one — repeated travel cannot exceed the cap.
   5. Map/zone data research completed: node structure + 132 heroes distributed by zone/lore — consumed as seed data for travel and encounters.
 
-**Plans**: 5 plans
+**Plans**: 1/5 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 09-01-PLAN.md — Travel journey start (tracer): D-07 travel schema + travelService + /sanguo travel subcommand + first autocomplete + reply embed (TQC-06)
+- [x] 09-01-PLAN.md — Travel journey start (tracer): D-07 travel schema + travelService + /sanguo travel subcommand + first autocomplete + reply embed (TQC-06)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -198,7 +198,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 8. Foundation, Economy Budget & Content Infrastructure | 4/4 | In Progress|  |
-| 9. Travel & Encounters | 0/5 | In Progress | - |
+| 9. Travel & Encounters | 1/5 | In Progress|  |
 | 10. Battle & Capture | 0/TBD | Not started | - |
 | 11. Progression, Chemistry & Economy Depth | 0/TBD | Not started | - |
 | 12. Anti-Abuse, Monitoring & Marketplace Gating | 0/TBD | Not started | - |

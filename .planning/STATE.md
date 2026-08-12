@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Tam Quốc Collection
-current_phase: 08
-current_phase_name: foundation-economy-budget-content-infrastructure
-status: completed
+current_phase: 9
+current_phase_name: travel-encounters
+status: executing
 stopped_at: Phase 9 UI-SPEC approved
-last_updated: "2026-08-12T06:11:37.061Z"
+last_updated: "2026-08-12T08:04:09.091Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 08 verification + production deploy completed (UAT 2/3 pass, emoji animated-prefix fix, /sanguo map emoji render confirmed)
 progress:
@@ -28,14 +28,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-10)
 
 **Core value:** Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi phút voice, mỗi reaction đều âm thầm xây dựng hành trình tu tiên của người chơi.
-**Current focus:** Phase 08 — foundation-economy-budget-content-infrastructure
+**Current focus:** Phase 9 — travel-encounters
 
 ## Current Position
 
-Phase: 08 (foundation-economy-budget-content-infrastructure) — ✅ COMPLETE
-Plan: 4 of 4
-Status: Deployed to production (2026-08-12) — UAT #1/#1b/#2 pass, emoji render confirmed live
-Last activity: 2026-08-12 - Production deploy + verification: migrations 0014-0017, seed sanguo (132 heroes/7 nodes/3 items/14 factions/12 families/2 relations), emoji animated-prefix fix (`<a:name:id>`), zone markers → message content `# ` headers
+Phase: 9 (travel-encounters) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 9
+Last activity: 2026-08-12 — Phase 9 execution started
 
 Progress: [██████████] 100%
 
