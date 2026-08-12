@@ -247,3 +247,10 @@ None - no external service configuration required.
 
 *Phase: 09-travel-encounters*
 *Completed: 2026-08-12*
+
+## Self-Check: PASSED
+
+- Files verified on disk: mapEdges.ts, travelService.ts, travelCheckInService.ts, travel.ts, sanguoTravelDestinationMenu.ts, sanguoTravelButtons.ts, buildSanguoTravelReplyEmbed.ts, travelService.test.ts, travel.test.ts, 09-01-SUMMARY.md — all FOUND.
+- Commits verified in git log: `6d82bb6` (test RED), `b03217e` (feat GREEN), `73b7bed` (test RED), `dcc47ed` (feat GREEN), `9c3c16e` (test refine), `2bba764` (docs plan complete) — all FOUND.
+- TDD gate compliance: each task has a `test(...)` commit strictly before its `feat(...)` commit — RED/GREEN sequence intact for both tasks.
+- Full suite re-run at close-out: 22 files / 159 tests passed; `npm run check-i18n` green; `npm run typecheck` green.
