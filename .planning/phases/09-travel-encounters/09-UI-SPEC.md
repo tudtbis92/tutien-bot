@@ -22,7 +22,7 @@ created: 2026-08-12
 |----------|-------|
 | Tool | none (shadcn gate N/A — non-web stack; verified no `components.json`, no React) |
 | Preset | not applicable |
-| Component library | discord.js `EmbedBuilder` + `SlashCommandBuilder` + `AutocompleteInteraction` (v14.26.2) |
+| Component library | discord.js `EmbedBuilder` + `SlashCommandBuilder` + `StringSelectMenuBuilder` + `ButtonBuilder` (v14.26.2) |
 | Icon library | none external — application-owned emoji registry `src/assets/sanguoEmojis.ts` (1056 animated emoji, `<a:name:id>` markup, Phase 8 D-21) + `EMOJI` constants in `src/ui/theme.ts` |
 | Font | platform-controlled (Discord client renders its own type). Contract governs markdown hierarchy, not px. |
 
@@ -31,8 +31,7 @@ created: 2026-08-12
 - `src/ui/embeds/buildSanguoMapEmbed.ts` — SEASON-color embed pattern + DB per-locale node names
 - `src/ui/embeds/buildErrorEmbed.ts` / `buildSuccessEmbed.ts` — standardized error/success embeds
 - `src/commands/sanguo/map.ts` — slash subcommand + `fetchCommandContext` + error-handling pattern
-- `src/services/football/matchLifecycleService.ts` — REST-only cross-shard DM pattern (D-12), Redis-cached locale, 3-strike failure counters
-- `src/workers/pgBoss.ts` — cron registration pattern (manager-only, D-11)
+- `src/events/interactionCreate.ts` — button branch (lines ~380-445) + new select-menu routing for `sanguo:travel:*` customIds (D-25/D-26)
 
 ---
 
@@ -42,26 +41,33 @@ New UI artifacts this phase creates — consumed by planner as task inventory:
 
 | Artifact | Type | Purpose | Notes |
 |----------|------|---------|-------|
-| `src/commands/sanguo/travel.ts` | slash subcommand | `/sanguo travel [destination]` — start one-hop journey (D-08) | destination = required StringOption with autocomplete over adjacent edges; new pattern (no autocomplete handler exists in codebase yet) |
+| `src/commands/sanguo/travel.ts` | slash subcommand + components | `/sanguo travel` — start one-hop journey (D-08) OR check-in an active journey (pull model, D-22/D-24) | No command options; destination picker is a **StringSelectMenu** (D-26) |
+| `src/ui/components/sanguoTravelDestinationMenu.ts` (new) | StringSelectMenu | adjacent-node destination picker (≤25, value = node code, nearest first) | D-26 — replaces autocomplete |
+| `src/ui/components/sanguoTravelButtons.ts` (new) | Buttons | `sanguo:travel:start` (Start journey — confirm gate), `sanguo:travel:ack` (encounter ack "Tiếp tục hành trình" — D-25) | customId namespace `sanguo:travel:*` |
 | `src/ui/embeds/buildSanguoTravelReplyEmbed.ts` | embed builder | command confirmation: destination, ETA, departure | NO cost field — travel is time-only (D-01) |
-| `src/ui/embeds/buildSanguoArrivalEmbed.ts` | embed builder | arrival DM (D-06, D-12) | fired by sanguoTickArrivals |
-| `src/ui/embeds/buildSanguoEncounterEmbed.ts` | embed builder | encounter DM (D-06, D-12) | `boss: boolean` variant flag (D-14) |
+| `src/ui/embeds/buildSanguoArrivalEmbed.ts` | embed builder | arrival result (inline, D-23) | returned by the check-in engine, not a DM |
+| `src/ui/embeds/buildSanguoEncounterEmbed.ts` | embed builder | encounter result (inline, D-23) | `boss: boolean` variant flag (D-14) |
 | `locales/{vi,en,zh-cn}/sanguo.json` | i18n keys | new `cmd.travel`, `travel`, `arrival`, `encounter` namespaces | 3 locales, zero hardcoded strings (project constraint) |
 
-**Interaction contract — autocomplete (destination picker):**
-1. Respond with at most **25 choices** (Discord hard cap).
-2. Choice `name` = `{node emoji}{node per-locale name}` when the node has a `representative_hero_id` (via `heroEmoji()`), else the per-locale name alone — mirrors the map-content marker pattern (D-22).
-3. Choice `value` = **stable node `code`** (never the localized name — names are display-only, per D-07 content-in-DB rule).
-4. Order choices by `travel_seconds` ascending (nearest first); cap at 25 — beyond 25, return the 25 nearest.
-5. Zero adjacent nodes → return `[]` (Discord renders no options); the command execution must still re-validate adjacency and reply with the `no_route` error copy (defense in depth — autocomplete is advisory, never authoritative).
-6. No other interaction types: **zero message components (buttons/selects) in this phase** — travel-cancel removed (D-03), event-notification-only (D-06).
+**Interaction contract — destination picker (StringSelectMenu, D-26):**
+1. `/sanguo travel` with NO active journey renders an embed (current position) + a `StringSelectMenu` of adjacent nodes.
+2. At most **25 choices** (Discord hard cap), ordered by `travel_seconds` ascending (nearest first).
+3. Choice `label` = `{node emoji}{node per-locale name}` when the node has a `representative_hero_id` (via `heroEmoji()`), else the per-locale name alone — mirrors the map-content marker pattern (D-22).
+4. Choice `value` = **stable node `code`** (never the localized name — names are display-only, per D-07 content-in-DB rule).
+5. Below the menu sits the **"Bắt đầu hành trình"** button (`sanguo:travel:start`, disabled until a destination is selected). Selecting a destination updates the embed (destination + ETA) and enables the button.
+6. Pressing Start writes the travel row (confirm gate — one-way commitment per D-03). A user already traveling (status='traveling') cannot start — the command takes the check-in path instead.
+7. Zero adjacent nodes → embed shows `no_route` copy; the select menu has no options and Start stays disabled.
 
-**Interaction contract — DM notifications (arrival + encounter):**
-1. Sent via `@discordjs/rest` REST client (cross-shard, D-12) — mirror `matchLifecycleService.ts`: open DM channel via `POST /users/@me/channels`, then `POST /channels/{id}/messages`.
-2. Locale = user-level resolution (not guild): stored preference → user locale → fallback `vi`, Redis-cached 1h — `getGuildLocale` pattern adapted for users.
-3. One embed per event; `embedFooter(shardId)` + `.setTimestamp()` on all (theme.ts pattern).
-4. DM failure handling: `50007` (DMs closed) → skip + log + Redis 3-strike counter (matchLifecycleService pattern); never retry-storm a closed DM.
-5. Encounter-cap skip (D-13) is **silent** — no notification when a roll is skipped due to the ~20/hr cap; travel continues visibly unperturbed.
+**Interaction contract — check-in (pull model, D-22/D-24/D-25):**
+1. `/sanguo travel` while traveling (status='traveling', not encounter-active) computes elapsed since `updatedAt`, rolls 1× per counted minute (35% zone probability), decrements remaining on failed rolls, and returns:
+   - **Encounter result**: embed + **"Tiếp tục hành trình"** ack button (`sanguo:travel:ack`) — pressing it clears `encounterActive` and resumes the clock (D-25). Encounter-resolve UI (battle/capture) is Phase 10.
+   - **Arrival result**: arrival embed + the destination select menu re-opens for the next hop.
+   - **Status result**: current position + remaining ETA (no action components).
+2. While `encounterActive`, invoking `/sanguo travel` returns the pending encounter UI and counts no time.
+3. All results are **inline in the interaction** — no DMs, no push (D-23).
+
+**Interaction contract — DM notifications:**
+> **REMOVED (D-23)** — no REST DM notifications in Phase 9. Superseded by the inline check-in results above. This section is intentionally empty.
 
 ---
 
@@ -106,10 +112,10 @@ All colors from `src/ui/theme.ts` — never hardcode hex in builders (theme.ts d
 |------|-------|-------|
 | Dominant (60%) | `COLORS.SEASON` `0x8B5CF6` violet | ALL sanguo travel/arrival/normal-encounter embeds — brand consistency with `buildSanguoMapEmbed` |
 | Secondary (30%) | `COLORS.NEUTRAL` `0x6B7280` gray | reserved for future auxiliary embeds; not used this phase |
-| Accent (10%) | `COLORS.GOLD` `0xF59E0B` gold | **Boss thường encounter DM only** (D-14) — rarity signal, matches theme.ts "Gold — rare items" semantic |
-| Destructive | `COLORS.DANGER` `0xEF4444` red | error replies only: no-route, already-traveling, generic failure, not-registered |
+| Accent (10%) | `COLORS.GOLD` `0xF59E0B` gold | **Boss thường encounter result only** (D-14) — rarity signal, matches theme.ts "Gold — rare items" semantic |
+| Destructive | `COLORS.DANGER` `0xEF4444` red | error replies only: no-route, generic failure, not-registered |
 
-Accent reserved for: boss-thường encounter DM embeds. No other element uses GOLD this phase.
+Accent reserved for: boss-thường encounter result embeds. No other element uses GOLD this phase.
 Semantic color contract: SEASON = sanguo game-state events; GOLD = rare/boss; DANGER = errors only. SUCCESS/WARNING/PRIMARY are NOT used in Phase 9 embeds (nothing to celebrate-as-success, nothing to warn) — keep the palette minimal.
 
 ---
@@ -128,15 +134,18 @@ Canonical copy in VI (default locale). EN/ZH-CN keys required with identical str
 | Error state (already traveling) | "Bạn đang trong một hành trình" · "Hãy đợi đến nơi rồi bắt đầu hành trình mới." (D-09) | `sanguo:travel.in_progress_title` / `sanguo:travel.in_progress_body` |
 | Error state (not registered) | reference existing `common:errors.notRegistered` — do not add new copy | — |
 | Error state (generic) | "Có lỗi khi bắt đầu hành trình. Hãy thử lại." | `sanguo:travel.error` |
-| Arrival DM title | "📍 Đã đến nơi" | `sanguo:arrival.title` |
-| Arrival DM body | "Bạn đã đến **{node}**." · "Dùng /sanguo travel để tiếp tục hành trình." | `sanguo:arrival.body` / `sanguo:arrival.cta` |
-| Encounter DM title | "⚔️ Kỳ ngộ" | `sanguo:encounter.title` |
-| Encounter DM body | "Trên đường đến **{node}**, bạn chạm trán **{hero_emoji} {hero}**." | `sanguo:encounter.body` |
-| Boss DM title | "👑 Boss thường xuất hiện!" | `sanguo:encounter.boss_title` |
-| Boss DM body | "Một Boss thường trấn giữ **{zone}** đã xuất hiện trên đường của bạn. Hãy chuẩn bị!" (Phase 9 = roll + notify + record only, D-14) | `sanguo:encounter.boss_body` |
+| Arrival result title | "📍 Đã đến nơi" | `sanguo:arrival.title` |
+| Arrival result body | "Bạn đã đến **{node}**." · "Dùng /sanguo travel để tiếp tục hành trình." | `sanguo:arrival.body` / `sanguo:arrival.cta` |
+| Encounter result title | "⚔️ Kỳ ngộ" | `sanguo:encounter.title` |
+| Encounter result body | "Trên đường đến **{node}**, bạn chạm trán **{hero_emoji} {hero}**." | `sanguo:encounter.body` |
+| Boss result title | "👑 Boss thường xuất hiện!" | `sanguo:encounter.boss_title` |
+| Boss result body | "Một Boss thường trấn giữ **{zone}** đã xuất hiện trên đường của bạn. Hãy chuẩn bị!" (Phase 9 = roll + ack only, D-14) | `sanguo:encounter.boss_body` |
+| Encounter ack button | "Tiếp tục hành trình" (clears `encounterActive`, resumes the clock — D-25) | `sanguo:travel.ack_button` |
+| Destination select placeholder | "Chọn điểm đến" | `sanguo:travel.dest_placeholder` |
+| Start journey button | "Bắt đầu hành trình" (confirm gate, D-26) | `sanguo:travel.start_button` |
 | Destructive confirmation | **NONE — no destructive actions in this phase.** Travel-cancel component removed (D-03); no refund path exists (D-04); money never touches travel (D-01). | — |
 
-Post-arrival CTA (in arrival DM): "Tiếp tục hành trình" → the `/sanguo travel` re-invocation (one hop per journey, D-08).
+Post-arrival CTA (in arrival result): "Tiếp tục hành trình" → re-opens the destination select menu for the next hop (one hop per journey, D-08).
 
 ---
 
@@ -148,18 +157,19 @@ Applicable state considerations resolved: 7 covered, 1 backstop, 1 unresolved
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
-| empty | travel autocomplete (0 adjacent nodes) | ✅ covered | "Autocomplete returns `[]` → Discord renders no options; direct invocation replies with `no_route_title`/`no_route_body` DANGER embed" |
-| error | travel in-progress (D-09) | ✅ covered | "`userId.unique()` blocks new journey; command replies `in_progress_title`/`in_progress_body` DANGER embed" |
+| empty | travel destination menu (0 adjacent nodes) | ✅ covered | "Select menu renders no options; embed shows `no_route_title`/`no_route_body` copy; Start button stays disabled" |
+| error | travel in-progress (D-09) | ✅ covered | "`userId.unique()` blocks new journey; `/sanguo travel` takes the check-in path instead of starting a new one" |
 | error | not registered | ✅ covered | "Replies existing `common:errors.notRegistered` via `buildErrorEmbed` (map.ts pattern)" |
 | error | generic failure | ✅ covered | "Generic failure replies `sanguo:travel.error` DANGER embed" |
-| populated | travel confirmation reply | ✅ covered | "SEASON embed with destination/ETA/from fields; ETA humanized from `travel_seconds_remaining`" |
-| populated | arrival DM | ✅ covered | "SEASON embed via REST DM; locale = user-level resolution, fallback vi" |
-| populated | encounter DM (normal) | ✅ covered | "SEASON embed, hero name + `heroEmoji()` prefix, zone + destination context" |
-| populated | encounter DM (boss) | ✅ covered | "GOLD embed variant via `boss: true` flag; same field structure, boss copy" |
+| populated | travel confirmation reply | ✅ covered | "SEASON embed with destination/ETA/from fields; ETA humanized from `travel_seconds_remaining`; Start button" |
+| populated | check-in status result | ✅ covered | "SEASON embed: current position + remaining ETA; no action components" |
+| populated | arrival result | ✅ covered | "SEASON embed inline + destination select menu re-opens for next hop" |
+| populated | encounter result (normal) | ✅ covered | "SEASON embed, hero name + `heroEmoji()` prefix, zone + destination context + ack button" |
+| populated | encounter result (boss) | ✅ covered | "GOLD embed variant via `boss: true` flag; same field structure, boss copy + ack button" |
 | long-text | node/hero names in embeds | 🧪 backstop | `{ statement: "longest node/hero names render untruncated in embed fields", verification: backstop }` |
-| overflow | DM failure (user has DMs closed, `50007`) | ⚠ unresolved | "Planner treats as assumption: skip + log + Redis 3-strike counter (matchLifecycleService pattern); user receives no notification and travel continues" |
+| overflow | DM failure (user has DMs closed, `50007`) | ⛔ removed | "No DMs in Phase 9 (D-23) — all results inline; the old `50007` overflow case no longer exists" |
 
-Zero-one-many: adjacent nodes 0/1/25+ → covered by the autocomplete contract above (empty array / single choice / nearest-25 capped).
+Zero-one-many: adjacent nodes 0/1/25+ → covered by the select-menu contract above (empty menu / single choice / nearest-25 capped).
 
 **Probe dismissal (recorded):** `loading` / `partial` — not applicable: Discord embeds render atomically (no skeleton/spinner or partial-field state exists); `error`/`empty` on the boss DM — always-populated by construction (D-14 roll+notify, boss copy is static); `loading`/`error` on autocomplete — advisory surface, Discord renders its own typing state, and validation failures surface through the command reply error path above.
 

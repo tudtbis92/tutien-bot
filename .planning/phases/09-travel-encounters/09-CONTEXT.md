@@ -6,9 +6,9 @@
 <domain>
 ## Phase Boundary
 
-Phase 9 delivers the real-time core loop of the Tam Quốc Collection: travel between map nodes on a graph-based map (time-only cost, one hop per journey), the `sanguoTick` cron infrastructure (separate arrival-resolution and encounter-roll ticks in the manager process), encounter rolls with position-blended zone pools, per-user caps, and the TQC-09 map/zone data research (nodes, edges, hero distribution) consumed as seed data.
+Phase 9 delivers the real-time core loop of the Tam Quốc Collection: travel between map nodes on a graph-based map (time-only cost, one hop per journey), a **pull-based travel check-in model** (D-22..D-28 — results are computed and returned only when the user invokes `/sanguo travel`; NO cron jobs, NO push notifications), encounter rolls with position-blended zone pools, per-user caps, and the TQC-09 map/zone data research (nodes, edges, hero distribution) consumed as seed data.
 
-**Requirements in scope:** TQC-06 (travelService + `/sanguo travel`), TQC-07 (sanguoTick cron + REST notifications), TQC-08 (encounter system + caps), TQC-09 (map/zone data research).
+**Requirements in scope:** TQC-06 (travelService + `/sanguo travel`), TQC-07 (pull-based travel check-in — result on invocation, **no cron, no REST notification**), TQC-08 (encounter system + caps), TQC-09 (map/zone data research).
 
 **Not in scope:** Battle engine, capture fee mechanics implementation, capture costs (Phase 10 — but the economy re-sign-off gated by this phase), legion battle / chemistry (Phase 11), anti-abuse bot detection (Phase 12).
 
@@ -30,20 +30,20 @@ Phase 9 delivers the real-time core loop of the Tam Quốc Collection: travel be
 
 ### Fail & Self-Heal (TQC-07)
 
-- **D-05:** **sanguoTick self-heals overdue journeys — "đến trễ", never stuck forever.** A journey past its counted travel time is resolved at the next tick sweep (`FOR UPDATE SKIP LOCKED` prevents double-resolve). No refund, no failed status — only late arrival. — **Reversibility:** reversible.
+- **D-05:** **Travel self-heals overdue journeys — "đến trễ", never stuck forever.** In the pull model this is structural: elapsed time is computed from `updatedAt` on the next `/sanguo travel` invocation; an overdue journey simply resolves (or arrives) in that call. No cron sweep, no failed status — only late arrival. — **Reversibility:** reversible.
 
 ### Travel UX & Time Model (TQC-06)
 
-- **D-06:** **Only event notifications, no persistent status embed.** The player is notified on arrival and on encounter (both via DM); there is no always-on travel status embed or live countdown UI. — **Reversibility:** reversible.
-- **D-07:** **Travel time pauses during encounters.** The travel clock stops counting while an encounter is active and resumes when the encounter is resolved. `player_travel_state` therefore stores **`travel_seconds_remaining`** (decrementing) instead of a fixed `arriveAt` timestamp — the current schema's `arriveAt timestamp notNull` must be replaced/adapted. The tick subtracts elapsed counted time; while an encounter is active the tick does not subtract. Arrival fires when remaining reaches 0. — **Reversibility:** costly — touches the Phase 8 schema (`player_travel_state.ts`) and the tick logic.
+- **D-06:** **Only interaction-time results, no persistent status embed.** The player sees travel status, encounters, and arrivals when invoking `/sanguo travel` (inline, D-23); there is no always-on travel status embed or live countdown UI. — **Reversibility:** reversible.
+- **D-07:** **Travel time pauses during encounters.** The travel clock stops counting while an encounter is active and resumes when the encounter is resolved. `player_travel_state` therefore stores **`travel_seconds_remaining`** (decrementing) instead of a fixed `arriveAt` timestamp — the current schema's `arriveAt timestamp notNull` must be replaced/adapted. **AMENDED (pull model, D-25):** the pause is now driven by the check-in engine + an acknowledge button — when a roll hits, `encounterActive=true` and `updatedAt` is pinned to the hit minute (`updatedAt + k·60`); the user presses **"Tiếp tục hành trình"** → `encounterActive=false`, `updatedAt=now`, and time resumes counting from there. — **Reversibility:** costly — touches the Phase 8 schema (`player_travel_state.ts`) and the check-in logic.
 - **D-08:** **One hop per `/sanguo travel`** — a single adjacent-node journey (A→B). No multi-hop routes, no route planning. The player must arrive and re-issue travel for the next hop. — **Reversibility:** reversible.
 - **D-09:** **Cannot travel while already traveling.** A journey in flight blocks a new one (matches `userId.unique()`); combined with the clock-pause-on-encounter this is the anti-spam mechanism — no separate departure cooldown needed.
 
 ### Encounter Roll Design (TQC-08)
 
-- **D-10:** **Encounter rolls happen periodically during travel**, keyed to counted travel time (pause-aware), not wall-clock. **Probability per tick scan** (e.g., each tick → probability by zone, ~30-50%); the ~20/hr cap arises naturally from bounded hop durations plus the cap itself. — **Reversibility:** reversible.
-- **D-11:** **Two separate sanguoTick cron jobs:** (a) arrival-resolution tick (every minute), (b) encounter-roll tick (~30-60s). Both run in the manager process only (matches the existing pg-boss pattern in `src/workers/pgBoss.ts` — crons only in bot.ts/manager). — **Reversibility:** reversible.
-- **D-12:** **Notifications for both arrivals and encounters go to the player via DM** (REST through `@discordjs/rest`, mirroring `matchLifecycleService.ts`), working across shards regardless of which shard hosts the user. — **Reversibility:** reversible.
+- **D-10:** **Encounter rolls happen per counted travel minute during check-in** (1 ROLL per counted minute, ~35% zone probability), not wall-clock. **AMENDED (pull model, D-24):** rolls are computed lazily when the user calls `/sanguo travel`; **the loop stops immediately at the first successful roll** — no batch of encounters, no rolling past a hit. The ~20/hr cap arises from the per-minute rolls plus the cap itself. — **Reversibility:** reversible.
+- **D-11:** ~~Two separate sanguoTick cron jobs: (a) arrival-resolution tick (every minute), (b) encounter-roll tick (~30-60s). Both run in the manager process only~~ **SUPERSEDED by D-22.** The pull-based redesign removes ALL sanguoTick crons. Nothing is registered in `pgBoss.ts` for travel/encounters. — **Reversibility:** one-way — re-adding crons requires a new design decision.
+- **D-12:** ~~Notifications for both arrivals and encounters go to the player via DM (REST through `@discordjs/rest`, mirroring `matchLifecycleService.ts`), working across shards regardless of which shard hosts the user.~~ **SUPERSEDED by D-23.** No push notifications exist. All results (status/encounter/arrival) are returned **inline in the interaction** on whatever shard received the command. No `sanguoNotificationService`, no 3-strike counter, no Redis locale cache, no `@discordjs/rest` notification path. — **Reversibility:** one-way — the DM notification service is not built.
 - **D-13:** **On reaching the ~20/hr cap, encounter rolls are skipped** — the player keeps traveling normally but receives no new encounters until the cap window clears. Travel itself is never blocked by the cap. — **Reversibility:** reversible.
 - **D-14:** **Boss thường is a separate low-probability encounter roll** (~5-10% replacing a successful normal hero roll, zone-based). **In Phase 9 the boss is only rolled + notified + recorded** (`encounter_runs` with a boss flag/type) — battle/capture/boss data/đội hình/way of fielding troops are Phase 10-11 (battle engine TQC-10, legion chemistry TQC-17). — **Reversibility:** reversible.
 
@@ -60,14 +60,24 @@ Phase 9 delivers the real-time core loop of the Tam Quốc Collection: travel be
 - **D-20:** **Phase 8 placeholder map_nodes (7 nodes) are REPLACED** by research data — migration + reseed. Hero seed (132) stays; only the node/zone/edge/hero-zone-rate data is replaced. — **Reversibility:** one-way — a data migration that deletes placeholder nodes; re-seeding old nodes requires re-creating them.
 - **D-21:** **TQC-09 research runs INSIDE Phase 9** (via `gsd-phase-researcher`) producing: node list, edges + travel times, zone set, hero_zone_rates. **User reviews the research data before implementation** — a data-review gate between research and plan execution. Output feeds the seed.
 
+### Pull-Based Travel Redesign (2026-08-12 — supersedes D-11/D-12, amends D-07/D-10)
+
+- **D-22:** **No sanguoTick cron jobs — travel is PULL-based.** Nothing happens until the user invokes `/sanguo travel`. No pg-boss registration, no `sanguoTickArrivals`/`sanguoTickEncounters` jobs, no `travelCheckInService` cron. Results (status/encounter/arrival) are computed on demand. — **Reversibility:** one-way — supersedes D-11.
+- **D-23:** **No REST DM notifications — results are inline.** Encounters and arrivals are returned directly in the interaction reply on the user's shard. `sanguoNotificationService`, the 3-strike Redis counter, the user-locale Redis cache, and the `@discordjs/rest` notification path are NOT built. — **Reversibility:** one-way — supersedes D-12.
+- **D-24:** **1 ROLL per counted minute, stop at the first hit.** Each counted minute (60s of elapsed travel time) produces one encounter roll at the zone probability (~0.35). The loop **stops immediately** when a roll succeeds — the player resolves that encounter (ack) before any further time is counted. No batch of encounters is ever returned at once. — **Reversibility:** reversible.
+- **D-25:** **Encounter pause via acknowledge button.** On a successful roll: `encounterActive=true`, `updatedAt = updatedAt + k·60` (pinned to the exact minute the encounter hit). The player presses the **"Tiếp tục hành trình"** button → `encounterActive=false`, `updatedAt=now`. While `encounterActive`, the check-in returns the pending encounter UI and counts no time. Phase 10 replaces the ack button with battle/capture actions. — **Reversibility:** reversible.
+- **D-26:** **Destination picker = StringSelectMenu + Start button.** `/sanguo travel` renders a select menu of adjacent nodes (value = node code, ≤25, nearest first) with a **"Bắt đầu hành trình"** button below it. Selecting a destination enables the button; pressing it writes the travel row (confirm gate before committing the one-way journey). NO autocomplete. — **Reversibility:** reversible.
+- **D-27:** **Check-in fires ONLY on `/sanguo travel`** — the map/heroes commands do not trigger travel computation. Single, predictable pull surface. — **Reversibility:** reversible.
+- **D-28:** **Encounters roll only while traveling (0→arrival).** `travel_seconds_remaining` decrements 60s per counted minute ONLY on failed rolls; arrival (`remaining ≤ 0`) ends the journey — no rolls after arrival. — **Reversibility:** reversible.
+
 ### the agent's Discretion
-- Exact tick schedules (minute for arrivals, exact interval for encounter roll).
+- Exact check-in roll loop details (per-minute roll count, minute-boundary rounding).
 - Exact cap number mechanics (~20/hr is the target; sliding window vs fixed-hour window).
 - `encounter_runs` boss flag/type column shape.
 - Exact `hero_zone_rates` table schema (per-node vs per-zone rate granularity).
 - Whether `player_travel_state` keeps `from_node_id`/`to_node_id`/`depart_at` semantics alongside `travel_seconds_remaining`.
-- Position update frequency granularity inside the tick (how finely "current position" is computed).
-- DM notification embed content/layout.
+- How finely position is computed inside the check-in loop (per-minute granularity — position = 1 − remaining/total at the minute boundary).
+- Check-in embed/select-menu/button content/layout + customId naming (`sanguo:travel:*`).
 
 </decisions>
 
@@ -90,9 +100,9 @@ Phase 9 delivers the real-time core loop of the Tam Quốc Collection: travel be
 - `src/db/schema/playerTravelState.ts` — `arriveAt timestamp notNull` must change to pause-aware remaining-seconds model (D-07); `userId.unique()` stays
 - `src/db/schema/encounterRuns.ts` — encounter history (zone, heroId nullable, status 'pending') — boss flag/type added (D-14)
 - `src/services/wallet.ts` — NOT called by travel (D-01); referenced for capture-fee sink context in Phase 10
-- `src/commands/sanguo/map.ts` — Existing `/sanguo map` scaffold — travel picks destination from adjacent nodes (autocomplete over edges)
-- `src/workers/pgBoss.ts` — Cron registration pattern: jobs only in bot.ts/manager, shards send-only; `schedule()` idempotent — sanguoTick (2 jobs, D-11) registers here
-- `src/services/football/matchLifecycleService.ts` — REST-only DM/notification pattern via `@discordjs/rest` (D-12 cross-shard notifications)
+- `src/commands/sanguo/map.ts` — Existing `/sanguo map` scaffold — travel picks destination from adjacent nodes (select menu over edges, D-26)
+- `src/workers/pgBoss.ts` — **NOT modified by Phase 9** (D-22 — no travel/encounter crons registered; the existing manager-only pattern stays as-is)
+- `src/services/football/matchLifecycleService.ts` — REST DM/notification pattern is **NOT reused** (D-23 — no push); the `FOR UPDATE` tx shape (lines 333-345) and error style still inform `travelCheckInService`
 - `src/db/schema/formations.ts` + `formation_slots` + `user_formations` — Phase 11 legion chemistry (deferred, not Phase 9)
 - `scripts/seed-sanguo.ts` — Idempotent seed (D-11 upsert pattern) — replaced node data + new hero_zone_rates + edges seed (D-16/17/20)
 
@@ -109,28 +119,31 @@ No ADRs beyond milestone design gates captured in `.planning/STATE.md`, `docs/ec
 ## Existing Code Insights
 
 ### Reusable Assets
-- `src/workers/pgBoss.ts` — registration + `schedule()` pattern for the two sanguoTick crons (D-11); `createQueue` before `schedule`; `localConcurrency` + per-job try/catch
-- `src/services/football/matchLifecycleService.ts` — `@discordjs/rest` REST DM/notification pattern to reuse for encounter/arrival DMs (D-12); `getGuildLocale` style locale resolution for DM content
+- `src/utils/commandContext.ts` — `fetchCommandContext` returns `user` (users.id) + `char`; **travelService keys on `user.id`** (playerTravelState.userId → users.id)
+- `src/services/football/matchLifecycleService.ts` — `FOR UPDATE` tx shape (lines 333-345) for the check-in transaction; plain-error style (`throw new Error('CODE')`)
 - `src/db/schema/mapNodes.ts` — per-locale content columns (name_vi/en/zh) pattern (D-05 Phase 8) carries into the new node data
-- `scripts/seed-sanguo.ts` — idempotent upsert (ON CONFLICT DO UPDATE) for nodes/heroes/items — extended for edges + hero_zone_rates (D-16/17)
-- `src/utils/commandLoader.ts` + `src/commands/sanguo/map.ts` — `/sanguo travel` subcommand slots in here; destination autocomplete over adjacent edges (D-08/17)
-- `src/ui/embeds/buildSanguoMapEmbed.ts` + `src/ui/theme.ts` — embed builder pattern for event DM notifications (D-06)
+- `scripts/seed-sanguo.ts` — idempotent upsert (ON CONFLICT DO UPDATE) for nodes/heroes/items — extended for edges + hero_zone_rates (D-16/17/20), with the D-20 full-replace flow (delete mapEdges + heroZoneRates + mapNodes → re-insert)
+- `src/utils/commandLoader.ts` + `src/commands/sanguo/map.ts` — `/sanguo travel` subcommand slots in here; destination select menu over adjacent edges (D-08/17/26)
+- `src/ui/embeds/buildSanguoMapEmbed.ts` + `src/ui/theme.ts` — embed builder pattern for check-in result embeds (inline, D-23)
+- `src/events/interactionCreate.ts` — button branch (lines ~380-445) extended for `sanguo:travel:*` customIds (select menu + Start button + encounter ack); NO autocomplete branch needed (D-26)
 
 ### Established Patterns
-- **pg-boss crons only in manager** (`bot.ts`) — shards are send-only; sanguoTick follows this (D-11)
-- **`FOR UPDATE SKIP LOCKED`** — Phase 8 / football order-matching pattern; required by TQC-07 for tick scans (D-05)
+- **Pull-based check-in** — no crons; travel state computed on `/sanguo travel` invocation only (D-22)
+- **Inline results** — all results in the interaction reply; no DMs, no push (D-23)
+- **`FOR UPDATE`** — the check-in transaction locks the travel row (single user writer; `userId.unique()` backstops concurrency)
 - **Content-vs-UI split** (D-07 Phase 8) — node/zone/hero names in DB per-locale columns, UI strings in i18next `sanguo` namespace
-- **i18n zero-hardcoded-strings** — eslint-plugin-i18next + `npm run check-i18n` — new travel/encounter UI strings go into `sanguo` namespace
+- **i18n zero-hardcoded-strings** — eslint-plugin-i18next + `npm run check-i18n` — new travel/encounter/arrival UI strings go into `sanguo` namespace
 - **Wallet discipline (D-03 Phase 8)** — travel touches no balance (D-01); future capture fee goes through `wallet.deductBalance`
 - **crypto.randomInt() for player-facing rolls** — encounter rolls use crypto RNG (milestone decision), not pure-rand (pure-rand is battle-replay only, Phase 10)
 
 ### Integration Points
-- `src/commands/sanguo/travel.ts` (new) ← adjacency destination picker + travel start (D-08)
-- `src/jobs/sanguoTickArrivals.ts` + `src/jobs/sanguoTickEncounters.ts` (new) ← registered in `src/workers/pgBoss.ts` (D-11)
+- `src/commands/sanguo/travel.ts` (new) ← select menu (adjacent destinations, D-26) + Start button + check-in dispatch
+- `src/services/sanguo/travelCheckInService.ts` (new) ← elapsed → per-minute roll loop → encounter/arrival/status result (D-24/D-28)
+- `src/services/sanguo/encounterService.ts` (new) ← pure roll math (position blend, weighted pick, boss sub-roll, cap)
 - `src/db/schema/playerTravelState.ts` ← remaining-seconds + pause-aware fields (D-07)
 - `src/db/schema/mapNodes.ts` + `map_edges` + `hero_zone_rates` (new) ← research-fed seed (D-16/17/20)
-- `scripts/seed-sanguo.ts` ← replaced node data + edges + hero-zone rates reseed (D-20)
-- REST notification service (new, or extend matchLifecycleService pattern) ← DM on arrival/encounter cross-shard (D-12)
+- `scripts/seed-sanguo.ts` ← replaced node data + edges + hero-zone rates reseed (D-20, idempotent full-replace)
+- `src/events/interactionCreate.ts` ← button/select-menu routing for `sanguo:travel:*` customIds (D-25/D-26)
 
 </code_context>
 
@@ -139,10 +152,11 @@ No ADRs beyond milestone design gates captured in `.planning/STATE.md`, `docs/ec
 
 - **Travel as time currency, not money**: user explicitly redesigned the core loop — moving costs real time, Linh thạch only enters at capture ("việc di chuyển giữa các node chỉ tốn time không tốn linh thạch, chỉ khi encounter và thực hiện bắt tướng thì mới tốn linh thạch").
 - **No cancel is a position-model decision, not just UX**: "khi cancel thì nếu bắt đầu một hành trình mới thì điểm bắt đầu sẽ tính trên node nào khi ở giữa hành trình?" — removing cancel keeps position always = last arrived node.
-- **Clock pauses on encounter**: "trong khoảng thời gian này thì người chơi sẽ được roll encounter và sẽ dừng đếm thời gian khi encounter, thời gian chỉ tiếp tục đếm khi encounter xử lý xong" — the player owns their travel window.
+- **Clock pauses on encounter (pull-driven)**: "trong khoảng thời gian này thì người chơi sẽ được roll encounter và sẽ dừng đếm thời gian khi encounter, thời gian chỉ tiếp tục đếm khi encounter xử lý xong" — implemented via the check-in engine + ack button (D-25): roll stops at first hit, `updatedAt` pinned, time resumes after "Tiếp tục hành trình".
+- **Pull-based, not cron**: "trả kết quả chỉ khi gọi lệnh" — no scheduled jobs; the user's `/sanguo travel` invocation computes elapsed → encounters → arrival on demand (D-22/D-24).
 - **Real Three Kingdoms geography**: map covers Korea, ancient Vietnam, steppe tribes — not just the Chinese heartland — matching the foreign rulers in the roster.
 - **Position-based pool blend**: "vị trí hiện tại gần node A thì tăng tỷ lệ tướng node A lên" — proximity to a node shifts the encounter pool toward that node's heroes.
-- **Boss thường stays a roll+notify concern in Phase 9** — its battle/đội hình/legion mechanics are explicitly Phase 10-11 (user asked and we scoped it out).
+- **Boss thường stays a roll+ack concern in Phase 9** — its battle/đội hình/legion mechanics are explicitly Phase 10-11 (user asked and we scoped it out).
 - **Economy re-sign-off is a hard gate** — D-18 requires `docs/economy-budget.md` to be updated + re-signed with the new capture-fee sink before Phase 10 content.
 
 </specifics>
@@ -151,7 +165,7 @@ No ADRs beyond milestone design gates captured in `.planning/STATE.md`, `docs/ec
 ## Deferred Ideas
 
 - **Capture fee mechanics + per-attempt pricing** — Phase 10 (TQC-11); this phase only flags the economy re-sign-off requirement (D-02).
-- **Boss thường data/đội hình/troop composition** (define sẵn vs tự random) — Phase 10 battle engine + Phase 11 legion chemistry; user explicitly confirmed "Phase 9 chỉ roll + notify".
+- **Boss thường data/đội hình/troop composition** (define sẵn vs tự random) — Phase 10 battle engine + Phase 11 legion chemistry; user explicitly confirmed "Phase 9 chỉ roll + ack".
 - **Quân đoàn battle (3+9 chemistry)** — Phase 11 (TQC-17); formations schema already designed in Phase 8 post-gate.
 - **Economy budget re-sign-off numbers** — needs Phase 10 capture-fee values; the doc update itself should happen before Phase 10 content, not necessarily in Phase 9 execution.
 - **Anti-abuse bot detection** — Phase 12 (TQC-18); encounter caps (D-13) are the Phase 9-era brake only.

@@ -86,10 +86,13 @@ Progress: [██████████] 100%
 | Marriage bond = `hero_relations` (chỉ spouse trực tiếp, tier-1 ngang family); bỏ in_law | Chỉ vợ chồng trực tiếp có mặt trong roster (Hán Linh Đế ↔ Hà Hoàng Hậu/Vương Mỹ Nhân); in_law không seed vì đối tác (Mi phu nhân/Thái phu nhân) không trong roster | Phase 8 post-gate |
 | Sanguo emoji đều animated → markup `<a:name:id>` | Verify live app: 1056/1056 GIF. `<:name:id>` render literal `:dtr_t0:` (user xác nhận lỗi). `heroEmoji()` + generator emit `a:` prefix (D-21) | Phase 8 verification |
 | Zone markers → message CONTENT với `# ` (H1) header | Discord heading chỉ render trong content, KHÔNG trong embed field/description (discord-api-docs#7167). `# ` = H1 lớn nhất → emoji render to (D-22) | Phase 8 verification |
+| **Travel = PULL-based check-in (D-22..D-28)** — không cron, không REST DM; kết quả (status/encounter/arrival) trả inline khi user gọi `/sanguo travel` | Thay push model (sanguoTick crons D-11 + REST DM D-12); đơn giản hơn (no pgBoss registration), bền hơn (elapsed tự heal), chống bot tốt hơn (cần chủ động gọi lệnh); SUPERSEDES D-11/D-12 | Phase 9 redesign (2026-08-12) |
+| **Encounter = 1 ROLL 35%/phút, DỪNG ngay encounter đầu tiên (D-24)**; pause bằng nút ack "Tiếp tục hành trình" (D-25); đích chọn bằng StringSelectMenu + Start button (D-26) | User quyết định: journey chỉ tính đi được số phút roll fail; không batch encounter; ack gate = Phase-10-ready cho battle/capture | Phase 9 redesign (2026-08-12) |
+| **Encounter supply = f(check-in cadence) ≤ 20/hr** — không phải continuous cron supply | `docs/economy-budget.md` re-baseline: capture-fee sink (Phase 10) phải price theo pull-driven supply | Phase 9 redesign (2026-08-12) |
 
 ### Pending Todos / Blockers
 
-- [ ] Resolve charge-on-arrival vs deduct-at-departure conflict (research gap) — Phase 9 planning; verification cần cancel/arrive/fail matrix test
+- [x] Resolve charge-on-arrival vs deduct-at-departure conflict (research gap) — ✅ RESOLVED 2026-08-12 (Phase 9 D-01): travel is TIME-ONLY — no charge model exists (no cost, no deduct-at-departure, no charge-on-arrival); no cancel/refund path (D-03/D-04).
 - [x] Emoji rendering deployment smoke-test (application-owned emoji) — ✅ DONE 2026-08-12: `<a:name:id>` animated-prefix fix, /sanguo map render confirmed live
 - [ ] Economy budget numbers cần tu vi caps + VWAP band values hiện tại — Phase 8
 - [ ] Research-phase khả năng cao: Phase 12 (bot detection vs farming captcha infra), Phase 11 (pacing balance + chemistry values)
@@ -120,6 +123,7 @@ Resume: `/gsd-plan-phase 9` (next: Travel & Encounters)
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260811-lld | Post-gate Phase 8 schema redesign — IV rename, flat factions, role/class/family (bloodline table), spouse relations, formations schema, Tavily classifications, reseed | 2026-08-11 | 0a069c7 | [260811-lld](./quick/260811-lld-post-gate-phase-8-schema-redesign-locked/) |
+| 260812-j7r | Phase 9 pull-based travel check-in redesign (D-22..D-28): rewrite CONTEXT/UI-SPEC/RESEARCH/PATTERNS + plans 01/03/04, fix 02/05 — no cron, no REST DM, select menu + ack button | 2026-08-12 | <commit> | [260812-j7r](./quick/260812-j7r-phase-9-pull-based-travel-check-in-redes/) |
 
 ## Decisions
 

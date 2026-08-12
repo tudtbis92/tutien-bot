@@ -16,20 +16,20 @@
 - **D-04:** **No refund path exists anywhere in travel.** Money is never involved in travel, so cancel/refund/fail-refund bugs are structurally impossible. Tick only handles arrive (+ overdue self-heal).
 
 #### Fail & Self-Heal (TQC-07)
-- **D-05:** **sanguoTick self-heals overdue journeys — "đến trễ", never stuck forever.** A journey past its counted travel time is resolved at the next tick sweep (`FOR UPDATE SKIP LOCKED` prevents double-resolve). No refund, no failed status — only late arrival. — **Reversibility:** reversible.
+- **D-05:** ~~sanguoTick self-heals overdue journeys — "đến trễ", never stuck forever.~~ **AMENDED (pull model):** travel self-heals overdue journeys structurally — elapsed is computed from `updatedAt` at the next `/sanguo travel` invocation; an overdue journey simply resolves/arrives in that call. No cron sweep, no failed status — only late arrival. — **Reversibility:** reversible.
 
 #### Travel UX & Time Model (TQC-06)
-- **D-06:** **Only event notifications, no persistent status embed.** The player is notified on arrival and on encounter (both via DM); there is no always-on travel status embed or live countdown UI. — **Reversibility:** reversible.
-- **D-07:** **Travel time pauses during encounters.** The travel clock stops counting while an encounter is active and resumes when the encounter is resolved. `player_travel_state` therefore stores **`travel_seconds_remaining`** (decrementing) instead of a fixed `arriveAt` timestamp — the current schema's `arriveAt timestamp notNull` must be replaced/adapted. The tick subtracts elapsed counted time; while an encounter is active the tick does not subtract. Arrival fires when remaining reaches 0. — **Reversibility:** costly — touches the Phase 8 schema (`player_travel_state.ts`) and the tick logic.
+- **D-06:** **Only interaction-time results, no persistent status embed.** The player sees travel status, encounters, and arrivals when invoking `/sanguo travel` (inline, D-23); no always-on travel status embed or live countdown UI. — **Reversibility:** reversible.
+- **D-07:** **Travel time pauses during encounters.** The travel clock stops counting while an encounter is active and resumes when the encounter is resolved. `player_travel_state` therefore stores **`travel_seconds_remaining`** (decrementing) instead of a fixed `arriveAt` timestamp — the current schema's `arriveAt timestamp notNull` must be replaced/adapted. **AMENDED (pull model, D-25):** the pause is driven by the check-in engine + ack button — on a hit, `encounterActive=true` and `updatedAt` is pinned to the hit minute; pressing "Tiếp tục hành trình" clears the flag and resumes counting. — **Reversibility:** costly — touches the Phase 8 schema (`player_travel_state.ts`) and the check-in logic.
 - **D-08:** **One hop per `/sanguo travel`** — a single adjacent-node journey (A→B). No multi-hop routes, no route planning. The player must arrive and re-issue travel for the next hop. — **Reversibility:** reversible.
 - **D-09:** **Cannot travel while already traveling.** A journey in flight blocks a new one (matches `userId.unique()`); combined with the clock-pause-on-encounter this is the anti-spam mechanism — no separate departure cooldown needed.
 
 #### Encounter Roll Design (TQC-08)
-- **D-10:** **Encounter rolls happen periodically during travel**, keyed to counted travel time (pause-aware), not wall-clock. **Probability per tick scan** (e.g., each tick → probability by zone, ~30-50%); the ~20/hr cap arises naturally from bounded hop durations plus the cap itself. — **Reversibility:** reversible.
-- **D-11:** **Two separate sanguoTick cron jobs:** (a) arrival-resolution tick (every minute), (b) encounter-roll tick (~30-60s). Both run in the manager process only (matches the existing pg-boss pattern in `src/workers/pgBoss.ts` — crons only in bot.ts/manager). — **Reversibility:** reversible.
-- **D-12:** **Notifications for both arrivals and encounters go to the player via DM** (REST through `@discordjs/rest`, mirroring `matchLifecycleService.ts`), working across shards regardless of which shard hosts the user. — **Reversibility:** reversible.
+- **D-10:** **Encounter rolls happen per counted travel minute during check-in** (1 ROLL per minute, ~35% zone probability). **AMENDED (pull model, D-24):** rolls are computed lazily when the user invokes `/sanguo travel`; the loop **stops at the first successful roll** — no batch, no roll past a hit. The ~20/hr cap arises from the per-minute rolls plus the cap itself. — **Reversibility:** reversible.
+- **D-11:** ~~Two separate sanguoTick cron jobs~~ **SUPERSEDED by D-22** — no crons; travel is computed on `/sanguo travel` invocation only.
+- **D-12:** ~~REST DM notifications~~ **SUPERSEDED by D-23** — results are inline in the interaction; no `@discordjs/rest` notification path.
 - **D-13:** **On reaching the ~20/hr cap, encounter rolls are skipped** — the player keeps traveling normally but receives no new encounters until the cap window clears. Travel itself is never blocked by the cap. — **Reversibility:** reversible.
-- **D-14:** **Boss thường is a separate low-probability encounter roll** (~5-10% replacing a successful normal hero roll, zone-based). **In Phase 9 the boss is only rolled + notified + recorded** (`encounter_runs` with a boss flag/type) — battle/capture/boss data/đội hình/way of fielding troops are Phase 10-11 (battle engine TQC-10, legion chemistry TQC-17). — **Reversibility:** reversible.
+- **D-14:** **Boss thường is a separate low-probability encounter roll** (~5-10% replacing a successful normal hero roll, zone-based). **In Phase 9 the boss is only rolled + acked + recorded** (`encounter_runs` with a boss flag/type) — battle/capture/boss data/đội hình/way of fielding troops are Phase 10-11 (battle engine TQC-10, legion chemistry TQC-17). — **Reversibility:** reversible.
 
 #### Position-Blended Encounter Pool (TQC-08 + TQC-09)
 - **D-15:** **Encounter pool is blended by current position along the edge.** Position = `1 − (remaining seconds / total hop seconds)` = fraction of the hop completed (pause-exempt time). Weights of node A's hero pool vs node B's pool scale linearly with that fraction (near A → A-heavy, near B → B-heavy). Formula locked; exact weighting function is linear per user decision. — **Reversibility:** reversible.
@@ -49,7 +49,7 @@
 - Exact `hero_zone_rates` table schema (per-node vs per-zone rate granularity).
 - Whether `player_travel_state` keeps `from_node_id`/`to_node_id`/`depart_at` semantics alongside `travel_seconds_remaining`.
 - Position update frequency granularity inside the tick (how finely "current position" is computed).
-- DM notification embed content/layout.
+- Check-in embed/select-menu/button content/layout (D-26/D-25).
 
 ### Deferred Ideas (OUT OF SCOPE)
 - **Capture fee mechanics + per-attempt pricing** — Phase 10 (TQC-11); this phase only flags the economy re-sign-off requirement (D-02).
@@ -61,18 +61,19 @@
 
 ## Summary
 
-Phase 9 delivers the real-time core loop of the Tam Quốc Collection: time-only travel between map nodes on a graph (73 nodes, 162 edges — 50+ requirement met), two `sanguoTick` pg-boss crons in the manager process (arrival-resolution every minute + encounter-roll every 45s), a position-blended encounter pool driven by a many-to-many `hero_zone_rates` table (208 rows covering all 132 roster heroes), and cross-shard REST DM notifications for arrivals and encounters.
+Phase 9 delivers the real-time core loop of the Tam Quốc Collection: time-only travel between map nodes on a graph (73 nodes, 162 edges — 50+ requirement met), a **pull-based travel check-in model** (D-22..D-28 — results computed and returned ONLY when the user invokes `/sanguo travel`; no cron jobs, no push notifications), a position-blended encounter pool driven by a many-to-many `hero_zone_rates` table (208 rows covering all 132 roster heroes), and inline interaction results (encounter/arrival/status) via a select menu + buttons.
 
-The user's locked redesign (D-01..D-21) makes travel a **pure time/state service**: no wallet calls (D-01), no cancel path (D-03/D-04), one hop per journey (D-08), pause-aware remaining-seconds clock (D-07), self-healing arrival resolution via `FOR UPDATE SKIP LOCKED` (D-05), and a ~20/hr sliding-window encounter cap with silent skips (D-13). The TQC-09 dataset (the primary deliverable of this research) is fully designed, lore-derived, and machine-verified: 18 zones (13 châu Đông Hán + Giao Châu + Triều Tiên + 3 steppe regions), 73 nodes with per-locale names and representative heroes, 162 undirected edges with `travel_seconds` (5-90 min, avg 26 min), and per-hero-per-zone encounter weights.
+The user's locked redesign (D-01..D-28) makes travel a **pure time/state service**: no wallet calls (D-01), no cancel path (D-03/D-04), one hop per journey (D-08), pause-aware remaining-seconds clock (D-07/D-25), **lazy check-in computation** (D-22 — 1 roll per counted minute, stop at first hit, D-24), self-healing overdue journeys by construction (D-05 — elapsed is computed on next invocation), and a ~20/hr sliding-window encounter cap with silent skips (D-13). The TQC-09 dataset (the primary deliverable of this research) is fully designed, lore-derived, and machine-verified: 18 zones (13 châu Đông Hán + Giao Châu + Triều Tiên + 3 steppe regions), 73 nodes with per-locale names and representative heroes, 162 undirected edges with `travel_seconds` (5-90 min, avg 26 min), and per-hero-per-zone encounter weights.
 
-**Primary recommendation:** Build travelService as a stateless-domain service over the existing `player_travel_state` schema (evolved to remaining-seconds per D-07), register the two sanguoTick crons in `pgBoss.ts registerJobs()` exactly like the football jobs, implement the encounter cap as a **Redis sliding-window ZSET** (fairer than fixed-hour buckets, matches D-13 "cap window clears" language), and consume the TQC-09 dataset below as a committed seed data file (`scripts/data/sanguo-map-data.json`) following the `sanguo-classifications.json` pattern.
+**Primary recommendation:** Build travelService as a stateless-domain service over the existing `player_travel_state` schema (evolved to remaining-seconds per D-07), add a `travelCheckInService` that computes elapsed → per-minute encounter rolls → arrival/status **on `/sanguo travel` invocation only** (D-22/D-24/D-28), implement the encounter cap as a **Redis sliding-window ZSET**, and consume the TQC-09 dataset below as a committed seed data file (`scripts/data/sanguo-map-data.json`) following the `sanguo-classifications.json` pattern. Destination picking uses a **StringSelectMenu + Start button** (D-26); encounters pause the clock until the player presses the **"Tiếp tục hành trình"** ack button (D-25).
 
 **Key structural discoveries (read these before planning):**
 1. **The `/sanguo` command is owned by ONE file** (`src/commands/sanguo/map.ts` exports `data` with name `'sanguo'`). The `travel` subcommand must be **appended to that same builder** (or a shared `sanguo.ts` command root) — `commandLoader.ts` + `registerCommands.ts` register one command per file, and two files exporting `data` with the same name would PUT twice (last wins → flaky).
-2. **The interaction router has NO autocomplete branch** — `src/events/interactionCreate.ts:448` returns early for any non-chat-input interaction. `/sanguo travel` destination autocomplete (D-08, UI-SPEC interaction contract) requires a **new `interaction.isAutocomplete()` branch** + a command-side `autocomplete` export loaded by `commandLoader.ts`. This is the first autocomplete in the codebase.
+2. **The interaction router has button + select-menu branches but NO autocomplete branch** — `/sanguo travel` uses a **StringSelectMenu + Start button** (D-26), so no autocomplete branch is needed. The existing button branch (`interactionCreate.ts:380-445`) is extended with `sanguo:travel:*` customIds; a new `isStringSelectMenu()` branch handles destination selection. These are the first select-menu interactions in the codebase.
 3. **`userId.unique()` means one travel row per user FOREVER** — a second journey after arrival must **UPDATE the existing row in place** (from = old to, to = new, remaining = edge seconds), not INSERT. The row is simultaneously the "last arrived position" record and the "active journey" record.
-4. **Phase 9 encounters are roll+notify+record only** (D-14) — there is no battle to "resolve", so `encounter_active` (the D-07 pause flag) is set true and cleared within the same tick job: schema + tick logic are pause-aware and Phase-10-ready, but Phase 9 shows no observable clock pause (an encounter "resolves" the instant it is recorded). Do not implement a fixed pause window — it would stall journeys and contradict D-05 "never stuck".
+4. **Phase 9 encounters are roll+ack+record only** (D-14/D-25) — there is no battle to "resolve", so on a successful roll the check-in sets `encounter_active=true`, pins `updatedAt` to the hit minute, and returns the encounter embed + ack button; pressing "Tiếp tục hành trình" clears the flag and resumes the clock. The schema + logic are pause-aware and Phase-10-ready, but Phase 9 shows no wall-clock pause beyond the ack gate. Do not implement a fixed pause window — it would stall journeys and contradict D-05 "never stuck".
 5. **Config gate:** `.planning/config.json` sets `workflow.nyquist_validation: false` — validation is still documented below per output contract, but the planner may scope test effort accordingly.
+6. **Pull model removes the cron dispatch concern entirely** — pg-boss 12.27.0 hardcodes `singletonSeconds: 60` on cron dispatch (verified in `node_modules/pg-boss/dist/timekeeper.js:139`, GitHub issue #427), so sub-minute crons silently degrade to ~1/min. The pull design sidesteps this — no cron to mis-schedule.
 
 ## Project Constraints (from AGENTS.md)
 
@@ -80,23 +81,23 @@ Directives extracted from `./AGENTS.md` (GSD:project / GSD:stack blocks) that Ph
 
 - **Runtime Node.js ≥22.12.0** (discord.js 14.26.2+ requirement); local dev runs v26.3.0 — production target is Node 22 LTS.
 - **TypeScript 5.8.x preferred** — package.json currently resolves TS 6.0.3 (devDependency); `npm run typecheck` (`tsc --noEmit`) is the gate. Do not introduce TS-6-only syntax.
-- **discord.js 14.26.2+** installed as 14.27.0 — REST DM pattern uses `@discordjs/rest` 2.6.3 (already installed).
+- **discord.js 14.26.2+** installed as 14.27.0 — `StringSelectMenuBuilder`/`ButtonBuilder` available; `@discordjs/rest` NOT used by Phase 9 (D-23 — no REST DM path).
 - **i18n from day one**: zero hardcoded user-facing strings; new travel/encounter/arrival strings go into the `sanguo` namespace (`locales/{vi,en,zh-cn}/sanguo.json`); `npm run check-i18n` (scripts/check-i18n.ts) is a hard gate — all three locales must stay in sync (VI reference).
 - **Content-in-DB**: node/zone/hero names live in DB per-locale columns, NEVER i18n keys (D-07 Phase 8 rule). Only UI strings go in i18next.
-- **Crons manager-only**: workers/crons registered only in `bot.ts` (ShardingManager) via `initPgBoss()`; shards use `initPgBossForShard()` (send-only). `pgBoss.ts` header comment is explicit.
-- **`FOR UPDATE SKIP LOCKED`** is the established concurrency pattern (Phase 8 order matching, football) — required by TQC-07.
+- **No travel crons in Phase 9**: travel/encounter computation is pull-based (D-22); `pgBoss.ts` is NOT modified. Existing football/activity crons stay manager-only.
+- **`FOR UPDATE`** is the established concurrency pattern (Phase 8 order matching, football) — the check-in uses `.for('update')` on the user's own row (single writer; no SKIP LOCKED needed).
 - **crypto.randomInt() for player-facing rolls** (milestone decision) — encounter + boss rolls use crypto RNG, NOT pure-rand.
 - **Wallet discipline**: every balance mutation goes through `services/wallet.ts` — Phase 9 travel touches NO balance (D-01). `npm run lint` (`--max-warnings=0`) + `npm run check-i18n` + `npm run typecheck` are the pre-merge gates.
-- **Idempotent seed**: `scripts/seed-sanguo.ts` upserts on natural keys (`ON CONFLICT DO UPDATE`), never duplicates (D-11).
+- **Idempotent seed**: `scripts/seed-sanguo.ts` upserts on natural keys (`ON CONFLICT DO UPDATE`); the D-20 map-data replace deletes mapEdges + heroZoneRates + mapNodes then re-inserts, so re-runs never duplicate.
 
 <phase_requirements>
 ## Phase Requirements
 
 | ID | Description | Research Support |
 |----|-------------|------------------|
-| TQC-06 | Pure `travelService`: ETA/cost/transitions; `/sanguo travel` (atomic wallet deduct + state row write); travel-cancel component. | **Amended by D-01/D-03/D-08:** no wallet, no cost, no cancel, one hop. Service API + in-place row UPDATE semantics designed below. Subcommand must be appended to map.ts's existing `'sanguo'` builder (loader constraint). |
-| TQC-07 | `sanguoTick` pg-boss cron (mỗi phút, manager process) scan due encounters/arrivals với `FOR UPDATE SKIP LOCKED`; cancel = row update (cancel-safe); REST notifications. | **Amended by D-05/D-11:** two crons (arrivals 60s + encounters 45s) registered in `registerJobs()`; `FOR UPDATE SKIP LOCKED` verified in-repo (`matchLifecycleService.ts:345`); overdue self-heal algorithm below. No cancel (D-03). |
-| TQC-08 | Encounter system: roll dọc hành trình theo vùng + boss thường; route-scaled encounter rates; per-user caps (~20/hr) + cooldown từ ngày đầu. | **Amended by D-10/D-13/D-14/D-15:** per-tick probability by zone (0.35 default), position-blended pool formula locked, sliding-window cap (Redis ZSET), boss = separate 7% roll replacing hero. |
+| TQC-06 | Pure `travelService`: ETA/transitions; `/sanguo travel` (state row write + pull check-in); travel-cancel component. | **Amended by D-01/D-03/D-08/D-22/D-26:** no wallet, no cost, no cancel, one hop. Service API + in-place row UPDATE semantics designed below. Subcommand must be appended to map.ts's existing `'sanguo'` builder (loader constraint); destination picked via StringSelectMenu + Start button. |
+| TQC-07 | ~~`sanguoTick` pg-boss cron (mỗi phút, manager process) scan due encounters/arrivals với `FOR UPDATE SKIP LOCKED`; cancel = row update (cancel-safe); REST notifications.~~ **AMENDED (pull model):** travel check-in on `/sanguo travel` — elapsed → arrival/encounter results inline; `FOR UPDATE` on the user's own row; no cron, no REST notification. | **Amended by D-05/D-22/D-23:** no cron — the check-in engine (`travelCheckInService`) computes elapsed → arrivals/encounters on `/sanguo travel` invocation only; results inline in the interaction (no REST DM). `FOR UPDATE` on the user's own travel row (single writer); overdue self-heal is structural (elapsed computed at check-in). |
+| TQC-08 | Encounter system: roll dọc hành trình theo vùng + boss thường; route-scaled encounter rates; per-user caps (~20/hr) + cooldown từ ngày đầu. | **Amended by D-10/D-13/D-14/D-15/D-24:** 1 roll per counted minute (0.35 default), stop at first hit; position-blended pool formula locked; sliding-window cap (Redis ZSET); boss = separate 7% roll replacing hero; ack button pauses the clock (D-25). |
 | TQC-09 | Map/zone data research — node structure + phân bố 132 hero theo vùng/lore (phase research ripphase, thảo luận data sau). | **DONE in this document:** 18 zones, 73 nodes, 162 edges, 208 hero_zone_rates rows covering 132/132 heroes — full dataset + data contract below, machine-verified. User review gate (D-21) applies. |
 </phase_requirements>
 
@@ -104,12 +105,12 @@ Directives extracted from `./AGENTS.md` (GSD:project / GSD:stack blocks) that Ph
 
 | Capability | Primary Tier | Secondary Tier | Rationale |
 |------------|-------------|----------------|-----------|
-| Travel state persistence (remaining-seconds, pause-aware) | Database / Storage | — | `player_travel_state` row is the source of truth; crons read it under row locks |
-| Travel time accounting (decrement, overdue self-heal, arrival resolution) | API / Backend (manager-process cron) | — | `sanguoTickArrivals` pg-boss job in bot.ts — manager-only (D-11); per-shard processes must not run crons |
-| Encounter roll engine (probability, cap check, pool blend, boss roll) | API / Backend (manager-process cron) | — | `sanguoTickEncounters` pg-boss job — pure function of travel row + `hero_zone_rates` + crypto RNG |
+| Travel state persistence (remaining-seconds, pause-aware) | Database / Storage | — | `player_travel_state` row is the source of truth; the check-in transaction reads it under a row lock |
+| Travel time accounting (elapsed computation, per-minute rolls, arrival resolution) | API / Backend (interaction handler) | — | `travelCheckInService` invoked from `/sanguo travel` — pull model (D-22); no manager-process cron |
+| Encounter roll engine (probability, cap check, pool blend, boss roll) | API / Backend (pure function) | — | `encounterService` — pure function of travel row + `hero_zone_rates` + crypto RNG, called inside the check-in |
 | ~20/hr encounter cap | Database / Storage (Redis) | — | Sliding-window ZSET in Redis — cross-shard single source of truth; counters must survive restarts |
-| Cross-shard DM notifications | API / Backend (REST, any process) | — | `@discordjs/rest` from manager cron process (D-12) — mirrors `matchLifecycleService.ts`; user-level locale resolution |
-| `/sanguo travel` command (start journey, autocomplete) | Browser / Client (Discord interaction) | API / Backend | Command layer lives in the shard that receives the interaction; validates adjacency against DB before writing state |
+| Inline results (status/encounter/arrival) | API / Backend (interaction reply) | — | Returned in the same interaction (D-23); no REST DM, no push, no cross-shard notification |
+| `/sanguo travel` command (start journey + check-in) | Browser / Client (Discord interaction) | API / Backend | Command layer lives in the shard that receives the interaction; validates adjacency + writes/updates travel state |
 | Position-derived encounter pool blend | API / Backend (pure math) | — | Position = `1 − (remaining/total)`; linear weight blend of zone A/B pools (D-15) — pure function, unit-testable |
 | Map/zone/hero-rate content data | Database / Storage (seed) | — | TQC-09 dataset consumed by `scripts/seed-sanguo.ts` (D-20/D-21); content-in-DB per-locale columns |
 
@@ -119,9 +120,9 @@ Directives extracted from `./AGENTS.md` (GSD:project / GSD:stack blocks) that Ph
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
 | discord.js | 14.27.0 (installed; AGENTS pins 14.26.2+) | Slash command + interaction handling | Existing stack; `/sanguo travel` extends the existing `'sanguo'` command |
-| @discordjs/rest | 2.6.3 (installed) | REST-only DM sends for arrivals/encounters | Cross-shard notification (D-12); same version already used by `matchLifecycleService.ts` |
-| pg-boss | 12.27.0 (installed) | Two sanguoTick cron jobs | PostgreSQL-native scheduler; `schedule()` idempotent; SKIP LOCKED internally; existing pattern in `pgBoss.ts` |
-| drizzle-orm | 0.45.2 (installed) | DB queries, `FOR UPDATE SKIP LOCKED`, transactions | Existing stack; `.for('update', { skipLocked: true })` verified in-repo (`matchLifecycleService.ts:345`) |
+| @discordjs/rest | 2.6.3 (installed) | **NOT used by Phase 9** (D-23 — no REST DM path) | Pull model returns results inline; kept only as the existing football dependency |
+| pg-boss | 12.27.0 (installed) | **NOT used by Phase 9** (D-22 — no sanguoTick crons) | Pull check-in runs in the interaction handler; pg-boss stays for the existing football/activity jobs |
+| drizzle-orm | 0.45.2 (installed) | DB queries, `FOR UPDATE` locks, transactions | Existing stack; `.for('update', { skipLocked: true })` verified in-repo (`matchLifecycleService.ts:345`) — check-in uses `.for('update')` (single writer, no skipLocked needed) |
 | ioredis | 6.0.0 (installed) | Sliding-window encounter cap, user locale cache | Existing cache layer; ZSET ops for cap window (D-13) |
 | i18next | 26.3.6 (installed) | `sanguo` namespace UI strings (travel/arrival/encounter) | Existing i18n; zero-hardcoded-strings gate |
 | Node.js | 22 LTS (target) / v26.3.0 (local dev) | Runtime | discord.js 14.26.2 requires ≥22.12.0 |
@@ -129,7 +130,7 @@ Directives extracted from `./AGENTS.md` (GSD:project / GSD:stack blocks) that Ph
 ### Supporting
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| zod | 4.4.3 (installed) | Runtime validation of edge/node inputs if needed | Autocomplete is advisory; server-side adjacency re-validation can be plain code — zod optional |
+| zod | 4.4.3 (installed) | Runtime validation of edge/node inputs if needed | Select-menu value is advisory; server-side adjacency re-validation can be plain code — zod optional |
 | vitest | 4.1.10 (installed) | Unit tests for tick math, pool blend, cap logic | `src/**/__tests__/**/*.test.ts` pattern (vitest.config.ts) |
 
 ### Alternatives Considered
@@ -177,65 +178,62 @@ Directives extracted from `./AGENTS.md` (GSD:project / GSD:stack blocks) that Ph
 ### System Architecture Diagram
 
 ```
-                        ┌─────────────────────────────────────────────────────┐
-                        │  MANAGER PROCESS (bot.ts / ShardingManager)          │
-                        │                                                     │
-   Discord user         │   initPgBoss() → registerJobs()                     │
-   │                    │    ├─ queue 'sanguo-tick-arrivals'  @ every 60s     │
-   ▼                    │    │    runSanguoTickArrivals(job)                  │
- ┌─────────────┐        │    │      │ SELECT player_travel_state              │
- │  Shard proc │        │    │      │   WHERE status='traveling'              │
- │ /sanguo map │        │    │      │   FOR UPDATE SKIP LOCKED   (D-05)       │
- │ /sanguo     │        │    │      ▼                                        │
- │ travel      │        │    │   subtract elapsed → remaining==0?             │
- │ (subcommand │        │    │   → UPDATE status='arrived'                    │
- │  appended to│        │    │   → sendArrivalDM()  ───────────────┐          │
- │  map.ts)    │        │    ├─ queue 'sanguo-tick-encounters' @ 45s│          │
- │  autocompl. │        │    │    runSanguoTickEncounters(job)     │          │
- └──────┬──────┘        │    │      │ SELECT travel rows (SKIP LOCKED)│        │
-        │               │    │      ▼                              │          │
-        │  validates    │    │   cap? (Redis ZSET ≥20/hr → skip silently D-13) │
-        │  adjacency    │    │      │ position = 1 − remaining/total (D-15)    │
-        │               │    │      ▼                              │          │
-        ▼               │    │   roll zone prob (0.35) → hero?     │          │
- ┌─────────────┐        │    │   │  └ roll boss (0.07) → boss      │          │
- │ travelService│       │    │   ▼   ├─ weighted pick from blended │          │
- │ (pure, no    │       │    │   └─ pool (A×(1−pos) + B×pos)       │          │
- │  wallet D-01)│       │    │       └ INSERT encounter_runs       │          │
- └──────┬──────┘        │    │         └ sendEncounterDM() ────────┤          │
-        │               │    └─────────────────────────────────────┼──────────┘
-        ▼               │                                          ▼
- ┌─────────────────────────────────────────────────┐    ┌──────────────────────┐
- │ PostgreSQL (PgBouncer port 6432 / direct 5432)  │    │ Redis                │
- │  map_nodes, map_edges, map_zones, hero_zone_rates│    │  sanguo:enc:win:{uid}│
- │  player_travel_state, encounter_runs, heroes,   │    │  user:locale:{id}    │
- │  users (discordId→DM target)                    │    └──────────────────────┘
- └─────────────────────────────────────────────────┘
+                         ┌─────────────────────────────────────────────────────┐
+                         │  USER'S SHARD (interaction handler)                │
+                         │                                                     │
+   Discord user          │  /sanguo travel  ────► travel.ts execute           │
+   │                     │      │                                              │
+   ▼                     │      ├─ NO journey → StringSelectMenu (adjacent)   │
+  ┌─────────────┐        │      │   + "Bắt đầu hành trình" button (D-26)      │
+  │  Shard proc │        │      │      └─ Start press → startTravel() writes  │
+  │ /sanguo map │        │      │          row (D-09, userId.unique())        │
+  │ /sanguo     │        │      │                                              │
+  │ travel      │        │      ├─ traveling → checkInTravel()  (D-22/D-24)   │
+  │ (subcommand │        │      │      tx: SELECT row FOR UPDATE              │
+  │  appended to│        │      │      elapsed = now − updatedAt              │
+  │  map.ts)    │        │      │      loop per counted minute:               │
+  │  select menu│        │      │        remaining −= 60                      │
+  │  + buttons  │        │      │        roll 0.35 (crypto)                   │
+  └──────┬──────┘        │      │        hit? → encounterActive=true,         │
+         │               │      │               updatedAt=+k·60,              │
+         │  validates    │      │               record encounter_runs,        │
+         │  adjacency    │      │               return ENCOUNTER UI + ack btn │
+         │               │      │      arrival? → status='arrived'            │
+         ▼               │      │               return ARRIVAL UI + next menu  │
+  ┌─────────────┐        │      │      else → update remaining/updatedAt,     │
+  │ travelService│       │      │               return STATUS UI              │
+  │ (pure, no    │       │      └────► inline reply (D-23, no DM)             │
+  │  wallet D-01)│       │                                                     │
+  │ + travelCheckIn│     │                                                     │
+  │   (elapsed→rolls)│   │                                                     │
+  └──────┬──────┘        │                                                     │
+         │               │                                                     │
+         ▼               │                                                     │
+  ┌─────────────────────────────────────────────────┐    ┌──────────────────────┐
+  │ PostgreSQL (PgBouncer port 6432 / direct 5432)  │    │ Redis                │
+  │  map_nodes, map_edges, map_zones, hero_zone_rates│    │  sanguo:enc:win:{uid}│
+  │  player_travel_state, encounter_runs, heroes,   │    └──────────────────────┘
+  │  users (discordId → user row)                   │
+  └─────────────────────────────────────────────────┘
         ▲                                                    ▲
         └── scripts/seed-sanguo.ts (TQC-09 data, D-20/D-21) ──┘
 ```
 
-**Data flow (primary use case — user travels one hop):**
-1. User runs `/sanguo travel` → autocomplete lists adjacent nodes from `map_edges` (max 25, nearest first) → user picks destination node code.
-2. Command (in shard) reads current position from `player_travel_state` (last arrived row's `to_node_id`; first-ever journey → START_NODE default), re-validates adjacency, writes the journey (INSERT on first, in-place UPDATE on subsequent — D-09).
-3. `sanguo-tick-arrivals` (manager, every 60s) locks traveling rows, subtracts counted elapsed time, resolves at remaining==0 → `status='arrived'` → REST DM.
-4. `sanguo-tick-encounters` (manager, every 45s) locks traveling rows, checks Redis cap, rolls hero (zone probability) then boss (7%), picks hero from the position-blended pool, records `encounter_runs`, sends REST DM.
+**Data flow (primary use case — user travels one hop, then checks in):**
+1. User runs `/sanguo travel` → shard reads current position from `player_travel_state` (last arrived row's `to_node_id`; first-ever journey → START_NODE default), renders a StringSelectMenu of adjacent nodes from `map_edges` (max 25, nearest first) + Start button.
+2. User selects a destination (value = node code) and presses Start → `startTravel` re-validates adjacency server-side, writes the journey (INSERT on first, in-place UPDATE on subsequent — D-09).
+3. Later, user invokes `/sanguo travel` again → `checkInTravel` computes elapsed since `updatedAt`, rolls 1× per counted minute (35%), decrements remaining on failed rolls; on first hit returns the encounter UI (pause via ack button, D-25); on arrival returns the arrival UI + next destination menu; otherwise a status UI. Everything inline (D-23).
 
 ### Recommended Project Structure
 ```
 src/
 ├── services/sanguo/
-│   ├── travelService.ts        # NEW — pure time/state: getPosition, getAdjacent, startTravel, resolveArrivals
-│   ├── encounterService.ts     # NEW — roll logic: position blend, weighted pick, boss roll, cap check
-│   └── sanguoNotificationService.ts  # NEW — REST DM send (arrival + encounter embeds), user-locale, 50007/3-strike
-├── jobs/
-│   ├── sanguoTickArrivals.ts   # NEW — cron job body (D-11)
-│   └── sanguoTickEncounters.ts # NEW — cron job body (D-11)
-├── workers/
-│   └── pgBoss.ts               # EDIT — register the two queues + schedules in registerJobs()
+│   ├── travelService.ts        # NEW — pure time/state: getPosition, getAdjacent, startTravel
+│   ├── travelCheckInService.ts # NEW — pull check-in: elapsed → per-minute rolls → encounter/arrival/status (D-22/D-24)
+│   └── encounterService.ts     # NEW — roll logic: position blend, weighted pick, boss roll, cap check
 ├── commands/sanguo/
 │   └── map.ts                  # EDIT — append 'travel' subcommand builder (loader constraint)
-│   └── travel.ts               # NEW — execute() + autocomplete() for the travel subcommand
+│   └── travel.ts               # NEW — execute() + check-in dispatch + select-menu/button handlers
 ├── db/schema/
 │   ├── playerTravelState.ts    # EDIT — D-07 remaining-seconds model
 │   ├── encounterRuns.ts        # EDIT — D-14 boss flag/type column
@@ -247,81 +245,81 @@ src/
 │   ├── buildSanguoTravelReplyEmbed.ts   # NEW (UI-SPEC)
 │   ├── buildSanguoArrivalEmbed.ts       # NEW (UI-SPEC)
 │   └── buildSanguoEncounterEmbed.ts     # NEW (UI-SPEC)
+├── ui/components/
+│   ├── sanguoTravelDestinationMenu.ts   # NEW — StringSelectMenu (D-26)
+│   └── sanguoTravelButtons.ts           # NEW — start + ack buttons (D-25/D-26)
 ├── events/
-│   └── interactionCreate.ts    # EDIT — NEW autocomplete branch (first in codebase)
+│   └── interactionCreate.ts    # EDIT — select-menu + button branches for sanguo:travel:* (no autocomplete)
 └── utils/
-    └── commandLoader.ts        # EDIT — load optional `autocomplete` export
+    └── commandLoader.ts        # EDIT — unchanged contract (no autocomplete needed)
 scripts/
 └── seed-sanguo.ts              # EDIT — consume TQC-09 dataset (zones/nodes/edges/hero_zone_rates)
 scripts/data/
 └── sanguo-map-data.json        # NEW — TQC-09 committed dataset (dev-time only, like classifications)
 ```
 
-### Pattern 1: Manager-only cron registration (sanguoTick)
-**What:** Two pg-boss cron jobs registered ONLY in `registerJobs()` (called from `initPgBoss()` in bot.ts). Shards never schedule.
-**When to use:** All scheduled work (D-11); matches existing football/activity jobs.
+### Pattern 1: Pull-based travel check-in (D-22/D-24/D-25) — no cron
+**What:** No scheduled jobs. `/sanguo travel` while traveling computes elapsed time since `updatedAt`, rolls 1× per counted minute, and returns the result inline. The `FOR UPDATE` row lock (user's own tx) makes it concurrency-safe — no SKIP LOCKED needed (single writer).
+**When to use:** Every `/sanguo travel` invocation with an active journey.
 **Example:**
 ```typescript
-// src/workers/pgBoss.ts registerJobs() — add after existing job registrations
-await b.createQueue('sanguo-tick-arrivals');
-await b.schedule('sanguo-tick-arrivals', '*/1 * * * *', {}); // every minute
-await b.work('sanguo-tick-arrivals', { localConcurrency: 1 }, async (jobs: Job[]) => {
-  for (const job of jobs) {
-    try { await runSanguoTickArrivals(job); }
-    catch (err) { logger.error('pgBoss', `Job ${job.id} (sanguo-tick-arrivals) failed`, err); }
-  }
-});
+// src/services/sanguo/travelCheckInService.ts — conceptual
+export async function checkInTravel(userId: number, now = new Date()): Promise<CheckInResult> {
+  return await db.transaction(async (tx) => {
+    const [row] = await tx.select().from(playerTravelState)
+      .where(eq(playerTravelState.userId, userId))
+      .for('update');                                        // single writer (D-22)
+    if (!row || row.status === 'arrived') return { mode: 'start' };   // → select menu + Start button
+    if (row.encounterActive) return { mode: 'encounterPending' };      // ack-gated (D-25)
 
-await b.createQueue('sanguo-tick-encounters');
-await b.schedule('sanguo-tick-encounters', '*/45 * * * * *', {}); // every 45s — 6-field cron w/ seconds, VERIFIED: pg-boss cron-parser 5.7 accepts 6-field
-await b.work('sanguo-tick-encounters', { localConcurrency: 1 }, async (jobs: Job[]) => {
-  for (const job of jobs) {
-    try { await runSanguoTickEncounters(job); }
-    catch (err) { logger.error('pgBoss', `Job ${job.id} (sanguo-tick-encounters) failed`, err); }
-  }
-});
-```
-**Source:** In-repo pattern `src/workers/pgBoss.ts:83-179`; 6-field cron verified against installed `node_modules/cron-parser` (`parseExpression('*/45 * * * * *')` → next fire OK) and pg-boss `schedule(name, cron)` signature in `node_modules/pg-boss/dist/index.d.ts`.
+    let elapsedSec = Math.max(0, Math.floor((now.getTime() - row.updatedAt.getTime()) / 1000));
+    const countedMinutes = Math.floor(elapsedSec / 60);
+    let remaining = row.travelSecondsRemaining;
 
-### Pattern 2: Arrival resolution with FOR UPDATE SKIP LOCKED + overdue self-heal
-**What:** Each arrival tick locks only un-resolved traveling rows, subtracts counted time, resolves at zero, notifies.
-**When to use:** D-05/D-07 — no stuck journeys, no double-resolve.
-**Example:**
-```typescript
-// src/jobs/sanguoTickArrivals.ts — conceptual
-async function runSanguoTickArrivals(job: Job): Promise<void> {
-  const now = new Date();
-  await db.transaction(async (tx) => {
-    const rows = await tx.select().from(playerTravelState)
-      .where(eq(playerTravelState.status, 'traveling'))
-      .for('update', { skipLocked: true });               // D-05, matches matchLifecycleService.ts:345
-    for (const row of rows) {
-      // D-07: pause-aware — if an encounter is active, do NOT subtract and do NOT advance anchor
-      if (row.encounterActive) {
-        await tx.update(playerTravelState)
-          .set({ updatedAt: now })                        // advance anchor, count no time
-          .where(eq(playerTravelState.id, row.id));
-        continue;
-      }
-      const elapsedSec = Math.max(0, Math.floor((now.getTime() - row.updatedAt.getTime()) / 1000));
-      const remaining = Math.max(0, row.travelSecondsRemaining - elapsedSec);  // overdue → clamped → arrives (D-05)
-      if (remaining === 0) {
-        await tx.update(playerTravelState).set({ status: 'arrived', travelSecondsRemaining: 0, updatedAt: now })
-          .where(eq(playerTravelState.id, row.id));
-        await notifyArrival(row);                          // REST DM (D-12) — outside tx, after commit
-      } else {
-        await tx.update(playerTravelState).set({ travelSecondsRemaining: remaining, updatedAt: now })
-          .where(eq(playerTravelState.id, row.id));
+    for (let k = 1; k <= countedMinutes; k++) {
+      if (remaining <= 0) break;                              // arrival — no rolls past it (D-28)
+      remaining -= 60;                                        // decrement on the counted minute
+      const pos = positionFraction(remaining, totalSeconds(row, tx));  // D-15
+      if (await shouldRoll(zoneRate, cryptoRng)) {            // D-10/D-24 — STOP AT FIRST HIT
+        await tx.update(playerTravelState).set({
+          travelSecondsRemaining: remaining,
+          encounterActive: true,
+          updatedAt: addSeconds(row.updatedAt, k * 60),       // pin to the hit minute (D-25)
+        }).where(eq(playerTravelState.userId, userId));
+        const pick = await pickEncounterHero(poolA, poolB, pos, cryptoRng);
+        await tx.insert(encounterRuns).values({ userId, travelId: row.id, zone: pick.zone,
+          heroId: pick.heroId, encounterType: isBoss ? 'boss' : 'hero', status: 'pending' });
+        await redis.zadd(`sanguo:enc:win:${userId}`, now.getTime(), String(now.getTime()));
+        return { mode: 'encounter', hero: pick, boss: isBoss, pos };   // inline + ack button
       }
     }
+
+    await tx.update(playerTravelState).set({
+      travelSecondsRemaining: Math.max(0, remaining),
+      updatedAt: now,
+      ...(remaining <= 0 ? { status: 'arrived' } : {}),
+    }).where(eq(playerTravelState.userId, userId));
+
+    return remaining <= 0 ? { mode: 'arrived' } : { mode: 'status', remaining };  // D-28 / D-06
   });
 }
 ```
-**Source:** Locking pattern in-repo `src/services/football/matchLifecycleService.ts:333-345`; pause semantics per D-07.
+**Source:** `FOR UPDATE` object form in-repo `matchLifecycleService.ts:333-345`; pause semantics per D-07/D-25; `userId.unique()` backstop per schema.
+
+### Pattern 2: Arrival resolution inside the check-in (D-05/D-28)
+**What:** Arrival is a branch of `checkInTravel`, not a separate job. When remaining hits 0 during the per-minute loop, the journey resolves to `status='arrived'` and the inline result opens the next destination menu. Overdue journeys self-heal structurally (elapsed computed at check-in).
+**When to use:** Every `/sanguo travel` check-in; no separate cron (D-22).
+**Example:**
+```typescript
+// inside checkInTravel (Pattern 1) — the arrival branch:
+// remaining <= 0 → tx.update(playerTravelState).set({ status:'arrived', travelSecondsRemaining:0, updatedAt: now })
+//                → return { mode: 'arrived' }  → arrival embed + re-open destination select menu (D-26)
+```
+**Source:** Pause/self-heal semantics per D-05/D-07; inline result per D-23.
 
 ### Pattern 3: Position-blended weighted encounter pick (D-15)
 **What:** Position fraction = `1 − (remaining/total)`. Weight of each hero = `rate(zoneA) × (1−pos) + rate(zoneB) × pos` (0 if not in that zone). Weighted pick via `crypto.randomInt` (player-facing roll — milestone decision).
-**When to use:** Every encounter tick for a traveling row.
+**When to use:** Each successful encounter roll inside the check-in loop (D-15).
 **Example:**
 ```typescript
 // src/services/sanguo/encounterService.ts — conceptual
@@ -348,33 +346,23 @@ function pickEncounterHero(poolA: ZoneRate[], poolB: ZoneRate[], pos: number): {
 ```
 **Source:** Formula locked by D-15; `crypto.randomInt` mandate in STATE.md accumulated decisions.
 
-### Pattern 4: Cross-shard REST DM (D-12)
-**What:** Open DM via REST (`POST /users/@me/channels` then `POST /channels/{id}/messages`) from the manager process — works regardless of which shard hosts the user. User-level locale: `users.locale` → `vi` fallback, Redis-cached 1h. Handle 50007 (DMs closed) with a Redis 3-strike counter.
-**When to use:** Arrival DM + encounter DM.
+### Pattern 4: Inline result + ack button (D-23/D-25)
+**What:** All check-in results (status/encounter/arrival) are returned in the interaction reply on the user's shard — no REST, no DM, no cross-shard notification. An encounter result carries a "Tiếp tục hành trình" button (`sanguo:travel:ack`) that clears `encounterActive` and resumes the clock.
+**When to use:** Every `/sanguo travel` invocation result.
 **Example:**
 ```typescript
-// src/services/sanguo/sanguoNotificationService.ts — mirrors matchLifecycleService.ts pattern
-const rest = new REST().setToken(config.DISCORD_TOKEN);
-
-async function sendUserDM(userId: number, embeds: EmbedBuilder[]): Promise<void> {
-  const strikeKey = `sanguo:dm:strike:${userId}`;
-  try {
-    const strikes = Number(await redis.get(strikeKey) ?? '0');
-    if (strikes >= 3) { logger.warn('SanguoNotify', `User ${userId} DM blocked (3 strikes)`); return; }
-    const [u] = await db.select({ discordId: users.discordId }).from(users).where(eq(users.id, userId));
-    if (!u) return;
-    const dm = await rest.post(Routes.userChannels(), { body: { recipient_id: u.discordId } }) as { id: string };
-    await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e => e.toJSON()) } });
-  } catch (err) {
-    if (isDMClosed(err)) {                       // 50007 / 10003
-      const c = await redis.incr(strikeKey);
-      await redis.expire(strikeKey, 86400);
-      logger.warn('SanguoNotify', `User ${userId} DM failed. Count: ${c}/3`);
-    } else logger.error('SanguoNotify', `DM send failed for ${userId}`, err);
-  }
+// travel.ts execute — result dispatch (inline, D-23)
+const result = await checkInTravel(user.id);            // users.id (NOT char.id)
+switch (result.mode) {
+  case 'start':      // embed + StringSelectMenu (adjacent nodes) + Start button (D-26)
+  case 'encounter':  // buildSanguoEncounterEmbed + ack button (D-25)
+  case 'arrived':    // buildSanguoArrivalEmbed + re-open destination menu
+  case 'status':     // buildSanguoTravelReplyEmbed (remaining ETA, no components)
 }
+// ack button handler (interactionCreate button branch):
+//   tx: if row.encounterActive → set encounterActive=false, updatedAt=now
 ```
-**Source:** In-repo `matchLifecycleService.ts:16-112` (REST client, Redis locale cache, 3-strike channel failure pattern); UI-SPEC §Interaction contract DM notifications.
+**Source:** In-repo button branch `src/events/interactionCreate.ts:380-445` extended with `sanguo:travel:*` customIds; `StringSelectMenuBuilder` from discord.js 14 (installed 14.27.0).
 
 ### Anti-Patterns to Avoid
 - **Registering `sanguo` command from a second file:** Two files exporting `data` with `name: 'sanguo'` → `registerCommands.ts` PUTs both (last wins, flaky). **Append the travel subcommand to map.ts's builder.**
@@ -382,18 +370,20 @@ async function sendUserDM(userId: number, embeds: EmbedBuilder[]): Promise<void>
 - **Fixed-hour cap bucket:** Bursts at hour boundary, contradicts "cap window clears" language (D-13). Use sliding ZSET.
 - **Deleting travel row on arrival:** Breaks `encounter_runs.travel_id` FK history; `userId.unique()` forbids a second row anyway. UPDATE in place.
 - **Hardcoding node/zone/hero names in i18n:** Content must stay in DB per-locale columns (D-07 Phase 8 rule); only UI strings in `sanguo` namespace.
-- **Adding a persistent status embed / countdown:** D-06 — event notifications only.
+- **Adding a persistent status embed / countdown or push DMs:** D-06/D-23 — inline interaction results only, no always-on status embed, no REST DM.
+- **Rolling past the first encounter hit (batch):** D-24 — the check-in loop must STOP at the first successful roll; returning a batch violates the ack-pause model.
+- **Using `char.id` (characters.id) as the travel key:** `playerTravelState.userId` references `users.id`; always use `user.id` from `fetchCommandContext` or `char.userId`.
 - **Wallet import anywhere in travel/encounter services:** D-01 — structurally impossible to charge.
 
 ## Don't Hand-Roll
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| Cron scheduling of the two ticks | Manual setTimeout loops / node-cron in bot.ts | pg-boss `schedule()` + `work()` | Exactly-once delivery, restart-safe schedules, manager-only lock via advisory locks (existing infra) |
-| Row-level concurrency on tick sweeps | Optimistic retry loops / SELECT-then-UPDATE races | Drizzle `.for('update', { skipLocked: true })` | Same-db atomicity; two crons + future multi-manager safe; already proven in football resolver |
-| Sliding-window rate cap | Custom timestamp array / SQL queries per tick | Redis ZSET (`ZADD` + `ZREMRANGEBYSCORE` + `ZCARD`) | O(log n), atomic, survives restarts; no per-tick DB query |
+| Lazy elapsed-time computation (no cron) | Manual setTimeout loops / node-cron / pg-boss schedule | `checkInTravel` invoked from `/sanguo travel` | Pull model (D-22): no scheduled work, no manager-only lock, self-healing by construction |
+| Row-level concurrency on check-in | Optimistic retry loops / two competing sweeps | Drizzle `.for('update')` on the user's own row + `userId.unique()` | Single writer (the user's tx); no SKIP LOCKED needed; already proven in `matchLifecycleService.ts:345` |
+| Sliding-window rate cap | Custom timestamp array / SQL queries per check-in | Redis ZSET (`ZADD` + `ZREMRANGEBYSCORE` + `ZCARD`) | O(log n), atomic, survives restarts; no per-check DB query |
 | Weighted random pick from a blended pool | Math.random + rejection sampling | `crypto.randomInt` + linear cumulative-walk | Milestone fairness mandate; crypto RNG is the project standard for player-facing rolls |
-| Cross-shard DM delivery | Event-bus messaging between shards / gateway DM | `@discordjs/rest` direct REST call from manager | REST works from any process; no shard routing needed; existing football pattern |
+| Inline results + confirm/ack components | REST DMs / persistent status embeds | Interaction reply + `StringSelectMenu` + `ButtonBuilder` | D-23/D-26/D-25 — everything in the user's shard interaction; first components in sanguo |
 
 **Key insight:** Every hard problem in this phase (scheduling, locking, capping, RNG, notification) has an established in-repo solution. The genuinely new code is the **time accounting** (pause-aware decrement + self-heal) and the **pool blend math** — both pure functions that should be written first and unit-tested in isolation.
 
@@ -702,15 +692,23 @@ export async function getCurrentPosition(userId: number): Promise<{ nodeId: numb
 export async function getAdjacentNodes(nodeId: number): Promise<AdjacentNode[]>
 // SELECT map_edges WHERE node_a_id = :nodeId OR node_b_id = :nodeId
 // JOIN map_nodes + map_zones → { code, nameVi/En/Zh, zone, travelSeconds, representativeHeroId }
-// Ordered by travelSeconds ASC (UI-SPEC autocomplete contract: nearest first, cap 25).
+// Ordered by travelSeconds ASC (UI-SPEC select-menu contract: nearest first, cap 25).
 
-export async function startTravel(userId: number, toNodeId: number): Promise<{ etaSeconds: number }>
-// 1. Read current row: if status='traveling' → throw ALREADY_TRAVELING (D-09; userId.unique() backstop)
-// 2. Validate edge exists from current position to toNodeId → throw NO_ROUTE (defense in depth; autocomplete is advisory)
-// 3. INSERT on first journey; UPDATE existing row on subsequent (userId.unique() = one row forever)
+export async function startTravel(userId: number, toNodeCode: string): Promise<{ etaSeconds: number }>
+// 1. Resolve toNodeCode → node id via map_nodes.code (D-20-resilient: codes stable across reseeds).
+// 2. Read current row: if status='traveling' → throw ALREADY_TRAVELING (D-09; userId.unique() backstop)
+// 3. Validate edge exists from current position to toNodeId → throw NO_ROUTE (defense in depth; select value is advisory)
+// 4. INSERT on first journey; UPDATE existing row on subsequent (userId.unique() = one row forever)
 //    set: fromNodeId=current, toNodeId=dest, travelSecondsRemaining=edge.travelSeconds,
 //         encounterActive=false, status='traveling', departAt=now, updatedAt=now
-// 4. NO wallet.deductBalance (D-01). Returns ETA for the reply embed.
+// 5. NO wallet.deductBalance (D-01). Returns ETA for the reply embed.
+
+export async function checkInTravel(userId: number): Promise<CheckInResult>
+// Pull-based check-in (D-22/D-24/D-28): read row FOR UPDATE → elapsed = now − updatedAt
+// → per counted minute: cap check, remaining−=60, roll 0.35 (crypto) → on hit set encounterActive=true,
+//   pin updatedAt=updatedAt+k·60, record encounter_runs, return { mode:'encounter' } — STOP.
+// → remaining<=0 → status='arrived', return { mode:'arrived' } — no rolls past arrival.
+// → else update remaining/updatedAt, return { mode:'status' }. All inline (D-23).
 ```
 
 ### 6. player_travel_state schema evolution (D-07)
@@ -727,7 +725,7 @@ Replace the Phase 8 `arriveAt timestamp notNull` + `cost bigint notNull` model w
 | **arrive_at timestamptz** | **DROP** | replaced by remaining-seconds (D-07) |
 | **cost bigint** | **DROP** | travel is free (D-01); money never involved |
 | **travel_seconds_remaining int NOT NULL** | **ADD** | decrementing, pause-aware (D-07) |
-| **encounter_active boolean NOT NULL DEFAULT false** | **ADD** | pause flag: arrival tick skips subtraction while true (D-07); Phase 9 sets true→false within one tick job (no battle resolution yet) |
+| **encounter_active boolean NOT NULL DEFAULT false** | **ADD** | pause flag: check-in returns the pending encounter while true (D-07/D-25); set true on a hit, cleared by the ack button |
 | status varchar(20) | keep — values now `'traveling'`/`'arrived'` only | `'cancelled'` removed (D-03) |
 | created_at / updated_at | keep | updatedAt doubles as the elapsed-time anchor |
 
@@ -735,54 +733,56 @@ Replace the Phase 8 `arriveAt timestamp notNull` + `cost bigint notNull` model w
 
 **encounter_runs boss flag (D-14):** add `encounter_type varchar(20) NOT NULL DEFAULT 'hero'` with values `'hero' | 'boss'` (extensible for future encounter kinds). `hero_id` stays nullable — boss encounters write `hero_id NULL` + `encounter_type='boss'` + zone.
 
-### 7. Encounter roll specifics (TQC-08, D-10/D-13/D-14/D-15)
+### 7. Encounter roll specifics (TQC-08, D-10/D-13/D-14/D-15/D-24)
 
-**Per encounter tick (45s), for each traveling row (locked):**
-1. **Cap check first (D-13):** Redis key `sanguo:enc:win:{userId}` — ZSET of encounter timestamps. `ZREMRANGEBYSCORE -inf (now-3600s)`; `ZCARD >= 20` → **skip silently** (no record, no DM, travel continues). On successful roll, `ZADD` now. Sliding window chosen over fixed-hour (D-13 "cap window clears" semantics; no hour-boundary burst).
-2. **Position fraction (D-15):** `pos = 1 − (travel_seconds_remaining / total_seconds)`. Note: total hop seconds must be available — store on the travel row or read from `map_edges`; the row is sufficient and avoids a join.
-3. **Hero roll:** per-tick probability by zone, ~30-50% (D-10). Recommend zone base rate in `map_zones.encounter_rate` (default 0.35; frontier zones 0.40-0.45). Use `crypto.randomInt` threshold.
+**Per check-in invocation (`/sanguo travel` with an active journey), per counted minute:**
+1. **Cap check first (D-13):** Redis key `sanguo:enc:win:{userId}` — ZSET of encounter timestamps. `ZREMRANGEBYSCORE -inf (now-3600s)`; `ZCARD >= 20` → **skip silently** (no record, no inline encounter, travel continues). On a successful roll, `ZADD` now. Sliding window chosen over fixed-hour (D-13 "cap window clears" semantics; no hour-boundary burst).
+2. **Position fraction (D-15):** `pos = 1 − (travel_seconds_remaining / total_seconds)` at the minute boundary. total hop seconds read from `map_edges` (the edge between from/to) — or stored on the travel row (research A4: the row avoids a join).
+3. **Hero roll (D-24):** 1 roll per counted minute, zone probability ~30-50% (D-10). Recommend zone base rate in `map_zones.encounter_rate` (default 0.35; frontier zones 0.40-0.45). Use `crypto.randomInt` threshold.
 4. **Boss roll (D-14):** after a successful hero roll, second roll ~5-10% (recommend 0.07 default; zone-configurable `map_zones.boss_rate`). Boss replaces the hero: record `encounter_type='boss'`, `hero_id NULL`, zone = current blended position's dominant zone.
 5. **Weighted hero pick:** blend zone A pool × (1−pos) + zone B pool × pos (Pattern 3); pick via crypto.randomInt cumulative walk.
-6. **Record + notify:** `INSERT encounter_runs (user_id, travel_id, zone, hero_id, encounter_type, status='pending')`; send DM (Pattern 4). Boss counts toward the cap too (it IS an encounter).
+6. **Record + STOP (D-24):** `INSERT encounter_runs (user_id, travel_id, zone, hero_id, encounter_type, status='pending')`; set `encounterActive=true`, pin `updatedAt` to the hit minute; return the encounter embed + ack button inline (D-23/D-25). Boss counts toward the cap too (it IS an encounter). **The loop stops here — no further minutes are rolled until the ack clears the pause.**
 
-**Expected rates (sanity):** 45s tick → 80 ticks/hr. At 0.35/tick → ~28 expected rolls/hr, but cap 20/hr binds → players receive ≤20 encounters/hr; boss sub-roll 0.07 → ~1.4-2 boss encounters/hr at cap. Travel is never blocked by the cap (D-13).
+**Expected rates (sanity — pull model):** at a 35%/minute roll, a 60-min counted window yields ~21 expected rolls; with the sliding 20/hr cap binding, players receive ≤20 encounters/hr of active check-in. Boss sub-roll 0.07 → ~1.4-2 boss encounters/hr at cap. Travel is never blocked by the cap (D-13), and a journey only "consumes" minutes that roll fail (D-24/D-28 — a hit pauses the clock).
 
 ### 8. ROADMAP / economy amendments required
 
 - **ROADMAP.md §Phase 9 SC2** must be amended (CONTEXT §Phase Boundary): travel-cancel removed → rewrite as "User cannot cancel a journey; travel is a one-way commitment; position always equals the last arrived node; travel state resolves at arrival."
-- **docs/economy-budget.md (D-02/D-18):** sink moves from travel → capture fee. Doc update + re-sign before Phase 10 content ships (CONTEXT deferred: "not necessarily in Phase 9 execution" — the planner may add a doc-flag task but the re-sign-off numbers need Phase 10 capture-fee values).
+- **ROADMAP.md §Phase 9 SC3** must be amended (pull model, D-22/D-23): "User receives encounters along the route via REST notification even when the user's shard differs from the manager process" → "User receives encounter/arrival results when checking in with `/sanguo travel` (inline in the interaction, on their own shard — no push notifications)."
+- **docs/economy-budget.md (D-02/D-18):** sink moves from travel → capture fee. **ADD re-baseline note (pull model):** encounter supply is now a function of check-in cadence (≤ 20/hr hard cap, but only while the player actively checks in). Phase 10's capture-fee sink projection must assume pull-driven encounter supply, not continuous cron supply.
+- **D-11/D-12 supersession** (crons + REST DM) recorded in CONTEXT + STATE.md accumulated decisions.
 
 ## Common Pitfalls
 
-### Pitfall 1: Arrival tick double-resolves or misses rows (race between the two crons)
-**What goes wrong:** arrival tick and encounter tick both scan `player_travel_state`; without row locks one tick can read a row mid-update, or two arrivals both fire the DM.
-**Why it happens:** both crons run in the manager process; pg-boss can dispatch the two queues' jobs concurrently.
-**How to avoid:** `.for('update', { skipLocked: true })` in BOTH tick scans (verified in-repo at `matchLifecycleService.ts:345`). The arrival tick's transaction: SELECT FOR UPDATE SKIP LOCKED → update → commit; the encounter tick same. A row locked by one is skipped by the other that sweep.
-**Warning signs:** duplicate arrival DMs; `encounter_runs` rows with the same travel_id resolving twice; pg-boss logs of deadlock errors.
+### Pitfall 1: Double-processing the same elapsed window (concurrent check-ins)
+**What goes wrong:** two concurrent `/sanguo travel` invocations for the same user both compute the same elapsed window → double decrement / duplicate encounters.
+**Why it happens:** without a row lock, the second invocation reads the pre-commit `updatedAt`.
+**How to avoid:** the check-in reads the travel row inside `db.transaction` with `.for('update')` (no SKIP LOCKED — single writer). The second tx waits, then reads the committed `updatedAt` (already advanced) → elapsed ≈ 0 → no double-count. `userId.unique()` backstops the start path.
+**Warning signs:** remaining jumps by unexpected amounts between checks; duplicate encounter embeds in two replies.
 
-### Pitfall 2: The pause-aware clock counts encounter time (D-07 violated)
-**What goes wrong:** if the arrival tick subtracts elapsed wall-clock while `encounter_active=true`, the pause is meaningless; if it doesn't advance the anchor, the pause window gets subtracted later anyway.
-**Why it happens:** `updatedAt` is both the "last modified" and the "elapsed anchor" — an encounter tick that writes `encounter_active=true` also bumps `updatedAt`, silently discarding travel time.
-**How to avoid:** while `encounter_active`, the arrival tick sets `updatedAt = now` WITHOUT subtracting (anchor advances, no time counted). Phase 9 note: the encounter tick sets active→record→notify→inactive inside one job — the flag is observably false between ticks, so no journey stalls (D-05 never-stuck holds).
+### Pitfall 2: The pause-aware clock counts encounter time (D-07/D-25 violated)
+**What goes wrong:** if the check-in subtracts the full elapsed wall-clock while `encounter_active=true`, the ack pause is meaningless; if it doesn't advance the anchor, the pause window gets subtracted later anyway.
+**Why it happens:** `updatedAt` is both the "last check-in" and the "elapsed anchor".
+**How to avoid:** while `encounter_active`, the check-in returns the pending encounter UI and counts NO time (the ack button sets `encounterActive=false`, `updatedAt=now`). On a successful roll, pin `updatedAt` to the hit minute (`updatedAt + k·60`) so the pause starts exactly there (D-25). Phase 9 note: encounters are roll+ack — no journey stalls (D-05 never-stuck holds).
 **Warning signs:** player arrives much earlier than the displayed ETA; unit test for pause window fails.
 
 ### Pitfall 3: Two files exporting the `sanguo` command
 **What goes wrong:** creating `src/commands/sanguo/travel.ts` with its own `SlashCommandBuilder().setName('sanguo')` → `collectCommandFilePaths()` picks up both map.ts and travel.ts; `registerCommands()` PUTs both definitions (last one wins — order-dependent flakiness); `client.commands.set('sanguo', …)` overwrites.
 **Why it happens:** the loader is one-command-per-file by design (`commandLoader.ts:37-49`).
-**How to avoid:** append `.addSubcommand(travelSubcommand)` to map.ts's existing builder; travel.ts exports the subcommand builder + `execute` + `autocomplete` handlers that map.ts imports and wires.
+**How to avoid:** append `.addSubcommand(travelSubcommand)` to map.ts's existing builder; travel.ts exports the subcommand builder + `execute` handlers that map.ts imports and wires.
 **Warning signs:** `/sanguo` intermittently missing the `map` or `travel` subcommand after a deploy.
 
-### Pitfall 4: Autocomplete treated as authoritative
-**What goes wrong:** a user can race an autocomplete choice with a stale/stale-rendered pick; the command executes with a destination that is no longer adjacent (e.g., after a data change), or with a fabricated option value.
-**Why it happens:** Discord autocomplete is advisory — the interaction payload can contain any string, not just offered choices.
-**How to avoid:** `startTravel` re-validates adjacency server-side and returns `no_route` DANGER embed on mismatch (UI-SPEC interaction contract §3.5-3.6). Never trust `getString('destination')` without an edges lookup.
-**Warning signs:** `NO_ROUTE` errors in production logs from a user who "just picked from the list".
+### Pitfall 4: Select-menu/button input treated as authoritative
+**What goes wrong:** a user can submit a stale select-menu value or a fabricated button customId; the destination may no longer be adjacent, or a Start press races a stale menu.
+**Why it happens:** component values are advisory — the payload can contain any string.
+**How to avoid:** `startTravel` re-validates adjacency server-side against `map_edges` and replies `no_route` DANGER embed on mismatch. The Start button handler re-reads the current travel row under `FOR UPDATE` and checks `status='arrived'`/no-row before writing (D-09). Never trust the select value without an edges lookup.
+**Warning signs:** `NO_ROUTE` errors in production logs from a user who "just picked from the menu".
 
-### Pitfall 5: `updatedAt` as elapsed anchor drifts when the encounter tick writes it
-**What goes wrong:** the encounter tick doesn't need to write `player_travel_state` (rolls read remaining; cap is Redis) — but if it DOES write (e.g., "last_roll_at"), it corrupts the arrival math.
+### Pitfall 5: `updatedAt` as elapsed anchor drifts when a non-travel writer bumps it
+**What goes wrong:** anything that writes `player_travel_state.updatedAt` outside the check-in corrupts the elapsed math.
 **Why it happens:** conflating "row last touched" with "counted-time anchor".
-**How to avoid:** arrival tick is the ONLY writer of `travel_seconds_remaining`/`updatedAt` for a traveling row. Encounter tick reads under `FOR UPDATE SKIP LOCKED` (shared lock intent) but writes only `encounter_runs` + Redis. If a dedicated anchor is preferred, add `last_counted_at` instead of reusing `updatedAt` — but reusing `updatedAt` with the single-writer rule is simpler.
-**Warning signs:** remaining jumps by unexpected amounts between ticks.
+**How to avoid:** the check-in transaction is the ONLY writer of `travel_seconds_remaining`/`updatedAt` for a traveling row (single-writer rule). The ack handler and `startTravel` are the only other writers, and they set `updatedAt` deliberately (resume / depart). No job, no cron, no side-channel writes.
+**Warning signs:** remaining jumps by unexpected amounts between checks.
 
 ### Pitfall 6: nameZh gaps breaking the map render
 **What goes wrong:** `pickName` falls back `nameZh ?? nameVi` (map.ts:40) so NULL zh is safe — but if the seed writes an empty string instead of NULL, the map renders blank zone labels in zh-cn.
@@ -791,58 +791,58 @@ Replace the Phase 8 `arriveAt timestamp notNull` + `cost bigint notNull` model w
 **Warning signs:** zh-cn map shows empty node names.
 
 ### Pitfall 7: Cap check ordering — roll before cap → cap can be exceeded by burst
-**What goes wrong:** checking the cap AFTER the roll lets a user on the boundary squeeze an extra encounter (and, worse, the check-then-act race across two ticks in the same second).
-**Why it happens:** non-atomic read-then-write on the ZSET without a bounded window.
-**How to avoid:** `ZADD` then `ZREMRANGEBYSCORE` then `ZCARD` in one `MULTI`/pipeline, or accept the micro-race (cap is a soft brake; Phase 12 hardens). Check cap BEFORE rolling so skipped rolls never record (D-13 silent skip).
+**What goes wrong:** checking the cap AFTER the roll lets a user on the boundary squeeze an extra encounter within one long check-in.
+**Why it happens:** non-atomic read-then-write on the ZSET across many per-minute rolls.
+**How to avoid:** check the cap (ZREMRANGEBYSCORE → ZCARD) BEFORE each per-minute roll so skipped rolls never record; ZADD only on a successful roll (D-13 silent skip). The check-then-act micro-race is acceptable — the cap is a soft brake (Phase 12 hardens).
 **Warning signs:** a user with exactly 20 encounters in the window receives a 21st.
 
 ## Code Examples
 
 Verified patterns from official/repo sources:
 
-### Autocomplete handler (first in codebase — new pattern)
+### StringSelectMenu + buttons (first in codebase — new pattern)
 ```typescript
-// src/events/interactionCreate.ts — add BEFORE the isChatInputCommand() gate (currently line 448)
-if (interaction.isAutocomplete()) {
-  const command = interaction.client.commands?.get(interaction.commandName);
-  if (command && typeof command.autocomplete === 'function') {
-    try { await command.autocomplete(interaction); }
-    catch (err) { logger.error('InteractionCreate', `Autocomplete error in ${interaction.commandName}`, err); }
-  }
-  return;
+// src/ui/components/sanguoTravelDestinationMenu.ts — destination picker (D-26)
+import { StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+export const DEST_MENU_ID = 'sanguo:travel:dest';
+export const START_BTN_ID = 'sanguo:travel:start';
+export const ACK_BTN_ID = 'sanguo:travel:ack';
+
+export function buildDestinationMenu(adjacent: AdjacentNode[], locale: SupportedLocale): StringSelectMenuBuilder {
+  return new StringSelectMenuBuilder()
+    .setCustomId(DEST_MENU_ID)
+    .setPlaceholder('Chọn điểm đến')
+    .setMinValues(1).setMaxValues(1)
+    .addOptions(adjacent.slice(0, 25).map((n) =>
+      new StringSelectMenuOptionBuilder()
+        .setLabel(n.representativeHeroId ? `${heroEmoji(n.representativeHeroId)} ${pickName(n, locale)}` : pickName(n, locale))
+        .setValue(n.code)                                        // stable node code (D-07/D-26)
+        .setDescription(`${Math.round(n.travelSeconds / 60)} phút`),
+    ));
 }
-// src/utils/commandLoader.ts — extend the Command interface + load
-interface Command {
-  data: { name: string; toJSON(): unknown };
-  execute: (...args: unknown[]) => Promise<void>;
-  autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
+export function buildStartButton(disabled = true): ButtonBuilder {
+  return new ButtonBuilder().setCustomId(START_BTN_ID).setLabel('Bắt đầu hành trình').setStyle(ButtonStyle.Primary).setDisabled(disabled);
 }
-// loadCommands(): also copy command.autocomplete into client.commands entry
+export function buildAckButton(): ButtonBuilder {
+  return new ButtonBuilder().setCustomId(ACK_BTN_ID).setLabel('Tiếp tục hành trình').setStyle(ButtonStyle.Secondary);
+}
+// src/events/interactionCreate.ts — button/select branches (existing button branch ~380-445 extended)
+if (interaction.isStringSelectMenu()) { /* customId sanguo:travel:dest → store selected, enable Start */ }
+if (interaction.isButton()) {          /* sanguo:travel:start → startTravel; sanguo:travel:ack → clear pause */ }
 ```
-**Source:** discord.js 14 `AutocompleteInteraction` API (in-repo: `interactionCreate.ts:448` currently gates chat-input only; UI-SPEC §Interaction contract autocomplete).
+**Source:** discord.js 14 `StringSelectMenuBuilder`/`ButtonBuilder`/`ButtonStyle` (installed 14.27.0); in-repo button branch `interactionCreate.ts:380-445`.
 
-### Drizzle FOR UPDATE SKIP LOCKED (verified in-repo)
+### Drizzle FOR UPDATE (verified in-repo)
 ```typescript
-const pendingBets = await tx
-  .select().from(footballBets)
-  .where(and(eq(footballBets.fixtureId, match.id), eq(footballBets.status, 'pending')))
-  .for('update', { skipLocked: true });   // ← the exact object form Phase 9 uses (0.45.2)
+const [row] = await tx
+  .select().from(playerTravelState)
+  .where(eq(playerTravelState.userId, userId))
+  .for('update');                       // ← single-writer lock for the check-in (0.45.2)
 ```
-**Source:** `src/services/football/matchLifecycleService.ts:336-345` (in-repo, production-running); Context7 drizzle-orm-docs confirms `.for('update').skipLocked()` chain equivalent.
+**Source:** `src/services/football/matchLifecycleService.ts:333-345` (in-repo, production-running); Context7 drizzle-orm-docs confirms `.for('update').skipLocked()` chain equivalent (skipLocked optional here — single writer).
 
-### pg-boss 6-field cron with seconds (verified)
-```bash
-# node -e "require('cron-parser').CronExpressionParser.parse('*/45 * * * * *').next()"
-# → next fire in 45s — pg-boss (cron-parser 5.7) accepts seconds-position cron for sub-minute schedules
-```
-**Source:** installed `node_modules/pg-boss/dist/index.d.ts` (`schedule(name, cron, data, options)`); installed `node_modules/cron-parser` parse check executed 2026-08-12.
-
-### REST DM open (verified in @discordjs/rest)
-```typescript
-const dm = await rest.post(Routes.userChannels(), { body: { recipient_id: userDiscordId } }) as { id: string };
-await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e => e.toJSON()) } });
-```
-**Source:** `@discordjs/rest` 2.6.3 + discord.js `Routes.userChannels()` (mirrors `matchLifecycleService.ts:199` channel-message POST shape).
+### Pull check-in loop (D-22/D-24 — the redesign core)
+See **Pattern 1** above for the full `checkInTravel` implementation sketch: elapsed → per-counted-minute rolls (35%) → STOP at first hit → ack pause → arrival branch. No cron, no REST DM.
 
 ## State of the Art
 
@@ -853,12 +853,15 @@ await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e =>
 | `arriveAt` absolute timestamp + `cost` | `travel_seconds_remaining` pause-aware + no cost (D-07/D-01) | This phase | clock pauses on encounters; no money in travel |
 | Cancel + refund paths (SC2) | One-way commitment, no cancel (D-03/D-04) | This phase (SC2 amendment) | structurally no refund bugs |
 | "Paid travel = main sink" (milestone init) | Time-only travel; capture fee = main sink (D-01/D-02) | This phase (D-18 gate) | `docs/economy-budget.md` re-sign before Phase 10 |
+| Two sanguoTick pg-boss crons + REST DM notifications (D-11/D-12) | Pull-based check-in: `/sanguo travel` computes elapsed → rolls → inline results (D-22/D-23) | This phase (D-22..D-28) | No cron, no REST DM, no cross-shard notification path; results on the user's shard |
 
 **Deprecated/outdated:**
 - `player_travel_state.cost` + `arrive_at` columns — removed this phase (D-01/D-07).
 - `status='cancelled'` travel state — removed (D-03).
 - ROADMAP §Phase 9 SC2 (cancel) — amended per CONTEXT.
 - `docs/economy-budget.md` "travel prices are sinks" rows — superseded by D-01/D-02 (re-sign at D-18 gate).
+- `sanguoTickArrivals`/`sanguoTickEncounters` jobs + `sanguoNotificationService` — never built (D-22/D-23).
+- **pg-boss sub-minute cron assumption** — pg-boss 12.27.0 hardcodes `singletonSeconds: 60` on cron dispatch (`timekeeper.js:139`; GitHub issue #427); moot under the pull model.
 
 ## Assumptions Log
 
@@ -870,24 +873,24 @@ await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e =>
 | A2 | `encounter_type varchar(20) DEFAULT 'hero'` values `hero|boss` is the boss flag shape (vs boolean `is_boss`) | Schema §6 | Extensible for future encounter kinds; boolean is simpler. Discretion (D-14) |
 | A3 | `hero_zone_rates` granularity = **per-zone** (hero_id + zone + rate), not per-node | hero_zone_rates §4 | D-16 says "zone(+node?)"; per-zone chosen (208 rows vs 73×132). Per-node would change blend input |
 | A4 | `player_travel_state` **keeps** `from_node_id`/`to_node_id`/`depart_at` alongside `travel_seconds_remaining` | Schema §6 | D-07 discretion; dropping them would force edge re-join for position math |
-| A5 | Position computed at **tick granularity** (once per 45s roll) from stored remaining — no finer interpolation | Encounter roll §7 | D-15 discretion; finer granularity costs nothing but adds complexity |
+| A5 | Position computed at **per-minute granularity** inside the check-in loop from stored remaining — no finer interpolation | Encounter roll §7 | D-15 discretion; finer granularity costs nothing but adds complexity |
 | A6 | START_NODE = `'luoyang'` for first-ever journey (no travel row yet) | travelService §5 | Alternative: force an onboarding pick (Phase 10 scope). Wrong default only affects new users' first hop |
-| A7 | Default encounter probability **0.35/tick**, boss **0.07** after hero success; zone-configurable via `map_zones.encounter_rate`/`boss_rate` | Encounter roll §7 | D-10 says 30-50% — 0.35 is within band; rates are tunable data, not code |
+| A7 | Default encounter probability **0.35/counted minute**, boss **0.07** after hero success; zone-configurable via `map_zones.encounter_rate`/`boss_rate` | Encounter roll §7 | D-10 says 30-50% — 0.35 is within band; rates are tunable data, not code |
 | A8 | Zone label source switches from "first node's name" (current map.ts WR-02) to `map_zones` per-locale name | Zones §1 | Requires a small map.ts edit; without it zone labels stay node-derived (works, but less accurate for 18 zones) |
-| A9 | Phase 9 `encounter_active` is observably false between ticks (encounter resolves at record-write since there is no battle) — the pause flag is schema- and logic-ready for Phase 10 | Pattern 2 | If the user expects a real visible pause in Phase 9, a fixed pause window must be added — but that stalls journeys (D-05 tension) |
+| A9 | Phase 9 `encounter_active` is set true on a hit and cleared by the ack button (D-25); while true, the check-in returns the pending encounter and counts no time — schema- and logic-ready for Phase 10 (battle replaces the ack button) | Pattern 1 | If the user expects auto-resolve (no ack), the pause is skipped — but D-25 locks the ack gate |
 | A10 | Node `nameZh` values are filled by the established Tavily zh-names pass (D-06 pattern) — the seed's clobber-safe spread tolerates NULL until then | Nodes §2 | Missing zh renders vi fallback in zh-cn locale (safe degradation) |
 
 ## Open Questions (RESOLVED)
 
-1. **Should Phase 9 show an actual observable clock pause per encounter, or is the schema-ready pause (instant resolve) sufficient?** — **RESOLVED: instant resolve (A9).**
-   - What we know: D-07 locks the pause-aware remaining-seconds model; D-14 locks Phase 9 to roll+notify+record only (no battle to "resolve").
-   - What's unclear: whether the user wants a real pause window in Phase 9 (e.g., 60s per encounter) despite there being nothing to do with the encounter yet.
-   - Recommendation: **instant resolve** (A9) — honors D-05 "never stuck" and D-14 scope; Phase 10 extends `encounter_active` to span battle duration. **Adopted:** the D-07 pause branch ships Phase-10-ready in 09-03 (anchor-advance without subtraction); 09-04 flagged assumption A9 records `encounter_active` as observably false in Phase 9.
+1. **How does the encounter pause work in Phase 9 (no battle to "resolve")?** — **RESOLVED: ack-gate pause (D-25).**
+   - What we know: D-07 locks the pause-aware remaining-seconds model; D-14 locks Phase 9 to roll+ack+record only (no battle to "resolve").
+   - What's unclear: whether the user wants a real pause window in Phase 9 despite there being nothing to do with the encounter yet.
+   - Recommendation (user decision, 2026-08-12): **ack-gate pause** (D-25) — on a hit, `encounterActive=true` and `updatedAt` is pinned to the hit minute; the player presses **"Tiếp tục hành trình"** to resume. Phase 10 replaces the ack button with battle/capture. **Adopted:** the pause lives in the check-in engine + ack button; D-05 "never stuck" still holds (elapsed computed on next invocation).
 
 2. **Cap: sliding window vs fixed-hour — exact target (20/hr confirmed)?** — **RESOLVED: sliding 60-min ZSET; boss counts toward the cap.**
    - What we know: D-13 locks ~20/hr + silent skip.
    - What's unclear: sliding (recommended, A1) vs fixed-hour; whether boss counts toward the cap (research says yes — it IS an encounter).
-   - Recommendation: sliding ZSET; boss counts. Confirmation needed from user (discretion). **Adopted:** 09-04 flagged assumption A1 + prohibition "No fixed-hour cap bucket — sliding ZSET only"; boss ZADDs the cap window in the 09-04 tick.
+   - Recommendation: sliding ZSET; boss counts. Confirmation needed from user (discretion). **Adopted:** 09-04 flagged assumption A1 + prohibition "No fixed-hour cap bucket — sliding ZSET only"; boss ZADDs the cap window in the check-in loop.
 
 3. **Does `/sanguo map` need a current-position indicator this phase?** — **DEFERRED to Phase 10 SC5** (declared disposition below).
    - What we know: D-06 says no persistent status embed; map.ts currently shows "current position" as the first node by nodeOrder.
@@ -896,7 +899,7 @@ await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e =>
 
 ### Disposition
 
-- **Q1 — RESOLVED (adopted in-plan):** instant resolve (A9). 09-03 ships the D-07 pause branch Phase-10-ready; 09-04 records `encounter_active` observably false. No code change needed.
+- **Q1 — RESOLVED (adopted in-plan):** ack-gate pause (D-25). The check-in engine sets `encounterActive` + pins `updatedAt` on a hit; the **"Tiếp tục hành trình"** button clears it. 09-03 owns the check-in engine, 09-04 owns the roll math; D-05 holds structurally.
 - **Q2 — RESOLVED (adopted in-plan):** sliding 60-min ZSET cap with boss-counts-toward-cap (A1). Locked as 09-04 prohibitions/flagged assumptions. No code change needed.
 - **Q3 — DEFERRED with declared disposition:** the current-position indicator is owned by **Phase 10 SC5** ("`/sanguo map` scaffold shows current position" — ROADMAP §Phase 10 Success Criterion 5). Phase 9 deliberately keeps the existing map command behavior (query-time snapshot via nodeOrder; the only Phase 9 map change is the A8 zone-label switch in 09-02). Rationale: the position read already exists in `travelService.getCurrentPosition` (09-01), so Phase 10 SC5 is a one-line map.ts addition — no Phase 9 work is stranded or double-built. Recorded 2026-08-12.
 
@@ -907,7 +910,7 @@ await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e =>
 | PostgreSQL | player_travel_state/map_edges/encounter_runs + pg-boss crons | ✓ (production-running; local Docker) | PG 13+ (pg-boss requirement) | — |
 | Redis | encounter cap ZSET + user-locale cache | ✓ (production-running) | — (ioredis 6.0.0) | — |
 | Node.js | runtime | ✓ | v26.3.0 local / 22 LTS target | — |
-| `@discordjs/rest` | DM sends | ✓ | 2.6.3 | — |
+| `@discordjs/rest` | **not used by Phase 9** (D-23) | ✓ (production-running) | 2.6.3 | — |
 | pg-boss | tick scheduling | ✓ | 12.27.0 | — |
 | Tavily/web research | nameZh fill (A10) | ✓ (dev-time) | — | zh fallback to vi |
 
@@ -930,11 +933,11 @@ await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e =>
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| TQC-06 | travelService position/adjacency/start (no wallet!) | unit | `src/services/sanguo/__tests__/travelService.test.ts` | ❌ Wave 0 |
-| TQC-06 | travel command execute + autocomplete routing | unit | `src/commands/sanguo/__tests__/travel.test.ts` | ❌ Wave 0 |
-| TQC-07 | arrival tick: decrement, pause, overdue self-heal, SKIP LOCKED | unit | `src/jobs/__tests__/sanguoTickArrivals.test.ts` | ❌ Wave 0 |
+| TQC-06 | travelService position/adjacency/start (no wallet!, code-based destination) | unit | `src/services/sanguo/__tests__/travelService.test.ts` | ❌ Wave 0 |
+| TQC-06 | travel command: select menu + Start button + check-in dispatch (users.id) | unit | `src/commands/sanguo/__tests__/travel.test.ts` | ❌ Wave 0 |
+| TQC-07 | check-in: elapsed decrement, stop-at-first-hit, ack pause, overdue self-heal | unit | `src/services/sanguo/__tests__/travelCheckInService.test.ts` | ❌ Wave 0 |
 | TQC-08 | encounter roll: cap skip, position blend, boss sub-roll, weighting | unit | `src/services/sanguo/__tests__/encounterService.test.ts` | ❌ Wave 0 |
-| TQC-08 | DM notification: 50007 3-strike, locale cache | unit | `src/services/sanguo/__tests__/sanguoNotificationService.test.ts` | ❌ Wave 0 |
+| TQC-08 | select-menu + button routing (`sanguo:travel:*`) | unit | `src/events/__tests__/travelComponents.test.ts` (or within travel.test.ts) | ❌ Wave 0 |
 | TQC-09 | seed idempotency: zones/nodes/edges/hero_zone_rates upsert | integration (seed script) | `npm run seed:sanguo` (manual/CI) | ❌ Wave 0 |
 
 ### Sampling Rate
@@ -943,11 +946,11 @@ await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e =>
 - **Phase gate:** full `npm test` + `npm run typecheck` + `npm run lint` + `npm run check-i18n` green before `/gsd-verify-work`
 
 ### Wave 0 Gaps
-- [ ] `src/services/sanguo/__tests__/travelService.test.ts` — pure math: remaining math, position, adjacency, no-wallet assertion
+- [ ] `src/services/sanguo/__tests__/travelService.test.ts` — pure math: remaining math, position, adjacency, no-wallet assertion, code→id resolution
 - [ ] `src/services/sanguo/__tests__/encounterService.test.ts` — weighted pick determinism (inject RNG), blend boundary (pos=0 → A-only, pos=1 → B-only), cap window
-- [ ] `src/jobs/__tests__/sanguoTickArrivals.test.ts` — mocked tx `.for('update', { skipLocked: true })` like `map.test.ts` mocks db
-- [ ] `src/commands/sanguo/__tests__/travel.test.ts` — mock interaction + commandLoader autocomplete contract
-- [ ] `src/services/sanguo/__tests__/sanguoNotificationService.test.ts` — mock REST, Redis strikes
+- [ ] `src/services/sanguo/__tests__/travelCheckInService.test.ts` — mocked tx `.for('update')` like `map.test.ts` mocks db; elapsed/stop-at-first/ack/arrival
+- [ ] `src/commands/sanguo/__tests__/travel.test.ts` — mock interaction + select-menu/button contract (users.id, not char.id)
+- [ ] `src/events/__tests__/travelComponents.test.ts` — button/select routing for `sanguo:travel:*` customIds (start, ack, dest)
 
 ## Security Domain
 
@@ -959,7 +962,7 @@ await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e =>
 | V2 Authentication | no | Discord OAuth is platform-level; bot never authenticates users itself |
 | V3 Session Management | no | stateless interactions + DB state |
 | V4 Access Control | partial | slash-command scope enforced by Discord; no guild-specific privilege needed this phase |
-| V5 Input Validation | yes | destination re-validated against `map_edges` server-side (autocomplete advisory — Pitfall 4); drizzle parameterization |
+| V5 Input Validation | yes | destination re-validated against `map_edges` server-side (select-menu value is advisory — Pitfall 4); drizzle parameterization |
 | V6 Cryptography | yes | `crypto.randomInt` for all player-facing rolls (milestone mandate); never Math.random |
 
 ### Known Threat Patterns for {stack}
@@ -968,8 +971,8 @@ await rest.post(Routes.channelMessages(dm.id), { body: { embeds: embeds.map(e =>
 | Destination injection (fabricated node code) | Tampering | server-side edge lookup before any write; no route → DANGER embed (Pitfall 4) |
 | Roll prediction via Math.random | Information disclosure / Spoofing | `crypto.randomInt` (V6) — monotonic, unseeded, CSPRNG |
 | Cap evasion by multi-account | Elevation | Phase 12 bot detection (TQC-18); Phase 9 cap is a soft brake only (D-13) |
-| DM spam / 50007 storm on closed DMs | DoS | 3-strike Redis counter + skip (Pattern 4); never retry-storm |
-| Double-spend style double-resolve of arrivals | Tampering | `FOR UPDATE SKIP LOCKED` single-writer rule (Pitfall 1/5) |
+| Double-processing elapsed window (concurrent check-ins) | Tampering | `FOR UPDATE` on the user's own row + `userId.unique()` (Pitfall 1/5) |
+| Component-customId spoofing (fabricated button/select) | Spoofing | customId prefix `sanguo:travel:*` validated in the router; Start handler re-validates row status + adjacency (Pitfall 4) |
 | Wallet compromise via travel | — | structurally impossible: travelService imports NO wallet (D-01) |
 
 ## Sources
