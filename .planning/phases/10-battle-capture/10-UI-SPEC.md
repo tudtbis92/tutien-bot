@@ -1,10 +1,11 @@
 ---
 phase: 10
 slug: battle-capture
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-13
+reviewed_at: 2026-08-13
 ---
 
 # Phase 10 — UI Design Contract: Battle & Capture
@@ -158,7 +159,7 @@ Canonical copy in **VI** (source locale). Every key MUST exist in `locales/vi|en
 
 ## UI Considerations
 
-Applicable state considerations resolved: **14 covered, 2 backstop, 0 unresolved**
+Applicable state considerations resolved: **21 covered, 3 backstop, 0 unresolved** (probe: 46 applicable across 6 surfaces; 22 over-classified categories dismissed with reason)
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
@@ -166,6 +167,7 @@ Applicable state considerations resolved: **14 covered, 2 backstop, 0 unresolved
 | empty | starter-picker | ✅ covered | Picker renders ONLY when collection is empty; never empty-on-empty by construction |
 | loading | capture-view | 🧪 backstop | Button press → `deferReply` → `editReply` within the 3s interaction window (CR-09-06 pattern, no duplicate defer); no skeleton exists on Discord — verify handler latency with a held-out interaction test |
 | loading | battle-log | 🧪 backstop | Same defer pattern for `sanguo:battle:start`; verify the seeded engine computes ≤ 20 rounds and replies within the window |
+| loading | heroes-collection | 🧪 backstop | Collection fetch is an async DB read rendered via `deferReply` → `editReply`; no skeleton exists on Discord — verify handler latency with a held-out interaction test (consistent with capture-view/battle-log backstops) |
 | error | battle-log | ✅ covered | Blocked states render documented copy: fainted (`battle.blocked_fainted`), no pending encounter (`battle.no_encounter`), all-heroes-fainted soft-lock warning (WARNING color) |
 | error | capture-view | ✅ covered | Insufficient fee renders documented copy (`capture.insufficient`); fee validated server-side before the roll |
 | error | heroes-collection | ✅ covered | Load failure renders documented copy (`heroes.error`) |
@@ -183,6 +185,13 @@ Applicable state considerations resolved: **14 covered, 2 backstop, 0 unresolved
 | long-text | battle-log | ✅ covered | Round cap bounds length; concise turn lines; no unbounded narrative |
 | long-text | hero-detail | ✅ covered | Fixed fields only (HP/MP as numbers, grade labels); no free-text rendering |
 | long-text | encounter-entry | ✅ covered | Boss body within field/description budget (≤ 1,024); hero names are DB strings with length limits |
+
+**Dismissed (probe over-classification, reason required):**
+- battle-log: empty / partial / zero-one-many — log renders only while a battle runs; no empty/partial log exists by construction; zero-one-many covered by the round cap.
+- capture-view: empty / partial — a capture view always has a pending encounter + server-validated fee state; no empty/partial capture by construction (no-pending-encounter is the `battle.no_encounter` error case, already covered).
+- hero-detail: empty / loading / partial / overflow / zero-one-many — single-hero fixed-field surface; unknown hero → `hero.error` (covered); no loading skeleton on Discord; fixed fields bound all length states.
+- starter-picker: loading / error / populated / partial / overflow / zero-one-many — renders only when collection is empty with exactly 3 pre-fetched buttons; errors covered by `heroes.error`; fixed 3-option construction bounds the rest.
+- encounter-entry: empty / loading / error / partial / overflow — server-produced embed, never empty/partial when shown (absence surfaces on the action path, not the surface); loading = deferReply; overflow bounded by field/description budgets.
 
 <!-- Status vocabulary (locked by probe-core projectTruths):
      ✅ covered   → a plain truth string lifted into must_haves.truths
@@ -216,11 +225,11 @@ No third-party registry vetting required: `components.json` does not exist, and 
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: FLAG (non-blocking — 2 error strings lack a next-step: `battle.no_encounter`, `hero.error`; recommendation: append an action sentence)
+- [x] Dimension 2 Visuals: FLAG (non-blocking — no explicit focal point declared per primary surface; recommendation: declare visual anchor per surface)
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved (4/6 PASS, 2 non-blocking FLAG — 2026-08-13)
