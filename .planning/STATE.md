@@ -4,15 +4,15 @@ milestone: v3.0
 milestone_name: Tam Quốc Collection
 current_phase: 10
 current_phase_name: Battle & Capture
-status: planning
-stopped_at: Phase 10 context gathered
-last_updated: "2026-08-13T04:24:59.781Z"
+status: executing
+stopped_at: Phase 10 UI-SPEC approved
+last_updated: "2026-08-13T06:01:45.204Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 09 complete, transitioned to Phase 10
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 9
+  total_plans: 16
   completed_plans: 9
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 
 Phase: 10 — Battle & Capture
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-08-13 — Phase 09 complete, transitioned to Phase 10
 
 Progress: [████████████████████] 9/9 plans (100%)
@@ -102,10 +102,10 @@ Progress: [████████████████████] 9/9 pla
 
 ## Session Continuity
 
-**Resume file:** E:\Saeth\tutien-bot\.planning\phases\10-battle-capture\10-CONTEXT.md
+**Resume file:** E:/Saeth/tutien-bot/.planning/phases/10-battle-capture/10-UI-SPEC.md
 
-Last session: 2026-08-13T04:24:59.761Z
-Stopped at: Phase 10 context gathered
+Last session: 2026-08-13T04:52:29.239Z
+Stopped at: Phase 10 UI-SPEC approved
 Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 
 ---
