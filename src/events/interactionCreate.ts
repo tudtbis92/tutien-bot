@@ -25,6 +25,9 @@ import {
   CAPTURE_RETRY_ID,
   CAPTURE_RETREAT_ID,
 } from '../ui/components/sanguoCaptureButtons.js';
+import { ZONE_MENU_ID } from '../ui/components/sanguoHeroesZoneMenu.js';
+import { STARTER_PICK_PREFIX } from '../ui/components/sanguoStarterButtons.js';
+import { COMPANION_PREFIX } from '../ui/components/sanguoHeroCompanionButton.js';
 
 export const name = Events.InteractionCreate;
 
@@ -40,6 +43,9 @@ interface SanguoComponentHandlers {
   handleCaptureTierPress?: (interaction: ButtonInteraction) => Promise<void>;
   handleCaptureRetryPress?: (interaction: ButtonInteraction) => Promise<void>;
   handleCaptureRetreatPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleStarterPick?: (interaction: ButtonInteraction) => Promise<void>;
+  handleZoneFilterSelect?: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  handleCompanionPress?: (interaction: ButtonInteraction) => Promise<void>;
 }
 
 export async function execute(interaction: Interaction): Promise<void> {
@@ -66,6 +72,23 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo travel destination select', err);
+      }
+      return;
+    }
+
+    // sanguo heroes zone filter (D-15) — dispatches to the 'sanguo' command
+    // module's handler; the select value is validated server-side against
+    // map_zones codes (T-10-07-05: unknown → full collection, never a crash).
+    if (customId === ZONE_MENU_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleZoneFilterSelect === 'function') {
+          await cmd.handleZoneFilterSelect(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo heroes zone filter', err);
       }
       return;
     }
@@ -110,6 +133,39 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo travel start button', err);
+      }
+      return;
+    }
+
+    // sanguo starter pick (D-14) — customId 'sanguo:heroes:starter:{heroId}';
+    // prefix match (F1-suffixed); the handler validates the heroId against
+    // STARTER_SET_1/2 (T-10-07-03) — the FREE grant, no wallet call (D-19).
+    if (customId.startsWith(STARTER_PICK_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleStarterPick === 'function') {
+          await cmd.handleStarterPick(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo starter pick', err);
+      }
+      return;
+    }
+
+    // sanguo companion switch (D-16) — customId 'sanguo:hero:companion:{heroId}';
+    // prefix match; the handler validates ownership inside its FOR UPDATE tx.
+    if (customId.startsWith(COMPANION_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleCompanionPress === 'function') {
+          await cmd.handleCompanionPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo companion switch', err);
       }
       return;
     }

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -508,5 +509,22 @@ describe('/sanguo heroes command (10-07)', () => {
     const value = field?.value ?? '';
     expect(value).toContain('Tào Tháo • ★★★ • Hoàng Kim ⭐');
     expect((value.match(/⭐/g) ?? []).length).toBe(1); // exactly one active badge
+  });
+
+  // ── Test 6 (routing, Task 3): the interaction router dispatches the new
+  //    customIds BEFORE the chat-input gate (extension of 10-06's router test).
+  it('interactionCreate routes sanguo:heroes:* / sanguo:hero:* BEFORE the chat-input gate', () => {
+    const source = readFileSync(
+      new URL('../../../events/interactionCreate.ts', import.meta.url),
+      'utf-8',
+    );
+    const gateIdx = source.indexOf('if (!interaction.isChatInputCommand()) return;');
+    expect(gateIdx).toBeGreaterThan(-1);
+    expect(source.indexOf('ZONE_MENU_ID')).toBeGreaterThan(-1);
+    expect(source.indexOf('STARTER_PICK_PREFIX')).toBeGreaterThan(-1);
+    expect(source.indexOf('COMPANION_PREFIX')).toBeGreaterThan(-1);
+    expect(source.indexOf('ZONE_MENU_ID')).toBeLessThan(gateIdx);
+    expect(source.indexOf('STARTER_PICK_PREFIX')).toBeLessThan(gateIdx);
+    expect(source.indexOf('COMPANION_PREFIX')).toBeLessThan(gateIdx);
   });
 });
