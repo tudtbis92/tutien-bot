@@ -134,6 +134,13 @@
       "when": 1786582204726,
       "tag": "0018_sanguo_travel_map",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1786604954024,
+      "tag": "0019_green_snowbird",
+      "breakpoints": true
     }
   ]
 }
