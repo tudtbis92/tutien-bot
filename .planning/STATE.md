@@ -5,15 +5,15 @@ milestone_name: Tam Quốc Collection
 current_phase: 10
 current_phase_name: Battle & Capture
 status: executing
-stopped_at: Phase 10 UI-SPEC approved
-last_updated: "2026-08-13T06:01:45.204Z"
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-08-13T07:01:01.172Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 09 complete, transitioned to Phase 10
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 16
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # State: TuTien Bot
@@ -32,12 +32,12 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 
 ## Current Position
 
-Phase: 10 — Battle & Capture
-Plan: Not started
+Phase: 10 (Battle & Capture) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-08-13 — Phase 09 complete, transitioned to Phase 10
+Last activity: 2026-08-13 — Phase 10 execution started
 
-Progress: [████████████████████] 9/9 plans (100%)
+Progress: [████████████████████] 9/9 plans ([██████░░░░] 63%)
 
 ## Phase Registry (Milestone v3)
 
@@ -102,10 +102,10 @@ Progress: [████████████████████] 9/9 pla
 
 ## Session Continuity
 
-**Resume file:** E:/Saeth/tutien-bot/.planning/phases/10-battle-capture/10-UI-SPEC.md
+**Resume file:** None
 
-Last session: 2026-08-13T04:52:29.239Z
-Stopped at: Phase 10 UI-SPEC approved
+Last session: 2026-08-13T07:00:45.546Z
+Stopped at: Completed 10-01-PLAN.md
 Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 
 ---
@@ -120,6 +120,7 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 | Phase 08-foundation-economy-budget-content-infrastructure P2 | 18min | 3 tasks | 10 files |
 | Phase 08-foundation-economy-budget-content-infrastructure P3 | 18min | 2 tasks | 1 files |
 | Phase 08 P4 | 82min | 6 tasks | 16 files |
+| Phase 10-battle-capture P01 | 20min | 2 tasks | 4 files |
 
 ## Quick Tasks Completed
 
@@ -139,3 +140,5 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 - [Phase 08]: Economy design gate PASSED (2026-08-11): D-19 net-sink/neutral is a hard constraint, expected net linh thach/hour of optimal sanguo loop <= 0 (trivially below DAILY_CAP 10_000 tu-vi cap SC5), convertibility matrix accepted — gates Phases 9-11 content (TQC-05/D-18) — SC5 design-sanity check; any future rebalancing requires a new sign-off (D-18 one-way gate)
 - [Phase 08]: Migration 0004 (empty since 'fix migration missing 0004') restored to ADD COLUMN dk_event_id varchar(20) — proven from 0004 snapshot diff (0003->0004 added only that column); 0006 drops it, so a fresh-DB chain was un-appliable until restored (Rule 3) — Fresh local dev DB needed the full 0000-0014 chain; without 0004 the chain failed at 0006 with column does not exist
 - [Phase 08]: ZH-CN hero names researched via Tavily (kongming.net hanzi index primary + targeted corrections): 109 from kongming simplified column, 23 corrected mis-picks (sun_jian 孙坚, liu_yao 刘繇, liu_yan 刘焉, ly_ung 李膺, zhang_miao 张邈, gongsun_du 公孙度...), 23 non-kongming figures researched individually (foreign chiefs, emperors, Korean kings) — D-06 names never agent-guessed — Kongming first-match mis-picks variant-spelling figures; accuracy spot-check (10-hero sample) zero unresolved mismatches after correction
+- [Phase 10-battle-capture]: Seeded replayable battle engine: runBattle(seed, input) is a pure synchronous function (D-06); ONE mutable xoroshiro128plus rng threaded via uniformFloat64; full D-05 formula locked by tests
+- [Phase 10-battle-capture]: BATTLE_CONFIG A9 drafts exported (ROUND_CAP 20, HIT_BASE 0.85/AGI_FACTOR 0.003, CRIT_BASE 0.05/AGI_FACTOR 0.001) for the 10-04 balance pass to re-sanitize against the seeded AGI spread
