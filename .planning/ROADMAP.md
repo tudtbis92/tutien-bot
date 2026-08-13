@@ -160,13 +160,13 @@ Plans:
   4. New user can choose 1 free starter hero during onboarding — the only faucet in the game.
   5. User can view the collection with `/sanguo heroes` — grouped by zone with emoji, tier, IV; `/sanguo map` scaffold shows current position.
 
-**Plans**: 2/7 plans executed — planned 2026-08-13
+**Plans**: 3/7 plans executed — planned 2026-08-13
 Plans:
 **Wave 1**
 
 - [x] 10-01-PLAN.md — Seeded battle engine (tracer): pure-rand + runBattle (D-05/D-06) + replay tests (TQC-10)
 - [x] 10-02-PLAN.md — Schema migration 0019: heroes base stats/rarity/tier, user_heroes HP/zone, sanguo_battles replay record, capture_attempts + user_sanguo_state + [BLOCKING] migrate (TQC-10..13)
-- [ ] 10-03-PLAN.md — D-20 economy re-sign + CAPTURE_TIERS constants (checkpoint:decision, one-way gate) (TQC-11)
+- [x] 10-03-PLAN.md — D-20 economy re-sign + CAPTURE_TIERS constants (checkpoint:decision, one-way gate) (TQC-11)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -219,7 +219,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 8. Foundation, Economy Budget & Content Infrastructure | 4/4 | In Progress|  |
 | 9. Travel & Encounters | 5/5 | Complete    | 2026-08-13 |
-| 10. Battle & Capture | 2/7 | In Progress|  |
+| 10. Battle & Capture | 3/7 | In Progress|  |
 | 11. Progression, Chemistry & Economy Depth | 0/TBD | Not started | - |
 | 12. Anti-Abuse, Monitoring & Marketplace Gating | 0/TBD | Not started | - |
 
