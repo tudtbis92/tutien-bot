@@ -28,6 +28,35 @@
  * committed map dataset itself (transcribed from the RESEARCH zh column where
  * provided; the same clobber-safe spread applies).
  *
+ * Phase 10 base stats (10-04, D-02/D-08): scripts/data/sanguo-base-stats.json
+ * is a REQUIRED dataset (like classifications — a missing/corrupt file is
+ * FATAL, unlike zh-names) carrying { heroId: { str, agi, int, mov, lea, cha,
+ * hp, mp, rarity, tier } } for all 132 heroes. The hero upsert set clause
+ * writes the ten columns via a clobber-safe spread guarded on the heroId
+ * having an entry — a dataset entry missing a heroId leaves the column
+ * untouched (never writes NULL over an existing value, mirroring nameZh).
+ * The dataset is complete (Task 1 cross-check: 0 missing, 0 orphan), so the
+ * spread is unconditional-but-guarded for safety (D-11 clobber-safe).
+ *
+ * A2 TEMPLATE TABLE (RESEARCH assumption A2 — class-template generation, NOT
+ * per-hero hand-tuning): base stats are per-class templates + per-hero
+ * modifiers by prominence (rarity) + deterministic hash jitter. The template
+ * table, the prominence modifiers and the starter boost are documented in the
+ * dataset's generator provenance (10-04-SUMMARY.md); summary of the shapes:
+ *   vanguard    ~ high STR/HP (58/210 median),  cavalry ~ high AGI/MOV (62/68),
+ *   archer      ~ high AGI/INT (62/52),       spellcaster ~ high INT/MP (66/170),
+ *   schemer     ~ high INT/LEA (60/62),       vu_co/thu_binh/cong_binh ~ balanced
+ *   MAX(STR,INT). HP/MP in the 50-300 band, six stats in the 10-90 band so
+ *   combatStat = base + IV (0-31) yields sane deltas under the D-05 formula.
+ * Rarity is binned to the SIGNED D-20 distribution (60/25/10/4/1) —
+ * 79/33/13/5/2 for 132 heroes (deviation per bin <= 0.7, small-population
+ * rounding per the D-20 re-sign). Public tier (★1-5) is seeded INDEPENDENTLY
+ * of hidden rarity (rarity + deterministic hash jitter, clamped 1-5) — the
+ * collection renders stars from tier, never rarity (D-12). The six starter
+ * heroes (cao_cao/liu_bei/sun_jian/truong_giac/yuan_shao/dong_trac, names
+ * locked D-14) carry starter-appropriate stats = class-template median + a
+ * small flat boost so the first hero feels usable.
+ *
  * Dev-time source: scripts/data/heroes-v1.json (committed repo copy — deploy-safe
  * default; override with env SANGUO_HEROES_SOURCE for the sibling repo). Requires:
  * DATABASE_URL_DIRECT (bypasses PgBouncer).
@@ -172,6 +201,35 @@ function loadClassifications(): Record<string, HeroClassification> {
     return JSON.parse(fs.readFileSync(CLASSIFICATIONS_PATH, 'utf8')) as Record<string, HeroClassification>;
   } catch {
     console.error('[Seed] FATAL: scripts/data/sanguo-classifications.json not found — 132 hero classifications required');
+    process.exit(1);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 10 base stats (10-04, D-02/D-08) — committed dev-time content consumed
+// by the hero upsert. REQUIRED (unlike zh-names): a missing/corrupt file is
+// FATAL because every battle formula (10-01 combatStat), capture math (10-05)
+// and collection line (10-07) reads these numbers — content gates the phase.
+// ---------------------------------------------------------------------------
+interface HeroBaseStats {
+  str: number;
+  agi: number;
+  int: number;
+  mov: number;
+  lea: number;
+  cha: number;
+  hp: number;
+  mp: number;
+  rarity: number;
+  tier: number;
+}
+
+const BASE_STATS_PATH = fileURLToPath(new URL('./data/sanguo-base-stats.json', import.meta.url));
+function loadBaseStats(): Record<string, HeroBaseStats> {
+  try {
+    return JSON.parse(fs.readFileSync(BASE_STATS_PATH, 'utf8')) as Record<string, HeroBaseStats>;
+  } catch {
+    console.error('[Seed] FATAL: scripts/data/sanguo-base-stats.json not found — 132 hero base stats (str/agi/int/mov/lea/cha/hp/mp/rarity/tier) required');
     process.exit(1);
   }
 }
@@ -364,10 +422,18 @@ async function seed() {
   });
 
   let heroCount = 0;
+  const baseStats = loadBaseStats();
   for (const row of heroRows) {
     // Clobber-safe set (D-11/D-06): nameZh only when a researched value exists,
     // so an entry-less re-run can never overwrite a researched value with NULL.
     const zh = row.nameZh;
+    // Phase 10 base stats (10-04): the ten content columns are written from the
+    // committed dataset when the heroId has an entry — an entry-less heroId
+    // leaves the columns untouched (never NULL-clobbers, mirroring nameZh).
+    // The dataset is complete (132/132), so the spread is unconditional-but-
+    // guarded for safety. Starters are already part of the 132-hero set — no
+    // separate insert path is needed (10-07 starter picker finds their rows).
+    const st = baseStats[row.heroId];
     const [inserted] = await db
       .insert(schema.heroes)
       .values(row)
@@ -386,6 +452,20 @@ async function seed() {
           class: row.class,
           familyId: row.familyId,
           ...(zh ? { nameZh: zh } : {}),
+          ...(st
+            ? {
+                str: st.str,
+                agi: st.agi,
+                int: st.int,
+                mov: st.mov,
+                lea: st.lea,
+                cha: st.cha,
+                hp: st.hp,
+                mp: st.mp,
+                rarity: st.rarity,
+                tier: st.tier,
+              }
+            : {}),
         },
       })
       .returning({ id: schema.heroes.id });
