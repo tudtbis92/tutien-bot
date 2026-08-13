@@ -127,6 +127,13 @@
       "when": 1786498727829,
       "tag": "0017_hero_spouse_relations",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786582204726,
+      "tag": "0018_sanguo_travel_map",
+      "breakpoints": true
     }
   ]
 }
