@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, smallint, timestamp, check, index } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, smallint, varchar, timestamp, check, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users.js';
 import { heroes } from './heroes.js';
@@ -30,6 +30,13 @@ export const userHeroes = pgTable(
     ivMov: smallint('iv_mov').notNull(),
     ivLea: smallint('iv_lea').notNull(),
     ivCha: smallint('iv_cha').notNull(),
+    // Phase 10 (D-04): current HP — 0 = fainted. The capture/starter insert
+    // paths (10-05/10-07) write the hero's base HP explicitly; this default
+    // is a safety net for direct inserts, never the expected end state.
+    hpCurrent: smallint('hp_current').notNull().default(0),
+    // Phase 10 (A5): zone snapshot at capture — powers the /sanguo heroes
+    // zone filter (TQC-13). NULL for starter grants (not zone-captured).
+    capturedZone: varchar('captured_zone', { length: 50 }),
     capturedAt: timestamp('captured_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
