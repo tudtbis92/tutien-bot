@@ -8,6 +8,12 @@
     },
     "battle": {
       "description": "Tập luyện với một hero ngẫu nhiên"
+    },
+    "heroes": {
+      "description": "Xem bộ sưu tập hero của bạn"
+    },
+    "hero": {
+      "description": "Xem chi tiết một hero"
     }
   },
   "map": {
@@ -86,5 +92,34 @@
     "retreat_body": "Bạn bỏ qua {{hero}}. Hành trình tiếp tục.",
     "insufficient": "Không đủ Linh thạch (cần {{fee}} 💎). Hãy kiểm tra số dư và thử lại.",
     "error": "Có lỗi khi thu phục. Hãy thử lại."
+  },
+  "heroes": {
+    "empty_title": "🌱 Chọn hero khởi đầu",
+    "empty_body": "Bạn chưa có hero nào. Chọn **1 hero miễn phí** để bắt đầu hành trình:",
+    "starter_button": "Chọn {{name}}",
+    "title": "📜 Bộ sưu tập ({{count}})",
+    "line": "{{emoji}} {{name}} • {{stars}} • {{grade}}{{active}}",
+    "active_badge": "⭐",
+    "zone_filter": "Lọc theo vùng",
+    "error": "Có lỗi khi tải bộ sưu tập. Hãy thử lại.",
+    "success": "🎉 Bạn đã chọn **{{name}}** làm hero khởi đầu!",
+    "empty_filtered": "Không có hero nào trong vùng này."
+  },
+  "hero": {
+    "title": "🗡️ {{name}}",
+    "field_stars": "Sao",
+    "field_grade": "Cấp",
+    "field_hp_mp": "HP/MP",
+    "companion_button": "Chọn làm hero đồng hành",
+    "companion_label": "⭐ Hero đồng hành",
+    "fainted": "💀 Kiệt sức",
+    "error": "Bạn chưa sở hữu hero này."
+  },
+  "iv_grade": {
+    "gold": "Hoàng Kim",
+    "ruby": "Hồng ngọc",
+    "sapphire": "Lam cấp",
+    "jade": "Lục cấp",
+    "gray": "Hôi cấp"
   }
 }

@@ -8,6 +8,12 @@
     },
     "battle": {
       "description": "与随机英雄对战练习"
+    },
+    "heroes": {
+      "description": "查看你的英雄收藏"
+    },
+    "hero": {
+      "description": "查看英雄详情"
     }
   },
   "map": {
@@ -86,5 +92,34 @@
     "retreat_body": "你跳过了{{hero}}。旅程继续。",
     "insufficient": "灵石不足（需要{{fee}} 💎）。请检查余额后重试。",
     "error": "收服时出错，请重试。"
+  },
+  "heroes": {
+    "empty_title": "🌱 选择初始英雄",
+    "empty_body": "你还未拥有英雄。选择**1名免费英雄**开始旅程：",
+    "starter_button": "选择{{name}}",
+    "title": "📜 收藏 ({{count}})",
+    "line": "{{emoji}} {{name}} • {{stars}} • {{grade}}{{active}}",
+    "active_badge": "⭐",
+    "zone_filter": "按区域筛选",
+    "error": "加载收藏时出错，请重试。",
+    "success": "🎉 你已选择**{{name}}**作为初始英雄！",
+    "empty_filtered": "该区域暂无英雄。"
+  },
+  "hero": {
+    "title": "🗡️ {{name}}",
+    "field_stars": "星级",
+    "field_grade": "品质",
+    "field_hp_mp": "HP/MP",
+    "companion_button": "设为同伴",
+    "companion_label": "⭐ 同伴英雄",
+    "fainted": "💀 精疲力竭",
+    "error": "你尚未拥有该英雄。"
+  },
+  "iv_grade": {
+    "gold": "金色",
+    "ruby": "红宝石",
+    "sapphire": "蓝品",
+    "jade": "绿品",
+    "gray": "灰品"
   }
 }

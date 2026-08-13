@@ -8,6 +8,12 @@
     },
     "battle": {
       "description": "Train against a random hero"
+    },
+    "heroes": {
+      "description": "View your hero collection"
+    },
+    "hero": {
+      "description": "View a hero's details"
     }
   },
   "map": {
@@ -86,5 +92,34 @@
     "retreat_body": "You skip {{hero}}. The journey continues.",
     "insufficient": "Not enough Spirit Stones (need {{fee}} 💎). Check your balance and try again.",
     "error": "There was an error capturing. Please try again."
+  },
+  "heroes": {
+    "empty_title": "🌱 Choose a starter hero",
+    "empty_body": "You have no heroes yet. Choose **1 free hero** to begin your journey:",
+    "starter_button": "Choose {{name}}",
+    "title": "📜 Collection ({{count}})",
+    "line": "{{emoji}} {{name}} • {{stars}} • {{grade}}{{active}}",
+    "active_badge": "⭐",
+    "zone_filter": "Filter by zone",
+    "error": "There was an error loading your collection. Please try again.",
+    "success": "🎉 You chose **{{name}}** as your starter hero!",
+    "empty_filtered": "No heroes in this zone."
+  },
+  "hero": {
+    "title": "🗡️ {{name}}",
+    "field_stars": "Stars",
+    "field_grade": "Grade",
+    "field_hp_mp": "HP/MP",
+    "companion_button": "Set as companion",
+    "companion_label": "⭐ Companion hero",
+    "fainted": "💀 Exhausted",
+    "error": "You do not own this hero."
+  },
+  "iv_grade": {
+    "gold": "Gold",
+    "ruby": "Ruby",
+    "sapphire": "Sapphire",
+    "jade": "Jade",
+    "gray": "Gray"
   }
 }

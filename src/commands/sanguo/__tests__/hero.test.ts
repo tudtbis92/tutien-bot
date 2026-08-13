@@ -274,7 +274,7 @@ describe('/sanguo hero command (10-07)', () => {
       { steps: ['where', 'limit'], result: [STATE_ROW] },
     ]);
 
-    const interaction = mockChatInputInteraction('cao_cao'); // match by heroId string
+    const interaction = mockChatInputInteraction('Tào Tháo'); // name matches BOTH copies → F9 picks the active one
     await execute(interaction);
 
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
