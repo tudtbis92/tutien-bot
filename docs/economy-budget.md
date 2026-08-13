@@ -4,6 +4,37 @@
 - **Date:** 2026-08-11
 - **One-line summary:** This is the design-gate document for the Tam Quốc (sanguo) sub-game economy — it fixes the sink/source model, the expected Linh thạch/hour bound below the tu vi cap, the convertibility matrix, and the net-sink/neutral hard constraint (D-19) that every Phase 9–11 money flow must satisfy before any content is authored.
 - **AMENDMENT (2026-08-12, Phase 9 D-01/D-22):** travel is now TIME-ONLY and PULL-BASED — no Linh thạch cost, no travel sink, and encounters accrue only when the player checks in with `/sanguo travel` (≤ 20/hr hard cap, but encounter SUPPLY = f(check-in cadence), not continuous). The main sink moves to the Phase 10 capture fee (D-02). This document's earlier travel-as-sink references (gating statement below) are superseded by the added line; a RE-SIGN with Phase 10 capture-fee values — assuming pull-driven encounter supply — is required before Phase 10 content ships (D-18 one-way gate).
+- **RE-SIGN (2026-08-13, Phase 10 D-20):** the Phase 10 capture-fee contract is now signed. The 5-tier capture-fee table below (fee bigint + capture-chance multiplier per tier) is the approved Phase 10 economy contract, sourced from `src/constants/sanguoCapture.ts` `CAPTURE_TIERS` — the ONLY server-side fee source; the fee NEVER rides a customId or interaction payload (anti-tamper, UI-SPEC contract). Tiers 4-5 are item-gated (`capture_tier4_key` / `capture_tier5_key`, Phase 11 shop / events); Phase 10 activates tiers 1-3 (D-09).
+
+  **5-tier capture-fee table (D-20 contract):**
+
+  | Tier | Fee (Linh thạch) | Capture multiplier | Item gate |
+  |------|------------------|--------------------|-----------|
+  | T1 | 5💎 | ×1.0 | — (fee-only) |
+  | T2 | 15💎 | ×1.5 | — (fee-only) |
+  | T3 | 40💎 | ×2.0 | — (fee-only) |
+  | T4 | 100💎 | ×3.0 | `capture_tier4_key` (Phase 11/events) |
+  | T5 | 250💎 | ×5.0 | `capture_tier5_key` (Phase 11/events) |
+
+  > **F8 adjustment note:** the user-approved A1 draft (10/30/80/200/500) breached the ~416/hr gross magnitude bound at realistic cadence under effective capture chances (A1 draft: ~788💎/hr at 10 encounters/hr, conservative model — see E[outflow] below). The fee schedule is therefore HALVED to 5/15/40/100/250 — tier ratios (1:3:8:20:50), multipliers, base capture rates, flee rates, pity, and rarity distribution unchanged. Adjustment documented as a deviation in the 10-03 summary.
+
+  **Supporting constants (same source, `sanguoCapture.ts`):** base capture by rarity R1 .80 / R2 .55 / R3 .35 / R4 .20 / R5 .10; flee rate by rarity R1 .10 / R2 .20 / R3 .35 / R4 .55 / R5 .75; pity +5pp per failed attempt (resets on success/flee/retreat, D-11); HP factor Pokemon-standard `(3×HPmax − 2×HPcurrent) / (3×HPmax)` — lower HP → higher chance; rarity distribution 60/25/10/4/1 (percent weights, consumed by the 10-04 content seed). All hidden mechanics (D-12): never rendered on any UI surface.
+
+  **E[net/hour] recomputation (pull-driven encounter supply, ≤20/hr):**
+
+  `E[net/hour] = E[inflow] − E[outflow]` over the loop (travel → battle → capture).
+
+  - **E[inflow] = 0** — the free starter hero (10-07) is a ONE-TIME onboarding grant, not a recurring source (D-19 faucet exception); NO sanguo mechanic mints Linh thạch (D-19 restated as a hard constraint).
+  - **E[outflow] = E[capture attempts/hr] × E[fee/attempt]** where attempts-per-capture = 1/effectiveChance (F8 — EFFECTIVE chances, never raw base rates): effective chance = `base × hpFactor × tierMult` (clamped [0,1] after pity). Tier blend assumed T1-dominant for affordable early capture: **80% T1 / 15% T2 / 5% T3** → blend multiplier 1.125, blend fee 8.25💎/attempt.
+    - **Conservative model (hpFactor = 1/3 — wild hero at full HP, worst case):** rarity-weighted E[attempts per captured hero] = 4.77 (R1 3.33 / R2 4.85 / R3 7.62 / R4 13.33 / R5 26.67); E[outflow per hero] = 4.77 × 8.25 = 39.4💎.
+    - **Realistic post-battle HP model (hpFactor = 0.87 — hero beaten to ~20% HP before capture, the capture incentive, Pitfall 5):** E[attempts per hero] = 1.83; E[outflow per hero] = 15.1💎.
+    - **Flee-adjusted (incl. flee-driven attempt loss, F8):** E[attempts per encounter] = 2.62 → 21.6💎/hero.
+  - **Cadences (document BOTH):**
+    - Theoretical 20/hr (supply hard cap): conservative 788💎/hr — exceeds the ~416 magnitude reference, BUT 20/hr is the pull-driven SUPPLY CEILING (one full battle+capture chain every 3 minutes, continuously — not a human-achievable throughput); the realistic post-battle-HP model at 20/hr = 302💎/hr ✓.
+    - Realistic human cadence 5-10/hr: conservative 197-394💎/hr ✓; realistic-HP 75-151💎/hr ✓; flee-adjusted 108-216💎/hr ✓ — all below ~416/hr.
+  - **Conclusion:** E[net] = 0 − E[outflow] < 0 → **satisfies D-19** (net <= 0) at every cadence and model; gross per-hour flow at realistic cadence stays below the ~416/hr magnitude bound (computed gross band: 75-394💎/hr). Sensitivity: a heavier T2/T3 blend (70/25/5) at the upper-realistic 10/hr conservative corner lands at ~423💎/hr — 1.6% over the magnitude reference, requiring T2/T3 on 30% of attempts AND never weakening the hero pre-capture; documented, not silently accepted (F8).
+
+  **RE-SIGNED (2026-08-13, Phase 10 D-20):** the capture-fee values above are the approved Phase 10 contract; any rebalancing requires a new sign-off (D-18 one-way gate).
 
 ---
 
