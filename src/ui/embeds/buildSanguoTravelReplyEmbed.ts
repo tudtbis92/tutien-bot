@@ -3,14 +3,21 @@ import type { TFunction } from 'i18next';
 import { COLORS, embedFooter } from '../theme.js';
 
 /**
- * Travel confirmation / status reply embed (D-01, UI-SPEC color contract).
- * SEASON color, title + destination/ETA/from fields — NO money field: travel
- * is time-only, wallet never involved (D-01).
+ * Travel reply embed (D-01, UI-SPEC color contract) — SEASON color, title +
+ * destination/ETA/from fields, NO money field (time-only, D-01).
+ *
+ * The `state` drives the TITLE so each message clearly conveys its status
+ * (CR-09-06): 'confirm' (destination preview → action needed), 'started'
+ * (journey committed), 'status' (mid-journey check-in). A state-specific hint
+ * is appended so the user knows the next step.
  */
+export type SanguoTravelState = 'confirm' | 'started' | 'status';
+
 export interface SanguoTravelReplyEmbedData {
   destinationName: string;
   fromNodeName: string;
   etaSeconds: number;
+  state?: SanguoTravelState;
   shardId?: number;
 }
 
@@ -25,13 +32,37 @@ export function humanizeEta(seconds: number, t: TFunction): string {
   return t('sanguo:travel.eta_minutes', { count: minutes, n: minutes });
 }
 
+function stateTitleKey(state: SanguoTravelState): string {
+  switch (state) {
+    case 'confirm':
+      return 'sanguo:travel.confirm_title';
+    case 'status':
+      return 'sanguo:travel.status_title';
+    default:
+      return 'sanguo:travel.started_title';
+  }
+}
+
+function stateHintKey(state: SanguoTravelState): string | null {
+  switch (state) {
+    case 'confirm':
+      return 'sanguo:travel.confirm_hint';
+    case 'status':
+      return 'sanguo:travel.status_hint';
+    default:
+      return null;
+  }
+}
+
 export function buildSanguoTravelReplyEmbed(
   data: SanguoTravelReplyEmbedData,
   t: TFunction,
 ): EmbedBuilder {
-  return new EmbedBuilder()
+  const state = data.state ?? 'started';
+  const hintKey = stateHintKey(state);
+  const embed = new EmbedBuilder()
     .setColor(COLORS.SEASON) // theme.ts — never hardcode hex
-    .setTitle(t('sanguo:travel.started_title'))
+    .setTitle(t(stateTitleKey(state)))
     .addFields(
       { name: t('sanguo:travel.destination_label'), value: t('sanguo:travel.destination', { node: data.destinationName }), inline: true },
       { name: t('sanguo:travel.eta_label'), value: t('sanguo:travel.eta', { eta: humanizeEta(data.etaSeconds, t) }), inline: true },
@@ -39,4 +70,9 @@ export function buildSanguoTravelReplyEmbed(
     )
     .setFooter(embedFooter(data.shardId))
     .setTimestamp();
+
+  if (hintKey) {
+    embed.setDescription(t(hintKey));
+  }
+  return embed;
 }

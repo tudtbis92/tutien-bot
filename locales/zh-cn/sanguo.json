@@ -18,6 +18,10 @@
   },
   "travel": {
     "started_title": "🧭 旅程开始",
+    "confirm_title": "🧭 确认目的地",
+    "confirm_hint": "点击**开始旅程**即可出发。",
+    "status_title": "🚶 在途中",
+    "status_hint": "旅程仍在进行中。到达后请回来使用 /sanguo travel。",
     "pick_title": "🧭 选择目的地",
     "pick_body": "当前位置：**{{node}}**",
     "destination_label": "目的地",
@@ -47,5 +51,9 @@
     "body": "在前往**{{node}}**的路上，你遭遇了**{{hero_emoji}} {{hero}}**。",
     "boss_title": "👑 首领出现了！",
     "boss_body": "一位镇守**{{zone}}**的首领出现在你的路上。做好准备！"
+  },
+  "ack": {
+    "title": "✅ 已继续旅程",
+    "body": "你度过了奇遇，继续前往**{{node}}**。还剩{{eta}}。"
   }
 }

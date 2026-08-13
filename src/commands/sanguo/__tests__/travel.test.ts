@@ -146,21 +146,35 @@ describe('/sanguo travel command', () => {
     const interaction = mockChatInputInteraction();
     await execute(interaction);
 
-    expect(interaction.deferReply).toHaveBeenCalled();
+    // CR-09-01: the parent 'sanguo' command owns deferReply (map.ts), so the
+    // subcommand handler must NOT defer again — it replies via editReply only.
+    expect(interaction.deferReply).not.toHaveBeenCalled();
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:travel.pick_title');
 
-    const row = reply.components?.[0] as ActionRowBuilder<any>;
-    expect(row.components).toHaveLength(2);
-    expect(row.components[0]).toBeInstanceOf(StringSelectMenuBuilder);
-    expect(row.components[1]).toBeInstanceOf(ButtonBuilder);
+    // CR-09-02: the select menu and Start button live in SEPARATE action rows —
+    // a StringSelectMenu spans the full row width (5 units), so combining them
+    // in one row throws Discord COMPONENT_LAYOUT_WIDTH_EXCEEDED.
+    expect(reply.components).toHaveLength(2);
+    const menuRow = reply.components?.[0] as ActionRowBuilder<any>;
+    expect(menuRow.components).toHaveLength(1);
+    expect(menuRow.components[0]).toBeInstanceOf(StringSelectMenuBuilder);
 
-    const menu = (row.components[0] as StringSelectMenuBuilder).toJSON();
+    const menu = (menuRow.components[0] as StringSelectMenuBuilder).toJSON();
     expect(menu.custom_id).toBe('sanguo:travel:dest');
     expect(menu.options).toHaveLength(2);
     expect(menu.options?.[0]?.value).toBe('xuchang');
+    // CR-09-03: emoji goes in the option's `emoji` field (resolved from the
+    // '<a:name:id>' markup via resolvePartialEmoji) — NEVER in the label text
+    // (labels are plain text; markup there renders literally).
+    const opt = menu.options?.[0] as { label: string; emoji?: { id: string; name: string; animated?: boolean } };
+    expect(opt.label).toBe('Hứa Xương');
+    expect(opt.emoji?.id).toBe('1536202210814464083'); // cao_cao t0
+    expect(opt.emoji?.animated).toBe(true);
 
-    const startBtn = (row.components[1] as ButtonBuilder).toJSON() as {
+    const startRow = reply.components?.[1] as ActionRowBuilder<any>;
+    expect(startRow.components).toHaveLength(1);
+    const startBtn = (startRow.components[0] as ButtonBuilder).toJSON() as {
       custom_id: string;
       disabled?: boolean;
     };
@@ -179,7 +193,7 @@ describe('/sanguo travel command', () => {
     expect(interaction.deferUpdate).toHaveBeenCalled();
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     const embeds = reply.embeds ?? [];
-    expect(embeds[0]?.data?.title).toBe('sanguo:travel.started_title');
+    expect(embeds[0]?.data?.title).toBe('sanguo:travel.confirm_title'); // CR-09-06: preview state
     const fields = embeds[0]?.data?.fields ?? [];
     expect(fields.map((f: { name: string }) => f.name)).toEqual([
       'sanguo:travel.destination_label',
@@ -187,8 +201,10 @@ describe('/sanguo travel command', () => {
       'sanguo:travel.from_label',
     ]);
 
-    const row = reply.components?.[0] as ActionRowBuilder<any>;
-    const startBtn = (row.components[1] as ButtonBuilder).toJSON() as {
+    expect(reply.components).toHaveLength(2); // CR-09-02: menu row + button row
+    const startRow = reply.components?.[1] as ActionRowBuilder<any>;
+    expect(startRow.components).toHaveLength(1);
+    const startBtn = (startRow.components[0] as ButtonBuilder).toJSON() as {
       custom_id: string;
       disabled?: boolean;
     };
@@ -218,6 +234,9 @@ describe('/sanguo travel command', () => {
       'sanguo:travel.eta_label',
       'sanguo:travel.from_label',
     ]);
+    // CR-09-04: Discord PATCH merges fields — omitted components keep the stale
+    // select menu + button. The Start-press reply MUST clear them explicitly.
+    expect(reply.components).toEqual([]);
   });
 
   it('startTravel ALREADY_TRAVELING takes the check-in path and replies a status embed', async () => {
@@ -231,10 +250,11 @@ describe('/sanguo travel command', () => {
     expect(checkInTravel).toHaveBeenCalledWith(42);
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     const embeds = reply.embeds ?? [];
-    expect(embeds[0]?.data?.title).toBe('sanguo:travel.started_title');
+    expect(embeds[0]?.data?.title).toBe('sanguo:travel.status_title'); // CR-09-06: mid-journey state
     const fields = embeds[0]?.data?.fields ?? [];
     const etaField = fields.find((f: { name: string }) => f.name === 'sanguo:travel.eta_label');
     expect(etaField?.value).toBe('sanguo:travel.eta');
+    expect(reply.components).toEqual([]); // CR-09-04: check-in clears stale components
   });
 
   it('startTravel NO_ROUTE replies the no_route DANGER embed (server-side re-validation)', async () => {
@@ -331,7 +351,7 @@ describe('/sanguo travel command', () => {
     expect(reply.embeds?.[0]?.data?.description).toContain('sanguo:arrival.body');
     const row = reply.components?.[0] as ActionRowBuilder<any>;
     expect(row.components[0]).toBeInstanceOf(StringSelectMenuBuilder); // next-hop picker
-    expect(row.components[1]).toBeInstanceOf(ButtonBuilder);
+    expect(reply.components).toHaveLength(2); // CR-09-02: + Start button row
   });
 
   it('execute with an active journey — encounter mode replies the encounter embed (hero name/emoji) + ack button (D-24)', async () => {
@@ -400,12 +420,14 @@ describe('/sanguo travel command', () => {
     expect(ackBtn.custom_id).toBe('sanguo:travel:ack');
   });
 
-  it('ack press (sanguo:travel:ack) clears encounterActive + sets updatedAt=now inside a FOR UPDATE tx (D-25)', async () => {
-    mockDbReads([[USER_ROW]]);
+  it('ack press (sanguo:travel:ack) clears encounterActive + sets updatedAt=now inside a FOR UPDATE tx, then edits the reply to the ack confirmation with components cleared (D-25, CR-09-05)', async () => {
+    mockDbReads([[USER_ROW], [XUCHANG_NODE]]);
     const where = vi.fn((_q: any) => undefined);
     const set = vi.fn((_v: any) => ({ where }));
     const update = vi.fn((_t: any) => ({ set }));
-    const forUpdate = vi.fn().mockResolvedValue([{ encounterActive: true, userId: 42 }]);
+    const forUpdate = vi.fn().mockResolvedValue([
+      { encounterActive: true, userId: 42, toNodeId: 7, travelSecondsRemaining: 300 },
+    ]);
     const txWhere = vi.fn(() => ({ for: forUpdate }));
     const txFrom = vi.fn(() => ({ where: txWhere }));
     const txSelect = vi.fn(() => ({ from: txFrom }));
@@ -423,5 +445,12 @@ describe('/sanguo travel command', () => {
       updatedAt: expect.any(Date),
     });
     expect(where).toHaveBeenCalledTimes(1);
+
+    // CR-09-05: the reply replaces the stale encounter embed with the ack
+    // confirmation and clears the button (Discord PATCH merges — omitted
+    // components would leave the button interactive).
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.components).toEqual([]);
+    expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:ack.title');
   });
 });

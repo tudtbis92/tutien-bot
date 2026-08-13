@@ -18,6 +18,10 @@
   },
   "travel": {
     "started_title": "🧭 Journey started",
+    "confirm_title": "🧭 Confirm destination",
+    "confirm_hint": "Press **Start journey** to depart.",
+    "status_title": "🚶 On the road",
+    "status_hint": "The journey is still in progress. Come back to /sanguo travel when you arrive.",
     "pick_title": "🧭 Choose a destination",
     "pick_body": "Current position: **{{node}}**",
     "destination_label": "Destination",
@@ -47,5 +51,9 @@
     "body": "On your way to **{{node}}**, you run into **{{hero_emoji}} {{hero}}**.",
     "boss_title": "👑 A Boss has appeared!",
     "boss_body": "A Boss guarding **{{zone}}** has appeared on your path. Get ready!"
+  },
+  "ack": {
+    "title": "✅ Journey resumed",
+    "body": "You overcome the encounter and continue your journey to **{{node}}**. {{eta}} remaining."
   }
 }

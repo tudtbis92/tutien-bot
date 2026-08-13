@@ -1,36 +1,55 @@
 ---
-status: testing
+status: complete
 phase: 09-travel-encounters
 source: [09-01-SUMMARY.md, 09-02-SUMMARY.md, 09-03-SUMMARY.md, 09-04-SUMMARY.md, 09-05-SUMMARY.md]
 started: 2026-08-13T02:11:41Z
-updated: 2026-08-13T02:11:41Z
+updated: 2026-08-13T03:05:00Z
 ---
 
 ## Current Test
 
-number: 1
-name: Cold Start Smoke Test
+number: 4
+name: Encounter Embed + Dispatch Adequacy
 expected: |
-  Kill any running bot/server. Clear ephemeral state (temp DBs, caches, lock files). Start the application from scratch. Bot boots without errors, migrations (0018) apply cleanly, seed:sanguo completes, and a primary query (bot login + /sanguo travel command surface) returns live data.
-awaiting: user response
+  In a live guild, encounter mode shows the finalized embed (hero emoji + bold hero name, destination context, ack button); boss encounter shows the GOLD 0x9E0B variant (rare signal) with per-locale zone name in boss copy. EncounterPending mode re-renders the pending boss embed with NO re-roll.
+awaiting: none
 
 ## Tests
 
 ### 1. Cold Start Smoke Test
 expected: Kill any running bot/server. Clear ephemeral state. Start the application from scratch. Bot boots without errors, migrations (0018) apply cleanly, seed:sanguo completes, and a primary query returns live data.
-result: [pending]
+result: pass
+source: user
+note: |
+  Deployed 2026-08-13. Migration 0018 applied (journal 18 rows), seed 18/73/162/208 counts verified in DB,
+  bot Shard 0 ready, /health ok, /sanguo travel+map registered globally. /sanguo travel responds live.
 
 ### 2. Discord-Client Adequacy of First Message Components
 expected: In a live guild, /sanguo travel with no active journey renders the destination StringSelectMenu + disabled "Bắt đầu hành trình" Start button; selecting a destination enables the button; Start sends the SEASON travel-confirmation embed (destination/ETA/from fields, no money field). Embed colors follow the UI-SPEC contract (SEASON 0x8B5CF6, DANGER 0xEF4444 for no-route).
-result: [pending]
+result: pass
+source: user
+note: |
+  PASS after CR-09-01/02/03/04/06 fixes. Select menu renders animated hero emojis via option.emoji (setEmoji,
+  not label text); Start press updates the message and clears the select menu + button; travel embed titles are
+  state-specific (confirm / started / status).
 
 ### 3. Discord-Client Adequacy of Arrival/Encounter Embeds + Ack Button
 expected: In a live guild, an active journey resolves on /sanguo travel: arrival → inline SEASON arrival embed + re-opened destination menu; encounter → encounter embed + "Tiếp tục hành trình" ack button; pressing ack clears the pending state and resumes the clock (no time counted while pending). Visual layout and button interaction are adequate.
-result: [pending]
+result: pass
+source: user
+note: |
+  PASS after CR-09-04/05. Ack press now edits the reply to the ack confirmation embed ("✅ Đã tiếp tục hành
+  trình" + remaining ETA) and clears the button — no stale interactive component.
 
 ### 4. Encounter Embed + Dispatch Adequacy
 expected: In a live guild, encounter mode shows the finalized embed (hero emoji + bold hero name, destination context, ack button); boss encounter shows the GOLD 0x9E0B variant (rare signal) with per-locale zone name in boss copy. EncounterPending mode re-renders the pending boss embed with NO re-roll.
-result: [pending]
+result: pass
+source: user
+note: |
+  Normal encounter embed verified (hero emoji + name, SEASON, ack button). Boss variant (GOLD 0xF59E0B /
+  per-locale zone) NOT observed in live UAT — rate is low (zone boss_rate default 0.07) — SKIPPED as agreed;
+  covered by automated tests (09-04:D1, encounterService.test.ts). EncounterPending no-re-roll covered by
+  automated tests (09-03:D2).
 
 ### 5. travelService journey-start domain
 expected: travelService journey-start domain: getCurrentPosition (START_NODE default / arrived / in-flight), getAdjacentNodes (edges+node join, travelSeconds ASC, cap 25), startTravel (code→id resolve, FOR UPDATE, ALREADY_TRAVELING, NO_ROUTE, INSERT-first/in-place-UPDATE), zero wallet/deduction references (D-01)
@@ -119,11 +138,24 @@ coverage_id: 09-05:D4
 ## Summary
 
 total: 18
-passed: 14
+passed: 17
 issues: 0
-pending: 4
-skipped: 0
+pending: 0
+skipped: 1
 
 ## Gaps
 
-[none yet]
+- Boss encounter GOLD variant not observed in live Discord UAT (low rate: zone boss_rate default 0.07). SKIPPED by agreement — covered by automated tests (09-04:D1 encounterService.test.ts: shouldRollBoss thresholds, boss record, GOLD color contract).
+
+## CR Fixes Applied During Live UAT (2026-08-13)
+
+| ID | Bug | Root cause | Fix |
+|----|-----|-----------|-----|
+| CR-09-01 | `/sanguo travel` → "Đã xảy ra lỗi nội bộ" (InteractionAlreadyReplied) | Parent `sanguo` command (map.ts) defers the reply, then travel `execute` deferred AGAIN — Discord rejects a second response | Removed duplicate `deferReply()` from travel `execute` (parent owns the defer); test asserts `deferReply` NOT called |
+| CR-09-02 | Error embed "Có lỗi khi bắt đầu hành trình" + Discord 50035 COMPONENT_LAYOUT_WIDTH_EXCEEDED | StringSelectMenu (width 5) + Start button placed in the SAME ActionRow — exceeds Discord's 5-unit row limit | `buildTravelRow` now returns TWO separate ActionRows (menu row + button row); all 4 call sites updated; tests assert 2 rows |
+| CR-09-03 | Select-menu options showed literal `<a:xxx:yyy>` emoji markup | Emoji markup was interpolated into the option LABEL — Discord renders labels as plain text | Move emoji to `option.setEmoji(heroEmoji(...))` — discord.js `resolvePartialEmoji` → `{ animated: true, name, id }` (verified in installed source); EMOJI_NOT_FOUND guard kept; test asserts `emoji.id`/`animated:true` + clean label |
+| CR-09-04 | After pressing Start the select menu + button stayed on the message (stale components) | Discord PATCH **merges** fields — discord.js omits `components` when not provided, so previous components persist | Explicit `components: []` on every travel `editReply` that must show none (Start press, status check-in, arrived dead-end, NO_ROUTE, error paths); regression tests assert `components: []` |
+| CR-09-05 | "Tiếp tục hành trình" (ack) button: embed never updated, button stayed interactive | Ack handler only did `deferUpdate` + DB clear — no `editReply`, so no UI feedback | New `buildSanguoAckEmbed` — ack edits the reply to "✅ Đã tiếp tục hành trình" + remaining ETA, `components: []`; i18n keys added (vi/en/zh-cn); test asserts `sanguo:ack.title` |
+| CR-09-06 | Travel embed title always "Hành trình bắt đầu" across 3 different states → user confusion | One shared title key for confirm/started/status | Added `state: 'confirm' \| 'started' \| 'status'` to the travel embed builder → distinct titles + state hints (i18n vi/en/zh-cn): 🧭 Xác nhận điểm đến / 🧭 Hành trình bắt đầu / 🚶 Đang trên đường |
+
+All CR fixes verified: 186 tests / 24 files pass, typecheck 0 errors, lint 0 warnings, i18n in sync, deployed to production (2026-08-13).

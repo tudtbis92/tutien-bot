@@ -18,6 +18,10 @@
   },
   "travel": {
     "started_title": "🧭 Hành trình bắt đầu",
+    "confirm_title": "🧭 Xác nhận điểm đến",
+    "confirm_hint": "Bấm **Bắt đầu hành trình** để khởi hành.",
+    "status_title": "🚶 Đang trên đường",
+    "status_hint": "Hành trình vẫn đang tiếp diễn. Quay lại /sanguo travel khi đến nơi.",
     "pick_title": "🧭 Chọn điểm đến",
     "pick_body": "Vị trí hiện tại: **{{node}}**",
     "destination_label": "Điểm đến",
@@ -47,5 +51,9 @@
     "body": "Trên đường đến **{{node}}**, bạn chạm trán **{{hero_emoji}} {{hero}}**.",
     "boss_title": "👑 Boss thường xuất hiện!",
     "boss_body": "Một Boss thường trấn giữ **{{zone}}** đã xuất hiện trên đường của bạn. Hãy chuẩn bị!"
+  },
+  "ack": {
+    "title": "✅ Đã tiếp tục hành trình",
+    "body": "Bạn vượt qua kỳ ngộ và tiếp tục hành trình đến **{{node}}**. Còn lại {{eta}}."
   }
 }

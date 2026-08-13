@@ -1,16 +1,16 @@
 # Deploy Note — TuTien Bot
 
 > Tài liệu tham khảo cho agent/bạn chạy deploy trên production server.
-> Cập nhật: 2026-08-12 — **ĐÃ DEPLOY** toàn bộ Phase 8 + post-gate lên production.
-> **Production hiện chạy `origin/main` = HEAD `023b2ba` (Phase 8 + post-gate đầy đủ).**
+> Cập nhật: 2026-08-13 — **ĐÃ DEPLOY** toàn bộ Phase 9 (travel map) lên production.
+> **Production hiện chạy `origin/main` = HEAD `fcda410` (Phase 9 + UAT session đã bắt đầu).**
 
 ---
 
 ## 1. QUYẾT ĐỊNH QUAN TRỌNG NHẤT
 
-**Deploy lần đầu Phase 8 ĐÃ HOÀN TẤT an toàn (2026-08-12).**
-- Các bước deploy sau này vẫn đi theo gate trong mục 4 (đặc biệt là kiểm tra journal trước migrate — xem mục 3.1).
-- Lưu ý quan trọng về migration **0004** (mục 3.2): bản ghi trước đây SAI về trạng thái của nó.
+**Deploy Phase 9 ĐÃ HOÀN TẤT an toàn (2026-08-13).**
+- Quy trình deploy vẫn theo gate mục 4 (journal check trước migrate là bắt buộc).
+- Migration 0018 có `DROP COLUMN arrive_at/cost` trên `player_travel_state` — **AN TOÀN vì bảng rỗng (0 rows)** đã xác nhận trước deploy. Nếu lần sau bảng có data, DROP sẽ mất dữ liệu journey đang chạy.
 
 ---
 
@@ -25,7 +25,7 @@
 
 ## 3. CẤU TRÚC CƠ SỞ DỮ LIỆU (sau Phase 8 + post-gate)
 
-### Migrations: 0000 → 0017
+### Migrations: 0000 → 0018
 
 | Migration | Nội dung | Đặc điểm |
 |---|---|---|
@@ -34,6 +34,7 @@
 | 0015 | hero_class enum, hero_factions/formations/formation_slots/user_formations, hero_role → 9 giá trị, heroes.faction_id/class/family, user_heroes IV rename | ADDITIVE trên production (bảng mới rỗng) |
 | 0016 | hero_families + heroes.family_id FK | ADDITIVE |
 | 0017 | hero_relations (spouse) | ADDITIVE |
+| 0018 | map_zones/map_edges/hero_zone_rates tables; player_travel_state +travel_seconds_remaining/encounter_active, −arrive_at/−cost; encounter_runs +encounter_type/user_status_idx | ADDITIVE + DROP 2 cột trên bảng RỖNG (an toàn 2026-08-13) |
 
 ### ⚠️ Điểm cần biết về migration
 
@@ -43,14 +44,16 @@
 2. **`0004` (dk_event_id)**: ⚠️ **Bản ghi deploy-note cũ SAI** khi nói "journal production đã ghi 0004 đã chạy".
    - THỰC TẾ (verify 2026-08-12): journal production KHÔNG có hash 0004, column `dk_event_id` chưa từng tồn tại. Migration 0004 CHƯA BAO GIỜ chạy trên production.
    - **drizzle-kit chỉ áp dụng migration SAU migration cuối đã ghi journal** — production journal kết thúc ở 0013 (sau đó là 0014-0017). Vì 0004 (idx 4) CŨ HƠN 0013 nên **KHÔNG bao giờ bị chạy lại** trên production. Hệ quả ròng tương đương fresh-DB (0004 add rồi 0006 drop → không có `dk_event_id`) → **vô hại, đã xác nhận schema production không có dk_event_id**.
-3. Tất cả migration 0014–0017 đều **additive** trên production → không cần rollback migration nếu có lỗi (chỉ rollback code).
+3. **`0018` DROP `arrive_at`/`cost` trên `player_travel_state`**: AN TOÀN (bảng 0 rows trước deploy 2026-08-13). Nếu bảng có data journey → data mất. Drizzle-kit đã ghi journal nên **KHÔNG chạy lại lần sau**.
+4. Tất cả migration 0014–0018 đều **không cần rollback DB** (0018 drop trên bảng rỗng) → chỉ rollback code nếu lỗi.
 
 ### Seed: `scripts/seed-sanguo.ts` (chạy MỖI lần deploy)
 
 - **Idempotent** (upsert, chạy 2 lần không nhân đôi).
-- Tạo: **14 factions + 12 families + 132 heroes + 7 map_nodes + 3 items + 2 spouse relations**.
+- Tạo: **14 factions + 12 families + 132 heroes + 73 map_nodes + 18 map_zones + 162 map_edges + 208 hero_zone_rates + 3 items + 2 spouse relations**.
+- Map data (D-20) **full-replace**: xóa mapEdges/heroZoneRates/mapNodes con→cha trước, rồi upsert lại → chạy nhiều lần không tích lũy duplicates.
 - **Không đụng** users/balance/characters — chỉ sanguo content.
-- Yêu cầu: `DATABASE_URL_DIRECT` (đã có trong deploy.sh), file `scripts/data/heroes-v1.json` + `sanguo-classifications.json` + `sanguo-zh-names.json` (đã commit trong repo, deploy-safe).
+- Yêu cầu: `DATABASE_URL_DIRECT` (đã có trong deploy.sh), file `scripts/data/heroes-v1.json` + `sanguo-classifications.json` + `sanguo-zh-names.json` + `sanguo-map-data.json` (đã commit trong repo, deploy-safe).
 
 ---
 
@@ -99,8 +102,8 @@ npx tsx scripts/seed-sanguo.ts   # lần 2 (counts không đổi)
 ```bash
 # Đảm bảo 0014 CHƯA chạy (nếu đã chạy → TRUNCATE heroes trong 0015 SẼ XÓA DATA khi deploy lại)
 psql "$DATABASE_URL_DIRECT" -c "SELECT id, hash FROM drizzle.__drizzle_migrations ORDER BY id;"
-# Đã deploy 2026-08-12: journal có 17 rows (0000-0013 cũ + 0014,0015,0016,0017).
-# Nếu deploy KẾ TIẾP thấy 17 rows → CHỪNG LẠI, TRUNCATE 0015 sẽ xóa 132 heroes production.
+# Đã deploy 2026-08-13: journal có 18 rows (0000-0013 cũ + 0014..0018).
+# Nếu deploy KẾ TIẾP thấy 18 rows → 0015/0018 đã chạy → KHÔNG còn TRUNCATE heroes; 0018 drop arrive_at/cost đã ghi journal (không chạy lại).
 # Lưu ý: drizzle-kit không chạy lại 0004 (cũ hơn journal cuối) — xem mục 3.2.
 ```
 
@@ -172,17 +175,16 @@ cd /path/to/tutien-bot
 
 ---
 
-## 8. TRẠNG THÁI HIỆN TẠI (2026-08-12 — ĐÃ DEPLOY)
+## 8. TRẠNG THÁI HIỆN TẠI (2026-08-13 — ĐÃ DEPLOY PHASE 9)
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Code quality gates (build/test/lint/typecheck) | ✅ xanh |
-| Migrations additive trên production | ✅ (0014–0017 đã apply) |
-| Push lên origin/main | ✅ (HEAD `023b2ba`, sync) |
+| Code quality gates (build/test/lint/typecheck/i18n) | ✅ xanh (186 tests / 24 files) |
+| Migrations trên production | ✅ (0014–0018 đã apply, journal 18 rows) |
+| Push lên origin/main | ✅ (HEAD `fcda410`, sync) |
 | Production env (CLIENT_ID) | ✅ xác nhận = 1381818375633899562 |
-| UAT #1 (live boot + emoji) | ✅ PASS 2026-08-12 |
-| UAT #2 (fresh DB chain) | ✅ PASS 2026-08-12 |
-| Backup production DB | ✅ `/root/backups/tutien_20260812_0203.sql` (29M) |
-| Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, journal 17 rows, heroes=132/nodes=7/items=3/factions=14/families=12/relations=2 |
+| Backup production DB | ✅ `/root/backups/tutien_20260813_0218.sql` (30M) |
+| Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo travel+map registered, journal 18 rows, zones=18/nodes=73/edges=162/rates=208/heroes=132/factions=14/families=12/items=3 |
+| UAT (Phase 9) | ✅ COMPLETE 2026-08-13 — 17/18 pass (4 manual live-Discord + 14 automated), 1 skipped (boss GOLD variant — low rate, covered by automated tests). CR-09-01→06 fixes deployed |
 
-**Kết luận: ĐÃ DEPLOY thành công.** Lần deploy kế tiếp phải lặp lại gate 4.4–4.6 (journal check trước migrate là bắt buộc — TRUNCATE 0015 nguy hiểm nếu 0014 đã chạy).
+**Kết luận: ĐÃ DEPLOY + UAT COMPLETE Phase 9.** Lần deploy kế tiếp lặp lại gate 4.4–4.6.

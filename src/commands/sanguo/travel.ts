@@ -19,7 +19,9 @@ import { heroEmoji } from '../../assets/sanguoEmojis.js';
 import { resolveLocale, getT, type SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
+import { logger } from '../../utils/logger.js';
 import { buildSanguoTravelReplyEmbed } from '../../ui/embeds/buildSanguoTravelReplyEmbed.js';
+import { buildSanguoAckEmbed } from '../../ui/embeds/buildSanguoAckEmbed.js';
 import { buildSanguoEncounterEmbed } from '../../ui/embeds/buildSanguoEncounterEmbed.js';
 import { buildDestinationMenu } from '../../ui/components/sanguoTravelDestinationMenu.js';
 import { START_BTN_ID, buildStartButton, buildAckButton } from '../../ui/components/sanguoTravelButtons.js';
@@ -99,11 +101,18 @@ function buildTravelRow(
   t: TFunction,
   disabled: boolean,
   destinationCode?: string,
-): ActionRowBuilder<MessageActionRowComponentBuilder> {
-  return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-    buildDestinationMenu(adjacent, locale, t),
-    buildStartButton(t, disabled, destinationCode),
-  );
+): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
+  // Two SEPARATE action rows — a StringSelectMenu spans the full row width (5
+  // units), so the Start button must live in its own row or Discord rejects the
+  // payload with COMPONENT_LAYOUT_WIDTH_EXCEEDED (verified live 2026-08-13).
+  return [
+    new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+      buildDestinationMenu(adjacent, locale, t),
+    ),
+    new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+      buildStartButton(t, disabled, destinationCode),
+    ),
+  ];
 }
 
 /**
@@ -194,7 +203,10 @@ async function dispatchCheckIn(
   switch (result.mode) {
     case 'start':
       // Unreachable on the check-in path — execute gates on traveling/encounterActive.
-      await interaction.editReply({ embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)] });
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
+        components: [],
+      });
       return;
 
     case 'status': {
@@ -207,7 +219,10 @@ async function dispatchCheckIn(
         .where(eq(playerTravelState.userId, userId))
         .limit(1);
       if (!row) {
-        await interaction.editReply({ embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)] });
+        await interaction.editReply({
+          embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
+          components: [],
+        });
         return;
       }
 
@@ -223,11 +238,13 @@ async function dispatchCheckIn(
               destinationName: toNode ? pickName(toNode, locale) : '?',
               fromNodeName: fromNode ? pickName(fromNode, locale) : '?',
               etaSeconds: result.remaining ?? 0, // status always carries remaining
+              state: 'status', // CR-09-06: mid-journey title, not "started"
               shardId,
             },
             t,
           ),
         ],
+        components: [], // CR-09-04: clear stale menu/button on the check-in path
       });
       return;
     }
@@ -242,13 +259,13 @@ async function dispatchCheckIn(
       );
       if (adjacent.length === 0) {
         // Arrived at a dead end — arrival embed only, no menu (F6).
-        await interaction.editReply({ embeds: [arrivalEmbed] });
+        await interaction.editReply({ embeds: [arrivalEmbed], components: [] });
         return;
       }
       // D-08/D-26: one hop per journey — re-open the picker at the arrived node.
       await interaction.editReply({
         embeds: [arrivalEmbed],
-        components: [buildTravelRow(adjacent, locale, t, true)],
+        components: buildTravelRow(adjacent, locale, t, true),
       });
       return;
     }
@@ -285,7 +302,9 @@ async function dispatchCheckIn(
  *    checkInTravel (D-22) — a traveling user never starts a new journey (D-09).
  */
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply();
+  // No deferReply here — the parent 'sanguo' command (map.ts execute) already
+  // deferred before dispatching to this subcommand handler. Deferring again
+  // throws InteractionAlreadyReplied (verified live 2026-08-13).
 
   const { t, char, user, locale, shardId } = await fetchCommandContext(interaction);
   if (!char || !user) {
@@ -324,9 +343,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       embeds: [
         buildPickEmbed(currentNode ? pickName(currentNode, locale) : pos.nodeCode, t, shardId),
       ],
-      components: [buildTravelRow(adjacent, locale, t, true)],
+      components: buildTravelRow(adjacent, locale, t, true),
     });
-  } catch {
+  } catch (err) {
+    logger.error('TravelExecute', 'Error in /sanguo travel execute', err);
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
     });
@@ -356,6 +376,7 @@ export async function handleDestinationSelect(
   if (!userRow) {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
+      components: [],
     });
     return;
   }
@@ -364,6 +385,7 @@ export async function handleDestinationSelect(
   if (!selectedCode) {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
+      components: [],
     });
     return;
   }
@@ -380,7 +402,7 @@ export async function handleDestinationSelect(
         embeds: [
           buildPickEmbed(currentNode ? pickName(currentNode, locale) : pos.nodeCode, t, shardId),
         ],
-        components: [buildTravelRow(adjacent, locale, t, true)],
+        components: buildTravelRow(adjacent, locale, t, true),
       });
       return;
     }
@@ -393,16 +415,18 @@ export async function handleDestinationSelect(
             destinationName: pickName(selected, locale),
             fromNodeName: currentNode ? pickName(currentNode, locale) : pos.nodeCode,
             etaSeconds: selected.travelSeconds,
+            state: 'confirm', // CR-09-06: destination preview — action needed
             shardId,
           },
           t,
         ),
       ],
-      components: [buildTravelRow(adjacent, locale, t, false, selectedCode)],
+      components: buildTravelRow(adjacent, locale, t, false, selectedCode),
     });
   } catch {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
+      components: [],
     });
   }
 }
@@ -427,6 +451,7 @@ export async function handleStartPress(interaction: ButtonInteraction): Promise<
   if (!userRow) {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
+      components: [],
     });
     return;
   }
@@ -438,6 +463,7 @@ export async function handleStartPress(interaction: ButtonInteraction): Promise<
   if (!selectedCode) {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
+      components: [],
     });
     return;
   }
@@ -456,11 +482,16 @@ export async function handleStartPress(interaction: ButtonInteraction): Promise<
             destinationName: destNode ? pickName(destNode, locale) : selectedCode,
             fromNodeName: fromNode ? pickName(fromNode, locale) : pos.nodeCode,
             etaSeconds,
+            state: 'started', // CR-09-06: journey committed
             shardId,
           },
           t,
         ),
       ],
+      // CR-09-04: Discord PATCH merges — omitted fields keep their previous
+      // value, and discord.js drops `components` when absent, so the stale
+      // select menu + Start button would persist. Explicit [] clears them.
+      components: [],
     });
   } catch (err) {
     if (err instanceof Error && err.message === 'ALREADY_TRAVELING') {
@@ -468,11 +499,12 @@ export async function handleStartPress(interaction: ButtonInteraction): Promise<
       return;
     }
     if (err instanceof Error && err.message === 'NO_ROUTE') {
-      await interaction.editReply({ embeds: [buildNoRouteEmbed(t, shardId)] });
+      await interaction.editReply({ embeds: [buildNoRouteEmbed(t, shardId)], components: [] });
       return;
     }
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
+      components: [],
     });
   }
 }
@@ -481,7 +513,9 @@ export async function handleStartPress(interaction: ButtonInteraction): Promise<
  * Encounter ack button handler (sanguo:travel:ack, D-25) — "Tiếp tục hành
  * trình". Clears encounterActive and sets updatedAt=now inside a FOR UPDATE
  * transaction, so the next check-in counts elapsed from the resume moment.
- * The reply is deferUpdate (the encounter embed stays; the resume is silent).
+ * The reply replaces the stale encounter embed with the ack confirmation and
+ * clears the button (CR-09-05) — Discord PATCH merges, so omitted components
+ * would leave the button interactive.
  */
 export async function handleAckPress(interaction: ButtonInteraction): Promise<void> {
   await interaction.deferUpdate();
@@ -498,12 +532,15 @@ export async function handleAckPress(interaction: ButtonInteraction): Promise<vo
   if (!userRow) {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
+      components: [],
     });
     return;
   }
 
+  let remaining = 0;
+  let destinationName = '?';
   try {
-    await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const [row] = await tx
         .select()
         .from(playerTravelState)
@@ -515,10 +552,26 @@ export async function handleAckPress(interaction: ButtonInteraction): Promise<vo
           .set({ encounterActive: false, updatedAt: new Date() })
           .where(eq(playerTravelState.userId, userRow.id));
       }
+      return row;
     });
+
+    if (result?.toNodeId != null) {
+      const node = await fetchNodeName(result.toNodeId);
+      if (node) destinationName = pickName(node, locale);
+    }
+    remaining = result?.travelSecondsRemaining ?? 0;
   } catch {
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
+      components: [],
     });
+    return;
   }
+
+  await interaction.editReply({
+    embeds: [
+      buildSanguoAckEmbed({ destinationName, remainingSeconds: remaining, shardId }, t),
+    ],
+    components: [],
+  });
 }

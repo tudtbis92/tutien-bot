@@ -34,22 +34,26 @@ export function buildDestinationMenu(
     .setMaxValues(1)
     .addOptions(
       adjacent.slice(0, 25).map((n) => {
-        let label: string;
-        if (n.representativeHeroId) {
-          try {
-            label = `${heroEmoji(n.representativeHeroId)} ${pickName(n, locale)}`;
-          } catch {
-            // EMOJI_NOT_FOUND → name-only label (map.ts:98 guard pattern)
-            label = pickName(n, locale);
-          }
-        } else {
-          label = pickName(n, locale);
-        }
+        const label = pickName(n, locale);
         const minutes = Math.max(1, Math.round(n.travelSeconds / 60));
-        return new StringSelectMenuOptionBuilder()
+        const option = new StringSelectMenuOptionBuilder()
           .setLabel(label)
           .setValue(n.code)
           .setDescription(t('sanguo:travel.eta_minutes', { count: minutes, n: minutes }));
+        if (n.representativeHeroId) {
+          try {
+            // setEmoji('<a:name:id>') — Discord's emoji field (NOT the label).
+            // discord.js resolves the animated markup via resolvePartialEmoji →
+            // parseEmoji into { animated: true, name, id } (verified in the
+            // installed discord.js source). Embedding markup in the label shows
+            // the raw '<a:...>' text — labels are plain text (verified live
+            // 2026-08-13). EMOJI_NOT_FOUND → name-only option.
+            option.setEmoji(heroEmoji(n.representativeHeroId));
+          } catch {
+            // name-only (map.ts:98 guard pattern)
+          }
+        }
+        return option;
       }),
     );
 }
