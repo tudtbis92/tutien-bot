@@ -240,10 +240,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ### Travel & Encounters
 
-- [ ] **TQC-06**: Pure `travelService`: ETA/transitions; `/sanguo travel` (time-only — travel costs never touch Linh thạch, D-01; atomic state row write; destination picked via select menu + Start button, D-26; NO travel-cancel component — one-way commitment, D-03; pull check-in on subsequent invocations, D-22). *(Old "atomic wallet deduct + travel-cancel component" wording INVALIDATED by D-01/D-03.)*
-- [ ] **TQC-07**: Pull-based travel check-in on `/sanguo travel` — elapsed → arrival/encounter results inline (D-22/D-23); no sanguoTick cron, no REST DM; FOR UPDATE on the user's own travel row. *(Old "sanguoTick pg-boss cron + REST notifications" wording INVALIDATED by D-22/D-23.)*
-- [ ] **TQC-08**: Encounter system: roll dọc hành trình theo vùng + boss thường; route-scaled encounter rates; per-user caps (~20/hr) + cooldown từ ngày đầu.
-- [ ] **TQC-09**: Map/zone data research — node structure + phân bố 132 hero theo vùng/lore (phase research riêng, thảo luận data sau).
+- [x] **TQC-06**: Pure `travelService`: ETA/transitions; `/sanguo travel` (time-only — travel costs never touch Linh thạch, D-01; atomic state row write; destination picked via select menu + Start button, D-26; NO travel-cancel component — one-way commitment, D-03; pull check-in on subsequent invocations, D-22). *(Old "atomic wallet deduct + travel-cancel component" wording INVALIDATED by D-01/D-03.)*
+- [x] **TQC-07**: Pull-based travel check-in on `/sanguo travel` — elapsed → arrival/encounter results inline (D-22/D-23); no sanguoTick cron, no REST DM; FOR UPDATE on the user's own travel row. *(Old "sanguoTick pg-boss cron + REST notifications" wording INVALIDATED by D-22/D-23.)*
+- [x] **TQC-08**: Encounter system: roll dọc hành trình theo vùng + boss thường; route-scaled encounter rates; per-user caps (~20/hr) + cooldown từ ngày đầu.
+- [x] **TQC-09**: Map/zone data research — node structure + phân bố 132 hero theo vùng/lore (phase research riêng, thảo luận data sau).
 
 ### Battle & Capture
 

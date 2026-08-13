@@ -79,7 +79,7 @@
 ### Summary Checklist
 
 - [x] **Phase 8: Foundation, Economy Budget & Content Infrastructure** — Shared wallet, sanguo schemas + seed, i18n namespace, emoji registry, economy design-gate (✅ completed 2026-08-12, deployed to production)
-- [ ] **Phase 9: Travel & Encounters** — Real-time time-only travel (D-01), sanguoTick cron, encounter rolls theo vùng + caps
+- [x] **Phase 9: Travel & Encounters** — Real-time time-only travel (D-01), sanguoTick cron, encounter rolls theo vùng + caps (completed 2026-08-13)
 - [ ] **Phase 10: Battle & Capture** — Seeded battleEngine, captureService, IV + starter, collection view (vertical loop đầu tiên)
 - [ ] **Phase 11: Progression, Chemistry & Economy Depth** — Dupe → hồn ngọc, evolution, shop + items, legion battle 3+9
 - [ ] **Phase 12: Anti-Abuse, Monitoring & Marketplace Gating** — Bot detection, economy monitoring, marketplace gating, automation policy
@@ -198,7 +198,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 8. Foundation, Economy Budget & Content Infrastructure | 4/4 | In Progress|  |
-| 9. Travel & Encounters | 5/5 | In Progress|  |
+| 9. Travel & Encounters | 5/5 | Complete    | 2026-08-13 |
 | 10. Battle & Capture | 0/TBD | Not started | - |
 | 11. Progression, Chemistry & Economy Depth | 0/TBD | Not started | - |
 | 12. Anti-Abuse, Monitoring & Marketplace Gating | 0/TBD | Not started | - |

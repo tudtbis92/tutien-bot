@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Tam Quốc Collection
-current_phase: 9
-current_phase_name: travel-encounters
-status: executing
+current_phase: 10
+current_phase_name: Battle & Capture
+status: planning
 stopped_at: Phase 9 UI-SPEC approved
-last_updated: "2026-08-12T08:04:09.091Z"
-last_activity: 2026-08-12
-last_activity_desc: Phase 08 verification + production deploy completed (UAT 2/3 pass, emoji animated-prefix fix, /sanguo map emoji render confirmed)
+last_updated: "2026-08-13T03:15:28.841Z"
+last_activity: 2026-08-13
+last_activity_desc: Phase 09 complete, transitioned to Phase 10
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 4
+  completed_plans: 9
 ---
 
 # State: TuTien Bot
@@ -25,26 +25,26 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-10)
+See: .planning/PROJECT.md (updated 2026-08-13)
 
 **Core value:** Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi phút voice, mỗi reaction đều âm thầm xây dựng hành trình tu tiên của người chơi.
-**Current focus:** Phase 9 — travel-encounters
+**Current focus:** Phase 10 — Battle & Capture
 
 ## Current Position
 
-Phase: 9 (travel-encounters) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 9
-Last activity: 2026-08-12 — Phase 9 execution started
+Phase: 10 — Battle & Capture
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-13 — Phase 09 complete, transitioned to Phase 10
 
-Progress: [██████████] 100%
+Progress: [████████████████████] 9/9 plans (100%)
 
 ## Phase Registry (Milestone v3)
 
 | # | Phase | Requirements | Status | Completed |
 |---|-------|-------------|--------|-----------|
 | 08 | Foundation, Economy Budget & Content Infrastructure | TQC-01..05 | ✅ COMPLETE | 2026-08-12 (deployed) |
-| 09 | Travel & Encounters | TQC-06..09 | ░░ Not started | - |
+| 09 | Travel & Encounters | TQC-06..09 | ✅ COMPLETE | 2026-08-13 (UAT 17/18 + 6 CR fixes) |
 | 10 | Battle & Capture | TQC-10..13 | ░░ Not started | - |
 | 11 | Progression, Chemistry & Economy Depth | TQC-14..17 | ░░ Not started | - |
 | 12 | Anti-Abuse, Monitoring & Marketplace Gating | TQC-18..21 | ░░ Not started | - |
@@ -56,11 +56,11 @@ Progress: [██████████] 100%
 | Metric | Value |
 |--------|-------|
 | Phases total | 5 |
-| Phases complete | 1 |
+| Phases complete | 2 |
 | Requirements total | 21 |
-| Requirements delivered | 5 (TQC-01..05) |
-| Plans created | 4 |
-| Plans complete | 4 |
+| Requirements delivered | 9 (TQC-01..09) |
+| Plans created | 9 |
+| Plans complete | 9 |
 
 ## Accumulated Context (v3)
 
@@ -89,21 +89,24 @@ Progress: [██████████] 100%
 | **Travel = PULL-based check-in (D-22..D-28)** — không cron, không REST DM; kết quả (status/encounter/arrival) trả inline khi user gọi `/sanguo travel` | Thay push model (sanguoTick crons D-11 + REST DM D-12); đơn giản hơn (no pgBoss registration), bền hơn (elapsed tự heal), chống bot tốt hơn (cần chủ động gọi lệnh); SUPERSEDES D-11/D-12 | Phase 9 redesign (2026-08-12) |
 | **Encounter = 1 ROLL 35%/phút, DỪNG ngay encounter đầu tiên (D-24)**; pause bằng nút ack "Tiếp tục hành trình" (D-25); đích chọn bằng StringSelectMenu + Start button (D-26). **Mỗi phút counted đều trừ remaining — kể cả phút trúng encounter (D-28 amended, F4)**; hit dừng loop ngay, không roll/count phút sau cho tới khi ack | User quyết định: journey tính từng phút counted; không batch encounter; ack gate = Phase-10-ready cho battle/capture. D-28 wording "ONLY on failed rolls" amended 2026-08-12 (F4) để khớp ack-pin `updatedAt + k·60` | Phase 9 redesign (2026-08-12) |
 | **Encounter supply = f(check-in cadence) ≤ 20/hr** — không phải continuous cron supply | `docs/economy-budget.md` re-baseline: capture-fee sink (Phase 10) phải price theo pull-driven supply | Phase 9 redesign (2026-08-12) |
+| **Live-Discord CR-09-01→06 (2026-08-13):** select+button tách riêng ActionRow (COMPONENT_LAYOUT_WIDTH_EXCEEDED); emoji qua `option.setEmoji` không label; `components: []` trên mọi editReply (PATCH merge giữ component cũ); ack edit sang ack-confirm embed; travel embed title theo state (confirm/started/status); bỏ duplicate deferReply | Live UAT trên production phát hiện 6 lỗi Discord-client mà unit tests không bắt được (layout width, PATCH merge semantics, emoji markup trong label, component stale). Tất cả fixed + regression-tested | Phase 9 UAT (2026-08-13) |
+| **Boss GOLD encounter variant = UI-SPEC GOLD 0xF59E0B** (không phải 0x9E0B) | Live UAT test 4 xác nhận SEASON/GOLD contract; boss rate 0.07 nên variant GOLD không render được live — covered bởi automated tests | Phase 9 UAT (2026-08-13) |
 
 ### Pending Todos / Blockers
 
 - [x] Resolve charge-on-arrival vs deduct-at-departure conflict (research gap) — ✅ RESOLVED 2026-08-12 (Phase 9 D-01): travel is TIME-ONLY — no charge model exists (no cost, no deduct-at-departure, no charge-on-arrival); no cancel/refund path (D-03/D-04).
 - [x] Emoji rendering deployment smoke-test (application-owned emoji) — ✅ DONE 2026-08-12: `<a:name:id>` animated-prefix fix, /sanguo map render confirmed live
+- [ ] **Phase 10 capture-fee re-sign (D-18)** — `docs/economy-budget.md` flags: capture fee (D-02) MUST be priced + re-signed assuming pull-driven encounter supply (≤20/hr) before Phase 10 content ships
 - [ ] Economy budget numbers cần tu vi caps + VWAP band values hiện tại — Phase 8
 - [ ] Research-phase khả năng cao: Phase 12 (bot detection vs farming captcha infra), Phase 11 (pacing balance + chemistry values)
 
 ## Session Continuity
 
-**Resume file:** E:\Saeth\tutien-bot\.planning\phases\09-travel-encounters\09-UI-SPEC.md
+**Resume file:** None
 
-Last session: 2026-08-12T04:05:03.306Z
-Stopped at: Phase 9 UI-SPEC approved
-Resume: `/gsd-plan-phase 9` (next: Travel & Encounters)
+Last session: 2026-08-13
+Stopped at: Phase 09 complete, ready to plan Phase 10
+Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 
 ---
 

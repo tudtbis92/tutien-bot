@@ -27,6 +27,7 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 - [x] Multi-shard architecture — Validated in Phase 01: Foundation (ShardingManager entry, shard entries, auto-shard count)
 - [x] Hỗ trợ đa ngôn ngữ (i18n) từ đầu — Validated in Phase 01: Foundation (i18next VI/EN/ZH-CN scaffold, ESLint i18n enforcement, zero hardcoded strings)
 - [x] Infrastructure backbone (DB, Redis, CI/CD) — Validated in Phase 01: Foundation (Drizzle + pg, ioredis, pg-boss, GitHub Actions CI/CD, Fastify health check)
+- [x] Bản đồ di chuyển + encounters (Tam Quốc) — Validated in Phase 09: Travel & Encounters (`/sanguo travel` time-only one-way journeys + pull-based check-in, crypto-RNG encounter rolls, boss sub-roll, ~20/hr cap, TQC-09 map data layer) — battle/capture/progression continue in Phases 10-11
 
 ### Active
 
@@ -63,7 +64,7 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 
 ## Current State
 
-Phase 6.1 (Farming Channel Management) complete — Milestone v2 infrastructure and core features are fully operational. Self-bot worker pool, proxy management, automated farming logic with captcha detection, and isolated private channels are implemented and verified. Ready for Phase 07 (Monetization & Subscription Commands).
+Phase 09 (Travel & Encounters) complete + deployed + verified (2026-08-13). `/sanguo travel` ships the time-only one-way journey loop (StringSelectMenu destination + Start button, pull-based check-in with crypto-RNG encounter rolls, boss sub-roll, ~20/hr cap, ack-pause), the TQC-09 map data layer (18 zones / 73 nodes / 162 edges / 208 hero-zone rates), and migration 0018. Live-Discord UAT found 6 component/embed bugs (CR-09-01→06) — all fixed and regression-tested; 17/18 UAT pass (1 boss-variant skipped, automated-covered). Ready for Phase 10 (Battle & Capture), gated on the Phase 10 capture-fee re-sign (D-18).
 
 
 
@@ -105,6 +106,9 @@ Phase 6.1 (Farming Channel Management) complete — Milestone v2 infrastructure 
 | 10% seller fee burn | Tạo deflation sink cho linh thạch economy | ✓ Confirmed |
 | Hard season reset | Giữ game fresh, ngăn veteran dominance vĩnh viễn | ✓ Confirmed |
 | Fastify 5.x cho payment webhook | Fastest Node.js HTTP framework, TS-first, isolated service | ✓ Confirmed |
+| Travel = PULL-based check-in (D-22..D-28), không cron/REST DM | Đơn giản, elapsed tự heal, chống bot (cần chủ động gọi lệnh); SUPERSEDES D-11/D-12 | ✓ Confirmed |
+| Travel time-only (D-01): không cost, không cancel (D-03) | Travel chỉ tốn thời gian; travel-as-sink bị bỏ — capture fee là sink (Phase 10, D-18 re-sign) | ✓ Confirmed |
+| Encounter supply = f(check-in cadence) ≤ 20/hr | Re-baseline theo pull model; capture fee (Phase 10) phải price theo supply này | ✓ Confirmed |
 
 ## Evolution
 
@@ -124,4 +128,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-10 after Milestone v3.0 (Tam Quốc Collection) started*
+*Last updated: 2026-08-13 after Phase 09 (Travel & Encounters)*
