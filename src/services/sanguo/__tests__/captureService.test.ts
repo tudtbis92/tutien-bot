@@ -11,6 +11,7 @@ import {
   CAPTURE_TIERS,
   CAPTURE_BASE_BY_RARITY,
   FLEE_RATE_BY_RARITY,
+  PITY_INCREMENT,
   hpFactor,
 } from '../../../constants/sanguoCapture.js';
 
@@ -136,8 +137,8 @@ describe('captureChance — clamped [0,1] formula (D-10/D-11)', () => {
   it('T1b: upper clamp — a raw value over 1 returns exactly 1 (hpFactor=1 at 0 HP, 1.5x multiplier)', () => {
     // raw = 0.8 × 1.0 × 1.5 = 1.2 → clamp → exactly 1
     expect(captureChance({ rarity: 1, hpMax: 100, hpCurrent: 0, tierMultiplier: 1.5, pity: 0 })).toBe(1);
-    // raw = 0.2667 + 5 pity → clamp → exactly 1
-    expect(captureChance({ rarity: 1, hpMax: 100, hpCurrent: 100, tierMultiplier: 1.0, pity: 5 })).toBe(1);
+    // raw = 0.2667 + 20 × 0.05 = 1.2667 → clamp → exactly 1
+    expect(captureChance({ rarity: 1, hpMax: 100, hpCurrent: 100, tierMultiplier: 1.0, pity: 20 })).toBe(1);
   });
 
   it('T1c: lower clamp — the result never leaves [0,1] across the input space', () => {
@@ -330,5 +331,50 @@ describe('attemptCapture — single-writer capture tx (D-10/D-11, TQC-11)', () =
     const poor = attemptInTx(HERO_QUEUE, { roll: () => 0.01 });
     await expect(poor.promise).rejects.toThrow('INSUFFICIENT_BALANCE');
     expect(poor.insert).not.toHaveBeenCalled(); // whole tx rolled back — no audit row
+  });
+
+  it('T9: fee + audit integrity — two failed attempts: pity_before 0 → 1, equal fees, tier reason, chance rises by PITY_INCREMENT (D-11)', async () => {
+    // One shared tx mock with the DB state advancing between attempts: the
+    // second attempt's pending read returns pityCount 1 (the first attempt's
+    // increment is committed).
+    const { tx, insertValues } = makeTx([
+      [PENDING],
+      [BATTLE_ROW],
+      [WILD_HERO],
+      [{ ...PENDING, pityCount: 1 }],
+      [BATTLE_ROW],
+      [WILD_HERO],
+    ]);
+    (db.transaction as any).mockImplementation(async (cb: any) => cb(tx));
+    vi.mocked(deductBalance).mockResolvedValue(100n);
+
+    const deps = { roll: () => 1.0, fleeRoll: () => 0.5 }; // always fail, never flee
+    const first = await attemptCapture(42, 1, deps);
+    const second = await attemptCapture(42, 1, deps);
+
+    // Audit rows in attempt order: pity_before = the pre-increment value (0 → 1).
+    const auditValues = insertValues.mock.calls
+      .filter((c: any) => c[0] && 'pityBefore' in c[0])
+      .map((c: any) => c[0]);
+    expect(auditValues).toHaveLength(2);
+    expect(auditValues[0]).toMatchObject({ pityBefore: 0, outcome: 'fail', fee: CAPTURE_TIERS[0].fee, displayedChance: expectedChance(0) });
+    expect(auditValues[1]).toMatchObject({ pityBefore: 1, outcome: 'fail', fee: CAPTURE_TIERS[0].fee, displayedChance: expectedChance(1) });
+
+    // Both fees = tier-1 fee; both wallet deductions used the tier reason.
+    expect(first.fee).toBe(CAPTURE_TIERS[0].fee);
+    expect(second.fee).toBe(CAPTURE_TIERS[0].fee);
+    expect(deductBalance).toHaveBeenCalledTimes(2);
+    expect(deductBalance).toHaveBeenCalledWith(
+      tx,
+      42,
+      CAPTURE_TIERS[0].fee,
+      expect.objectContaining({ reason: 'sanguo_capture_t1' }),
+    );
+
+    // Pity applies to the NEXT attempt only: the second chance exceeds the
+    // first by exactly PITY_INCREMENT (same rarity/HP/tier).
+    expect(second.chance - first.chance).toBeCloseTo(PITY_INCREMENT, 10);
+    expect(first.pityBefore).toBe(0);
+    expect(second.pityBefore).toBe(1);
   });
 });

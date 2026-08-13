@@ -3,11 +3,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import crypto from 'node:crypto';
 import { db } from '../../../db/client.js';
 import { startEncounterBattle, startSparBattle, skipEncounter } from '../battleCheckInService.js';
+import { runBattle } from '../battleEngine.js';
 import { playerTravelState } from '../../../db/schema/playerTravelState.js';
 import { encounterRuns } from '../../../db/schema/encounterRuns.js';
 import { userHeroes } from '../../../db/schema/userHeroes.js';
 import { sanguoBattles } from '../../../db/schema/sanguoBattles.js';
 import { BOSS_TEMPLATES, bossTemplateFor } from '../../../constants/sanguoBoss.js';
+import { checkInTravel } from '../travelCheckInService.js';
 import { redis } from '../../../cache/redis.js';
 
 vi.mock('../../../db/client.js', () => ({
@@ -435,5 +437,68 @@ describe('skipEncounter — retreat/skip resolution (D-18)', () => {
     // D-18: the encounter cap counts roll hits, not resolutions — no redis interaction.
     expect(redis.zadd).not.toHaveBeenCalled();
     expect(redis.zcard).not.toHaveBeenCalled();
+  });
+});
+
+// ── Task 3 integration: replay roundtrip + escape/travel-resume regression ──
+
+describe('integration (SC1 / Pitfall 1 / Pitfall 7)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('T8: replay roundtrip — stored input + seed re-run through the REAL engine reproduce the stored roundLogs', async () => {
+    // Real runBattle (no engine mock): the service rolls crypto IV + writes the
+    // full snapshot; we then replay from the stored record — the SC1 proof the
+    // seed+input contract is complete (Pitfall 1).
+    const { promise, insertValues } = runBattleInTx(
+      [[TRAVEL], [PENDING], [STATE], [activeJoin()], [WILD_HERO]],
+      undefined,
+      { seed: 424242 },
+    );
+
+    await promise;
+    const inserted = insertValues.mock.calls[0]?.[0] as any;
+    expect(inserted.seed).toBe(424242);
+
+    const parsed = JSON.parse(JSON.stringify(inserted.input)) as {
+      player: any;
+      enemy: any;
+    };
+    const replay = runBattle(424242, parsed.player, parsed.enemy);
+    expect(replay.roundLogs).toEqual(inserted.roundLogs);
+    expect(replay.winner).toBe(inserted.result.winner);
+  });
+
+  it('T10: escape resolution — after a loss the next check-in resumes the journey from the pinned updatedAt', async () => {
+    // Loss battle: encounterActive cleared + updatedAt pinned (asserted in T5).
+    const runBattleFn = vi.fn().mockReturnValue(LOSS_RESULT);
+    const loss = runBattleInTx([[TRAVEL], [PENDING], [STATE], [activeJoin()], [WILD_HERO]], runBattleFn, { seed: 1 });
+    const outcome = await loss.promise;
+    expect(outcome.resolution).toBe('lost');
+    const lossSets = loss.updateSet.mock.calls.map((c: any) => c[0]);
+    expect(lossSets).toContainEqual({ encounterActive: false, updatedAt: expect.any(Date) });
+
+    // A subsequent checkInTravel sees the resumed state — no encounterPending
+    // branch, elapsed counts from the pinned updatedAt (Pitfall 7 regression).
+    const resumedRow = {
+      ...TRAVEL,
+      encounterActive: false,
+      updatedAt: new Date(Date.now() - 120_000), // 2 minutes since the pin
+      travelSecondsRemaining: 300,
+    };
+    const EDGE = { id: 1, nodeAId: 5, nodeBId: 7, travelSeconds: 300 };
+    const { tx: tx2, update: update2 } = makeTx([[resumedRow], [EDGE]]);
+    (db.transaction as any).mockImplementation(async (cb: any) => cb(tx2));
+
+    const checkIn = await checkInTravel(42, {
+      rollMinute: async () => ({ hit: false }),
+    });
+    expect(checkIn.mode).toBe('status');
+    expect(checkIn.remaining).toBe(180); // 300 − 2 counted minutes — travel resumed
+    expect(update2).toHaveBeenCalledWith(playerTravelState);
   });
 });
