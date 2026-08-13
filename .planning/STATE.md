@@ -5,15 +5,15 @@ milestone_name: Tam Quốc Collection
 current_phase: 10
 current_phase_name: Battle & Capture
 status: executing
-stopped_at: Completed 10-03-PLAN.md
-last_updated: "2026-08-13T07:35:20.460Z"
+stopped_at: Completed 10-04-PLAN.md
+last_updated: "2026-08-13T07:54:22.517Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 09 complete, transitioned to Phase 10
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # State: TuTien Bot
@@ -33,11 +33,11 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 ## Current Position
 
 Phase: 10 (Battle & Capture) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-08-13 — Phase 10 execution started
 
-Progress: [████████████████████] 9/9 plans ([████████░░] 75%)
+Progress: [████████████████████] 9/9 plans ([████████░░] 81%)
 
 ## Phase Registry (Milestone v3)
 
@@ -104,8 +104,8 @@ Progress: [████████████████████] 9/9 pla
 
 **Resume file:** None
 
-Last session: 2026-08-13T07:35:20.438Z
-Stopped at: Completed 10-03-PLAN.md
+Last session: 2026-08-13T07:54:22.492Z
+Stopped at: Completed 10-04-PLAN.md
 Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 
 ---
@@ -123,6 +123,7 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 | Phase 10-battle-capture P01 | 20min | 2 tasks | 4 files |
 | Phase 10-battle-capture P02 | 18min | 2 tasks | 10 files |
 | Phase 10-battle-capture P03 | 6 | 3 tasks | 3 files |
+| Phase 10-battle-capture P04 | 21 min | 2 tasks | 2 files |
 
 ## Quick Tasks Completed
 
@@ -149,3 +150,6 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 - [Phase 10-battle-capture]: D-20 capture-fee contract signed (user adopt-a1, F8-adjusted): CAPTURE_TIERS 5/15/40/100/250 bigint x multipliers 1.0/1.5/2.0/3.0/5.0, tiers 4-5 item-gated; rebalancing needs a new sign-off (D-18 one-way gate)
 - [Phase 10-battle-capture]: F8 gross-bound adjustment: A1 draft fees (10/30/80/200/500) breached ~416/hr at realistic cadence under effective chances (~788/hr at 10 encounters/hr) — fees halved to 5/15/40/100/250, all ratios/multipliers/rates preserved
 - [Phase 10-battle-capture]: E[net/hour] priced with effective chances (attempts = 1/(base x hpFactor x tierMult), incl. flee): E[inflow]=0 -> E[net] < 0 satisfies D-19 at all cadences; gross 75-394/hr at realistic 5-10/hr < ~416/hr; theoretical 20/hr corner documented as supply-ceiling non-issue
+- [Phase 10-battle-capture]: A2 template generation adopted: per-class stat templates + prominence (rarity) modifiers + deterministic FNV-1a hash jitter; no per-hero research round (RESEARCH OQ2 default)
+- [Phase 10-battle-capture]: Rarity binned to signed D-20 distribution at exactly 79/33/13/5/2 for 132 (per-bin deviation <=0.7, within +/-2 tolerance)
+- [Phase 10-battle-capture]: Public tier = rarity + hash jitter (-1/0/+1) clamped 1-5 — independent of hidden rarity, never derived at render time (D-12)

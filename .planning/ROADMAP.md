@@ -170,7 +170,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10-04-PLAN.md — Content seed: sanguo-base-stats.json (132 heroes + 6 starters) + idempotent upsert (TQC-12)
+- [x] 10-04-PLAN.md — Content seed: sanguo-base-stats.json (132 heroes + 6 starters) + idempotent upsert (TQC-12)
 - [ ] 10-05-PLAN.md — battleCheckInService + captureService + boss templates + audit/pity/flee + replay roundtrip tests (TQC-11)
 
 **Wave 3** *(blocked on Wave 2 completion)*
