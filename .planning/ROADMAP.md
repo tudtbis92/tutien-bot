@@ -179,7 +179,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 10-07-PLAN.md — Collection + starter onboarding + /sanguo hero + map position (TQC-12/13)
+- [x] 10-07-PLAN.md — Collection + starter onboarding + /sanguo hero + map position (TQC-12/13)
 
 **UI hint**: yes
 

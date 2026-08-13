@@ -4,16 +4,16 @@ milestone: v3.0
 milestone_name: Tam Quốc Collection
 current_phase: 10
 current_phase_name: Battle & Capture
-status: executing
-stopped_at: Completed 10-06-PLAN.md
-last_updated: "2026-08-13T09:00:04.883Z"
+status: verifying
+stopped_at: Completed 10-07-PLAN.md
+last_updated: "2026-08-13T09:48:39.968Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 09 complete, transitioned to Phase 10
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # State: TuTien Bot
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 
 Phase: 10 (Battle & Capture) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-13 — Phase 10 execution started
 
-Progress: [████████████████████] 9/9 plans ([█████████░] 94%)
+Progress: [████████████████████] 9/9 plans ([██████████] 100%)
 
 ## Phase Registry (Milestone v3)
 
@@ -104,8 +104,8 @@ Progress: [████████████████████] 9/9 pla
 
 **Resume file:** None
 
-Last session: 2026-08-13T09:00:04.861Z
-Stopped at: Completed 10-06-PLAN.md
+Last session: 2026-08-13T09:47:51.072Z
+Stopped at: Completed 10-07-PLAN.md
 Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 
 ---
@@ -126,6 +126,7 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 | Phase 10-battle-capture P04 | 21 min | 2 tasks | 2 files |
 | Phase 10-battle-capture P05 | 22min | 3 tasks | 5 files |
 | Phase 10-battle-capture P06 | 25min | 2 tasks | 13 files |
+| Phase 10-battle-capture P07 | 41min | 3 tasks | 15 files |
 
 ## Quick Tasks Completed
 
@@ -161,3 +162,6 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 - [Phase 10-battle-capture]: Battle log renders the LAST <=20 turn entries (engine emits up to 40 actions) — honors D-07 '<=20 lines <= ~1,700 chars' budget while keeping the decisive ending
 - [Phase 10-battle-capture]: SanguoBattleLogEmbedData adds optional playerHeroId/enemyHeroId so round-log heroId strings map to per-locale names (pinned interface lacked the ids; enemy id = distinct non-player id in roundLogs)
 - [Phase 10-battle-capture]: renderCaptureView lives in the command layer (plan sanctioned either location; captureService.ts outside plan scope) — shared by handleCaptureOpen/retry + travel.ts F4 abandoned-capture routing
+- [Phase 10-battle-capture]: The starter grant is FREE and the ONLY faucet (D-19): handleStarterPick contains no wallet import/call (grep == 0 + wallet-mock assertion); zero deductBalance across the collection/starter/hero surfaces — D-19 one-way gate; free faucet locked
+- [Phase 10-battle-capture]: Collection stars come from the PUBLIC heroes.tier and grade from iv_grade.* keys; embed data interfaces carry gradeKey + stars ONLY — D-12 never-render enforced structurally (no IV/rarity field can reach the render path) — D-12 hard rule held by construction, not convention
+- [Phase 10-battle-capture]: heroes.empty_filtered + hero.field_stars/field_grade/field_hp_mp added as i18n keys (all 3 locales, check-i18n parity): the flagged filtered-empty assumption needs an empty-hint line (never the starter picker) and the fixed-field detail embed needs field NAMES — neither was in the pinned UI-SPEC set — Additive keys required by the plan's own flagged assumptions
