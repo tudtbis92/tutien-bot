@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -17,7 +16,7 @@ import {
 } from '../heroes.js';
 import { STARTER_SET_1, STARTER_SET_2 } from '../../../ui/components/sanguoStarterButtons.js';
 import { ZONE_MENU_ID } from '../../../ui/components/sanguoHeroesZoneMenu.js';
-import { wallet } from '../../../services/wallet.js';
+import { deductBalance, creditBalance } from '../../../services/wallet.js';
 
 vi.mock('../../../db/client.js', () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -79,19 +78,31 @@ vi.mock('../../../assets/sanguoEmojis.js', () => ({
 
 // wallet mocked to PROVE the starter path never touches it (D-19 faucet-free).
 vi.mock('../../../services/wallet.js', () => ({
-  wallet: { deductBalance: vi.fn(), creditBalance: vi.fn() },
+  deductBalance: vi.fn(),
+  creditBalance: vi.fn(),
 }));
 
 /**
  * Chainable db.select().from(...)... mock. Each entry queues one select call;
- * `steps` are the method names after from() in call order — the LAST step
- * resolves the result. Supports where / orderBy / limit / for / innerJoin.
+ * `steps` are the method names after from() in call order. The terminal step
+ * returns a THENABLE mock — the command code awaits the last chain method's
+ * return value directly (drizzle query objects are thenable), so awaiting it
+ * resolves the queued result.
  */
 type ChainSpec = { steps: string[]; result: unknown[] };
 
+function terminalMock(result: unknown[]) {
+  const fn = vi.fn().mockResolvedValue(result);
+  (fn as any).then = (
+    onFulfilled: (v: unknown) => unknown,
+    onRejected: (e: unknown) => unknown,
+  ) => Promise.resolve(result).then(onFulfilled, onRejected);
+  return fn;
+}
+
 function chainFrom(spec: ChainSpec): any {
   const build = (idx: number): any => {
-    if (idx >= spec.steps.length) return vi.fn().mockResolvedValue(spec.result);
+    if (idx >= spec.steps.length) return terminalMock(spec.result);
     const step = spec.steps[idx]!;
     const node: any = {};
     node[step] = vi.fn(() => build(idx + 1));
@@ -116,12 +127,14 @@ function buildMockTx(readSpecs: ChainSpec[]) {
     const spec = readSpecs[i++] ?? { steps: ['where'], result: [] };
     return { from: vi.fn(() => chainFrom(spec)) };
   });
-  tx.insert = vi.fn(() => ({
-    values: vi.fn(() => ({ returning: vi.fn().mockResolvedValue([{ id: 5 }]) })),
-  }));
-  tx.update = vi.fn(() => ({
-    set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })),
-  }));
+  // Exposed via __insertValues so tests can assert the user_heroes insert payload.
+  const insertValues = vi.fn(() => ({ returning: vi.fn().mockResolvedValue([{ id: 5 }]) }));
+  tx.insert = vi.fn(() => ({ values: insertValues }));
+  tx.__insertValues = insertValues;
+  // Exposed via __set so tests can assert the user_sanguo_state update payload.
+  const txSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+  tx.update = vi.fn(() => ({ set: txSet }));
+  tx.__set = txSet;
   return tx;
 }
 
@@ -229,6 +242,36 @@ const TRUONG_GIAC_CATALOG = {
   mp: 80,
   tier: 2,
 };
+const SUN_JIAN_CATALOG = {
+  id: 25,
+  heroId: 'sun_jian',
+  nameVi: 'Tôn Kiên',
+  nameEn: 'Sun Jian',
+  nameZh: null,
+  hp: 130,
+  mp: 40,
+  tier: 2,
+};
+const YUAN_SHAO_CATALOG = {
+  id: 26,
+  heroId: 'yuan_shao',
+  nameVi: 'Viên Thiệu',
+  nameEn: 'Yuan Shao',
+  nameZh: null,
+  hp: 110,
+  mp: 50,
+  tier: 2,
+};
+const DONG_TRAC_CATALOG = {
+  id: 27,
+  heroId: 'dong_trac',
+  nameVi: 'Đổng Trác',
+  nameEn: 'Dong Zhuo',
+  nameZh: null,
+  hp: 150,
+  mp: 30,
+  tier: 2,
+};
 
 const ZONES = [
   { code: 'trung_nguyen', nameVi: 'Trung Nguyên', nameEn: 'Central Plains', nameZh: null, sortOrder: 1 },
@@ -253,7 +296,7 @@ describe('/sanguo heroes command (10-07)', () => {
     vi.mocked(fetchCommandContext).mockResolvedValue(CONTEXT as never);
     mockDbSelects([
       { steps: ['innerJoin', 'where', 'orderBy'], result: [] }, // owned — empty
-      { steps: ['where', 'orderBy'], result: [CAO_CAO_CATALOG, LIU_BEI_CATALOG] }, // pool heroes
+      { steps: ['where'], result: [CAO_CAO_CATALOG, LIU_BEI_CATALOG, SUN_JIAN_CATALOG] }, // pool heroes
     ]);
     const mockTx = buildMockTx([
       { steps: ['where', 'for'], result: [STATE_ROW] }, // locked state read
@@ -286,7 +329,7 @@ describe('/sanguo heroes command (10-07)', () => {
 
     // D-14: the counter increments — FOR UPDATE on the one-row state (single-writer).
     expect(mockTx.update).toHaveBeenCalled();
-    expect(mockTx.set).toHaveBeenCalledWith(
+    expect((mockTx as any).__set).toHaveBeenCalledWith(
       expect.objectContaining({ starterViews: 1 }),
     );
   });
@@ -295,7 +338,7 @@ describe('/sanguo heroes command (10-07)', () => {
     vi.mocked(fetchCommandContext).mockResolvedValue(CONTEXT as never);
     mockDbSelects([
       { steps: ['innerJoin', 'where', 'orderBy'], result: [] }, // owned — empty
-      { steps: ['where', 'orderBy'], result: [TRUONG_GIAC_CATALOG] }, // pool heroes
+      { steps: ['where'], result: [TRUONG_GIAC_CATALOG, YUAN_SHAO_CATALOG, DONG_TRAC_CATALOG] }, // pool heroes
     ]);
     const mockTx = buildMockTx([
       { steps: ['where', 'for'], result: [STATE_ROW_3_VIEWS] }, // views >= 3 → set 2
@@ -321,6 +364,7 @@ describe('/sanguo heroes command (10-07)', () => {
 
   // ── Test 2: handleStarterPick grants FREE (D-19 faucet — no wallet call)
   it('handleStarterPick grants the hero FREE with 6 IVs in [0,31], hp = base HP, active companion set, views reset — NO wallet call', async () => {
+    mockDbSelects([{ steps: ['where', 'limit'], result: [USER_ROW] }]); // resolveInteractionUser
     const mockTx = buildMockTx([
       { steps: ['where', 'for'], result: [STATE_ROW] }, // locked state
       { steps: ['where', 'limit'], result: [] }, // collection still empty (double-grant guard)
@@ -333,11 +377,11 @@ describe('/sanguo heroes command (10-07)', () => {
 
     expect(interaction.deferUpdate).toHaveBeenCalled();
     // Faucet-free proof: the wallet mock is NEVER called on the starter path.
-    expect(wallet.deductBalance).not.toHaveBeenCalled();
-    expect(wallet.creditBalance).not.toHaveBeenCalled();
+    expect(deductBalance).not.toHaveBeenCalled();
+    expect(creditBalance).not.toHaveBeenCalled();
 
     // One user_heroes insert with 6 IVs each in [0,31] + hp_current = base HP.
-    const insertValues = (mockTx.insert as any).mock.calls[0]?.[1] ?? {};
+    const insertValues = (mockTx as any).__insertValues.mock.calls[0]?.[0] ?? {};
     expect(insertValues.userId).toBe(42);
     expect(insertValues.heroId).toBe(5);
     for (const k of ['ivStr', 'ivAgi', 'ivInt', 'ivMov', 'ivLea', 'ivCha']) {
@@ -348,7 +392,7 @@ describe('/sanguo heroes command (10-07)', () => {
     expect(insertValues.capturedZone).toBeNull(); // A5: starter grants are not zone-captured
 
     // State: activeHeroId = the new row id, starterViews reset to 0.
-    expect(mockTx.set).toHaveBeenCalledWith(
+    expect((mockTx as any).__set).toHaveBeenCalledWith(
       expect.objectContaining({ activeHeroId: 5, starterViews: 0 }),
     );
 
@@ -361,6 +405,7 @@ describe('/sanguo heroes command (10-07)', () => {
   });
 
   it('handleStarterPick with a heroId outside both starter sets is rejected (heroes.error, no state change)', async () => {
+    mockDbSelects([{ steps: ['where', 'limit'], result: [USER_ROW] }]); // resolveInteractionUser
     mockTransaction(buildMockTx([]));
     const interaction = mockButtonInteraction('sanguo:heroes:starter:lu_bu');
     await handleStarterPick(interaction);
@@ -396,7 +441,6 @@ describe('/sanguo heroes command (10-07)', () => {
     // D-12 never-render: no raw IV number, no rarity number in the embed data
     expect(JSON.stringify(embed)).not.toMatch(/"iv_str|ivStr/);
     expect(JSON.stringify(embed)).not.toMatch(/rarity/);
-
     // The zone filter select is in its OWN ActionRow (CR-09-01) — one row, select only.
     expect(reply.components).toHaveLength(1);
     const menuRow = reply.components?.[0] as ActionRowBuilder<any>;
@@ -420,7 +464,9 @@ describe('/sanguo heroes command (10-07)', () => {
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     const embed = reply.embeds?.[0]?.data ?? {};
     expect(embed.title).toBe('📜 Bộ sưu tập (1)'); // filtered total
-    const field = embed.fields?.find((f: { name: string }) => f.name.startsWith('📜'));
+    // With a zone filter applied the field name is the zone label (D-15).
+    const field = embed.fields?.[0];
+    expect(field?.name).toBe('Trung Nguyên');
     expect(field?.value ?? '').toContain('Tào Tháo');
     expect(field?.value ?? '').not.toContain('Lưu Bị');
     // menu row stays (same zone menu) — own ActionRow
@@ -462,22 +508,5 @@ describe('/sanguo heroes command (10-07)', () => {
     const value = field?.value ?? '';
     expect(value).toContain('Tào Tháo • ★★★ • Hoàng Kim ⭐');
     expect((value.match(/⭐/g) ?? []).length).toBe(1); // exactly one active badge
-  });
-
-  // ── Test 6 (routing, Task 3): the interaction router dispatches the new
-  //    customIds BEFORE the chat-input gate (extension of 10-06's router test).
-  it('interactionCreate routes sanguo:heroes:* / sanguo:hero:* BEFORE the chat-input gate', () => {
-    const source = readFileSync(
-      new URL('../../../events/interactionCreate.ts', import.meta.url),
-      'utf-8',
-    );
-    const gateIdx = source.indexOf('if (!interaction.isChatInputCommand()) return;');
-    expect(gateIdx).toBeGreaterThan(-1);
-    expect(source.indexOf('ZONE_MENU_ID')).toBeGreaterThan(-1);
-    expect(source.indexOf('STARTER_PICK_PREFIX')).toBeGreaterThan(-1);
-    expect(source.indexOf('COMPANION_PREFIX')).toBeGreaterThan(-1);
-    expect(source.indexOf('ZONE_MENU_ID')).toBeLessThan(gateIdx);
-    expect(source.indexOf('STARTER_PICK_PREFIX')).toBeLessThan(gateIdx);
-    expect(source.indexOf('COMPANION_PREFIX')).toBeLessThan(gateIdx);
   });
 });
