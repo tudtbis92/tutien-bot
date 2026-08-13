@@ -247,8 +247,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ### Battle & Capture
 
-- [ ] **TQC-10**: Pure `battleEngine` (seeded, replayable với `pure-rand`); `sanguo_battles` records + jsonb round logs; solo battle (player-initiated + encounter-initiated).
-- [ ] **TQC-11**: `captureService`: `captureChance(rarity × HP% × item)` clamped [0,1]; crypto RNG; % hiển thị trước khi bắt; pity counter; audit log đầy đủ kể cả failed attempts.
+- [x] **TQC-10**: Pure `battleEngine` (seeded, replayable với `pure-rand`); `sanguo_battles` records + jsonb round logs; solo battle (player-initiated + encounter-initiated).
+- [x] **TQC-11**: `captureService`: `captureChance(rarity × HP% × item)` clamped [0,1]; crypto RNG; % hiển thị trước khi bắt; pity counter; audit log đầy đủ kể cả failed attempts.
 - [ ] **TQC-12**: IV 6 chỉ số (0–31) roll khi bắt; starter onboarding chọn 1 hero miễn phí (faucet duy nhất).
 - [ ] **TQC-13**: Collection view: `/sanguo heroes` (collection/pokedex theo zone, emoji + tier + IV); `/sanguo map` scaffold.
 

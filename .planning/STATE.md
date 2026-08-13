@@ -5,15 +5,15 @@ milestone_name: Tam Quốc Collection
 current_phase: 10
 current_phase_name: Battle & Capture
 status: executing
-stopped_at: Completed 10-05-PLAN.md
-last_updated: "2026-08-13T08:29:44.780Z"
+stopped_at: Completed 10-06-PLAN.md
+last_updated: "2026-08-13T09:00:04.883Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 09 complete, transitioned to Phase 10
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # State: TuTien Bot
@@ -33,11 +33,11 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 ## Current Position
 
 Phase: 10 (Battle & Capture) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-08-13 — Phase 10 execution started
 
-Progress: [████████████████████] 9/9 plans ([█████████░] 88%)
+Progress: [████████████████████] 9/9 plans ([█████████░] 94%)
 
 ## Phase Registry (Milestone v3)
 
@@ -104,8 +104,8 @@ Progress: [████████████████████] 9/9 pla
 
 **Resume file:** None
 
-Last session: 2026-08-13T08:29:44.755Z
-Stopped at: Completed 10-05-PLAN.md
+Last session: 2026-08-13T09:00:04.861Z
+Stopped at: Completed 10-06-PLAN.md
 Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 
 ---
@@ -125,6 +125,7 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 | Phase 10-battle-capture P03 | 6 | 3 tasks | 3 files |
 | Phase 10-battle-capture P04 | 21 min | 2 tasks | 2 files |
 | Phase 10-battle-capture P05 | 22min | 3 tasks | 5 files |
+| Phase 10-battle-capture P06 | 25min | 2 tasks | 13 files |
 
 ## Quick Tasks Completed
 
@@ -156,3 +157,7 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 - [Phase 10-battle-capture]: Public tier = rarity + hash jitter (-1/0/+1) clamped 1-5 — independent of hidden rarity, never derived at render time (D-12)
 - [Phase 10-battle-capture]: captureChance pity term is pity x PITY_INCREMENT (5pp per failure), not the raw count - the plan's literal '+ pity' would add +1.0 per failure; Task-3 contract (chance2 - chance1 === PITY_INCREMENT) pins the D-11 scaling — Rule 1 fix cc8fe40 - the D-11 bad-luck protection is +5pp per failed attempt, scaled by the failure count
 - [Phase 10-battle-capture]: Boss capture guarded with BOSS_CAPTURE_UNAVAILABLE pre-fee: encounter_runs.hero_id NULL for bosses (A3) + user_heroes.hero_id NOT NULL -> no heroes row for a captured boss; the literal insert would crash mid-tx. D-13 boss-capture mapping deferred (WINDOWS.md #5) — Rule 1 fix in 3b70abe - correctness: fail cleanly before charging
+- [Phase 10-battle-capture]: Capture-view % = tier-1 chance at render (captureChance, multiplier 1); the attempt recomputes the exact chance inside its tx — small render/press drift possible (flagged assumption, Pitfall 2)
+- [Phase 10-battle-capture]: Battle log renders the LAST <=20 turn entries (engine emits up to 40 actions) — honors D-07 '<=20 lines <= ~1,700 chars' budget while keeping the decisive ending
+- [Phase 10-battle-capture]: SanguoBattleLogEmbedData adds optional playerHeroId/enemyHeroId so round-log heroId strings map to per-locale names (pinned interface lacked the ids; enemy id = distinct non-player id in roundLogs)
+- [Phase 10-battle-capture]: renderCaptureView lives in the command layer (plan sanctioned either location; captureService.ts outside plan scope) — shared by handleCaptureOpen/retry + travel.ts F4 abandoned-capture routing
