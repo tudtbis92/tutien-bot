@@ -5,15 +5,15 @@ milestone_name: Tam Quốc Collection
 current_phase: 10
 current_phase_name: Battle & Capture
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-08-13T07:01:01.172Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-08-13T07:17:09.979Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 09 complete, transitioned to Phase 10
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 16
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # State: TuTien Bot
@@ -33,11 +33,11 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 ## Current Position
 
 Phase: 10 (Battle & Capture) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-08-13 — Phase 10 execution started
 
-Progress: [████████████████████] 9/9 plans ([██████░░░░] 63%)
+Progress: [████████████████████] 9/9 plans ([███████░░░] 69%)
 
 ## Phase Registry (Milestone v3)
 
@@ -104,8 +104,8 @@ Progress: [████████████████████] 9/9 pla
 
 **Resume file:** None
 
-Last session: 2026-08-13T07:00:45.546Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-08-13T07:16:08.552Z
+Stopped at: Completed 10-02-PLAN.md
 Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 
 ---
@@ -121,6 +121,7 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 | Phase 08-foundation-economy-budget-content-infrastructure P3 | 18min | 2 tasks | 1 files |
 | Phase 08 P4 | 82min | 6 tasks | 16 files |
 | Phase 10-battle-capture P01 | 20min | 2 tasks | 4 files |
+| Phase 10-battle-capture P02 | 18min | 2 tasks | 10 files |
 
 ## Quick Tasks Completed
 
@@ -142,3 +143,5 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 - [Phase 08]: ZH-CN hero names researched via Tavily (kongming.net hanzi index primary + targeted corrections): 109 from kongming simplified column, 23 corrected mis-picks (sun_jian 孙坚, liu_yao 刘繇, liu_yan 刘焉, ly_ung 李膺, zhang_miao 张邈, gongsun_du 公孙度...), 23 non-kongming figures researched individually (foreign chiefs, emperors, Korean kings) — D-06 names never agent-guessed — Kongming first-match mis-picks variant-spelling figures; accuracy spot-check (10-hero sample) zero unresolved mismatches after correction
 - [Phase 10-battle-capture]: Seeded replayable battle engine: runBattle(seed, input) is a pure synchronous function (D-06); ONE mutable xoroshiro128plus rng threaded via uniformFloat64; full D-05 formula locked by tests
 - [Phase 10-battle-capture]: BATTLE_CONFIG A9 drafts exported (ROUND_CAP 20, HIT_BASE 0.85/AGI_FACTOR 0.003, CRIT_BASE 0.05/AGI_FACTOR 0.001) for the 10-04 balance pass to re-sanitize against the seeded AGI spread
+- [Phase 10-battle-capture]: ﻿capture_attempts.fee uses bigint { mode: 'bigint' } — drizzle 0.45.2 rejects mode-less bigint at typecheck; mode 'bigint' matches users.balance currency discipline
+- [Phase 10-battle-capture]: ﻿Migration 0019 verified with an information_schema probe spanning ALL tables, not just heroes — the plan's literal one-liner only queried heroes columns + table names, so it could never see cross-table columns (hp_current, captured_zone, seed, input, result, pity_count); the corrected probe confirms every artifact live
