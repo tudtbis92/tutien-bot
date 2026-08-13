@@ -13,6 +13,7 @@ import {
   CAPTURE_TIERS,
   CAPTURE_BASE_BY_RARITY,
   FLEE_RATE_BY_RARITY,
+  PITY_INCREMENT,
   hpFactor,
 } from '../../constants/sanguoCapture.js';
 
@@ -47,10 +48,14 @@ import {
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
- * D-10/D-11 capture chance: `base(rarity) × hpFactor × tierMultiplier + pity`,
- * clamped to [0,1] AFTER pity (strict bounds — the roll compares against this
- * exact value). hpFactor (Pokemon-standard) is lower when the wild hero has
- * more HP — battle performance directly feeds capture odds (Pitfall 5).
+ * D-10/D-11 capture chance: `base(rarity) × hpFactor × tierMultiplier +
+ * pity×PITY_INCREMENT`, clamped to [0,1] AFTER pity (strict bounds — the roll
+ * compares against this exact value). `pity` is the per-encounter FAILURE
+ * COUNT (encounter_runs.pity_count); each failed attempt adds PITY_INCREMENT
+ * (5pp) to the NEXT attempt's chance (D-11 — the Task-3 test pins
+ * chance2 − chance1 === PITY_INCREMENT for pity 0 → 1). hpFactor
+ * (Pokemon-standard) is lower when the wild hero has more HP — battle
+ * performance directly feeds capture odds (Pitfall 5).
  */
 export function captureChance(params: {
   rarity: number;
@@ -60,7 +65,7 @@ export function captureChance(params: {
   pity: number;
 }): number {
   const base = CAPTURE_BASE_BY_RARITY[params.rarity] ?? 0;
-  const raw = base * hpFactor(params.hpMax, params.hpCurrent) * params.tierMultiplier + params.pity;
+  const raw = base * hpFactor(params.hpMax, params.hpCurrent) * params.tierMultiplier + params.pity * PITY_INCREMENT;
   return Math.min(1, Math.max(0, raw));
 }
 
