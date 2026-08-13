@@ -7,7 +7,7 @@ import {
   type MessageActionRowComponentBuilder,
   type StringSelectMenuInteraction,
 } from 'discord.js';
-import { eq } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import type { TFunction } from 'i18next';
 import { db } from '../../db/client.js';
 import { users } from '../../db/schema/users.js';
@@ -15,16 +15,22 @@ import { heroes } from '../../db/schema/heroes.js';
 import { mapNodes } from '../../db/schema/mapNodes.js';
 import { mapZones } from '../../db/schema/mapZones.js';
 import { playerTravelState } from '../../db/schema/playerTravelState.js';
+import { encounterRuns } from '../../db/schema/encounterRuns.js';
+import { sanguoBattles } from '../../db/schema/sanguoBattles.js';
 import { heroEmoji } from '../../assets/sanguoEmojis.js';
 import { resolveLocale, getT, type SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { logger } from '../../utils/logger.js';
 import { buildSanguoTravelReplyEmbed } from '../../ui/embeds/buildSanguoTravelReplyEmbed.js';
-import { buildSanguoAckEmbed } from '../../ui/embeds/buildSanguoAckEmbed.js';
 import { buildSanguoEncounterEmbed } from '../../ui/embeds/buildSanguoEncounterEmbed.js';
 import { buildDestinationMenu } from '../../ui/components/sanguoTravelDestinationMenu.js';
-import { START_BTN_ID, buildStartButton, buildAckButton } from '../../ui/components/sanguoTravelButtons.js';
+import { START_BTN_ID, buildStartButton } from '../../ui/components/sanguoTravelButtons.js';
+import {
+  buildBattleStartButton,
+  buildBattleSkipButton,
+} from '../../ui/components/sanguoBattleButtons.js';
+import { renderCaptureView } from './battle.js';
 import {
   getCurrentPosition,
   getAdjacentNodes,
@@ -181,15 +187,15 @@ async function resolveEncounterDisplay(
   return { nodeName, zoneName, heroName: pickName(heroRow, locale), heroEmoji: heroEmojiMarkup };
 }
 
-function buildAckRow(t: TFunction): ActionRowBuilder<MessageActionRowComponentBuilder> {
-  return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(buildAckButton(t));
-}
-
 /**
  * Check-in dispatch (D-22/D-24/D-25/D-28) — full result routing inline in the
  * interaction (D-23): status → travel reply embed; arrived → arrival embed +
  * re-opened destination menu; encounter / encounterPending → encounter embed +
- * ack button (pending re-fetches the stored row, never re-rolls — F2).
+ * fight/skip button row (D-01 — battle entry REPLACES the D-25 ack row;
+ * pending re-fetches the stored row, never re-rolls — F2). A completed +
+ * player-won battle for the pending encounter (F4, P10-review) renders the
+ * CAPTURE VIEW instead — a won-but-abandoned encounter never forces a
+ * re-battle to reach capture.
  */
 async function dispatchCheckIn(
   interaction: ChatInputCommandInteraction | ButtonInteraction,
@@ -273,6 +279,30 @@ async function dispatchCheckIn(
     case 'encounter':
     case 'encounterPending': {
       const display = await resolveEncounterDisplay(result.encounter, userId, locale);
+      // F4 (P10-review): a completed + player-won battle for this pending
+      // encounter → the CAPTURE VIEW (capture embed + 3 tier buttons + retreat)
+      // so a player who walked away after winning can capture without re-battling.
+      const [pending] = await db
+        .select()
+        .from(encounterRuns)
+        .where(and(eq(encounterRuns.userId, userId), eq(encounterRuns.status, 'pending')))
+        .orderBy(desc(encounterRuns.id))
+        .limit(1);
+      if (pending) {
+        const [wonBattle] = await db
+          .select()
+          .from(sanguoBattles)
+          .where(and(eq(sanguoBattles.encounterId, pending.id), eq(sanguoBattles.type, 'encounter')))
+          .orderBy(desc(sanguoBattles.id))
+          .limit(1);
+        const storedResult = (wonBattle?.result ?? {}) as { winner?: string };
+        if (wonBattle && storedResult.winner === 'player') {
+          const view = await renderCaptureView(userId, t, locale, shardId);
+          await interaction.editReply({ embeds: [view.embed], components: [view.row] });
+          return;
+        }
+      }
+      // D-01: battle entry row — fight/skip replaces the D-25 ack.
       await interaction.editReply({
         embeds: [
           buildSanguoEncounterEmbed(
@@ -287,7 +317,12 @@ async function dispatchCheckIn(
             t,
           ),
         ],
-        components: [buildAckRow(t)],
+        components: [
+          new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+            buildBattleStartButton(t),
+            buildBattleSkipButton(t),
+          ),
+        ],
       });
       return;
     }
@@ -509,69 +544,3 @@ export async function handleStartPress(interaction: ButtonInteraction): Promise<
   }
 }
 
-/**
- * Encounter ack button handler (sanguo:travel:ack, D-25) — "Tiếp tục hành
- * trình". Clears encounterActive and sets updatedAt=now inside a FOR UPDATE
- * transaction, so the next check-in counts elapsed from the resume moment.
- * The reply replaces the stale encounter embed with the ack confirmation and
- * clears the button (CR-09-05) — Discord PATCH merges, so omitted components
- * would leave the button interactive.
- */
-export async function handleAckPress(interaction: ButtonInteraction): Promise<void> {
-  await interaction.deferUpdate();
-
-  const [userRow] = await db
-    .select({ id: users.id, locale: users.locale })
-    .from(users)
-    .where(eq(users.discordId, interaction.user.id))
-    .limit(1);
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
-  const shardId = interaction.client.shard?.ids[0];
-
-  if (!userRow) {
-    await interaction.editReply({
-      embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
-      components: [],
-    });
-    return;
-  }
-
-  let remaining = 0;
-  let destinationName = '?';
-  try {
-    const result = await db.transaction(async (tx) => {
-      const [row] = await tx
-        .select()
-        .from(playerTravelState)
-        .where(eq(playerTravelState.userId, userRow.id))
-        .for('update');
-      if (row?.encounterActive) {
-        await tx
-          .update(playerTravelState)
-          .set({ encounterActive: false, updatedAt: new Date() })
-          .where(eq(playerTravelState.userId, userRow.id));
-      }
-      return row;
-    });
-
-    if (result?.toNodeId != null) {
-      const node = await fetchNodeName(result.toNodeId);
-      if (node) destinationName = pickName(node, locale);
-    }
-    remaining = result?.travelSecondsRemaining ?? 0;
-  } catch {
-    await interaction.editReply({
-      embeds: [buildErrorEmbed(t('sanguo:travel.error'), shardId)],
-      components: [],
-    });
-    return;
-  }
-
-  await interaction.editReply({
-    embeds: [
-      buildSanguoAckEmbed({ destinationName, remainingSeconds: remaining, shardId }, t),
-    ],
-    components: [],
-  });
-}

@@ -72,16 +72,19 @@ vi.mock('../../../assets/sanguoEmojis.js', () => ({
 }));
 
 /**
- * db.select().from(table).where(cond).limit(1) — resolves the terminal results
- * in call order (users row read, state read, hero reads, ...).
+ * db.select().from(table).where(cond)...limit(1) — resolves the terminal
+ * results in call order. Supports BOTH chain shapes: `.where().limit()` (users
+ * row read, hero reads) and `.where().orderBy().limit()` (pending encounter /
+ * battle snapshot reads).
  */
 function mockDbReads(results: unknown[][]) {
   const limit = vi.fn();
   for (const r of results) limit.mockResolvedValueOnce(r);
-  const where = vi.fn(() => ({ limit }));
+  const orderBy = vi.fn(() => ({ limit }));
+  const where = vi.fn(() => ({ orderBy, limit }));
   const from = vi.fn(() => ({ where }));
   (db.select as any).mockReturnValue({ from });
-  return { limit, where, from };
+  return { limit, where, orderBy, from };
 }
 
 function mockButtonInteraction(customId: string): ButtonInteraction {
@@ -254,7 +257,7 @@ describe('/sanguo battle command (10-06)', () => {
     expect(reply.components).toHaveLength(1);
     const row = reply.components?.[0] as ActionRowBuilder<any>;
     expect(row.components).toHaveLength(4);
-    const ids = row.components.map((c: any) => (c as ButtonBuilder).toJSON().custom_id);
+    const ids = row.components.map((c: any) => ((c as ButtonBuilder).toJSON() as { custom_id: string }).custom_id);
     expect(ids).toEqual([
       'sanguo:capture:tier:1',
       'sanguo:capture:tier:2',
@@ -324,7 +327,7 @@ describe('/sanguo battle command (10-06)', () => {
     expect(embed.color).toBe(0xf59e0b); // WARNING — setback, retry open
     const row = reply.components?.[0] as ActionRowBuilder<any>;
     expect(row.components).toHaveLength(2); // retry + retreat — swap, never append
-    const ids = row.components.map((c: any) => (c as ButtonBuilder).toJSON().custom_id);
+    const ids = row.components.map((c: any) => ((c as ButtonBuilder).toJSON() as { custom_id: string }).custom_id);
     expect(ids).toEqual(['sanguo:capture:retry', 'sanguo:capture:retreat']);
   });
 
@@ -533,7 +536,7 @@ describe('/sanguo battle command (10-06)', () => {
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:encounter.title');
     const row = reply.components?.[0] as ActionRowBuilder<any>;
-    const ids = row.components.map((c: any) => (c as ButtonBuilder).toJSON().custom_id);
+    const ids = row.components.map((c: any) => ((c as ButtonBuilder).toJSON() as { custom_id: string }).custom_id);
     expect(ids).toEqual(['sanguo:battle:start', 'sanguo:battle:skip']);
   });
 

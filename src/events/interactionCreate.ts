@@ -18,7 +18,13 @@ import { handlePredictResult, handlePredictButtonMarket, handlePredictModalSubmi
 import { buildHistoryPage } from '../commands/predictions/predictions.js';
 import { handleFarmingStartButton, handleFarmingTokenModal, handleFarmingBuyWeeklyButton, handleFarmingBuyMonthlyButton, handleFarmingUpgradeVIPButton, handleConfirmBuyWeekly, handleConfirmBuyMonthly, handleConfirmUpgradeVIP, handleFarmingBuyVipMonthlyButton, handleConfirmBuyVipMonthly } from '../commands/game/farming.js';
 import { DEST_MENU_ID } from '../ui/components/sanguoTravelDestinationMenu.js';
-import { START_BTN_ID, ACK_BTN_ID } from '../ui/components/sanguoTravelButtons.js';
+import { START_BTN_ID } from '../ui/components/sanguoTravelButtons.js';
+import { BATTLE_START_ID, BATTLE_SKIP_ID, CAPTURE_OPEN_ID } from '../ui/components/sanguoBattleButtons.js';
+import {
+  CAPTURE_TIER_PREFIX,
+  CAPTURE_RETRY_ID,
+  CAPTURE_RETREAT_ID,
+} from '../ui/components/sanguoCaptureButtons.js';
 
 export const name = Events.InteractionCreate;
 
@@ -28,7 +34,12 @@ const RECIPES_PER_PAGE = 5;
 interface SanguoComponentHandlers {
   handleDestinationSelect?: (interaction: StringSelectMenuInteraction) => Promise<void>;
   handleStartPress?: (interaction: ButtonInteraction) => Promise<void>;
-  handleAckPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleBattleStart?: (interaction: ButtonInteraction) => Promise<void>;
+  handleBattleSkip?: (interaction: ButtonInteraction) => Promise<void>;
+  handleCaptureOpen?: (interaction: ButtonInteraction) => Promise<void>;
+  handleCaptureTierPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleCaptureRetryPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleCaptureRetreatPress?: (interaction: ButtonInteraction) => Promise<void>;
 }
 
 export async function execute(interaction: Interaction): Promise<void> {
@@ -103,18 +114,90 @@ export async function execute(interaction: Interaction): Promise<void> {
       return;
     }
 
-    // sanguo travel encounter ack (D-25) — clears encounterActive, resumes the
-    // travel clock; the next /sanguo travel counts elapsed from the resume moment.
-    if (customId === ACK_BTN_ID) {
+    // sanguo encounter battle entry (D-01) — REPLACES the D-25 ack route
+    // (Pitfall 7: the old route is REMOVED, not dormant). Prefix match keeps
+    // the sanguo:battle:* namespace future-proof; dispatch by exact id.
+    if (customId.startsWith('sanguo:battle:')) {
       try {
         const cmd = interaction.client.commands?.get('sanguo') as
           | SanguoComponentHandlers
           | undefined;
-        if (cmd && typeof cmd.handleAckPress === 'function') {
-          await cmd.handleAckPress(interaction);
+        if (cmd) {
+          if (customId === BATTLE_START_ID && typeof cmd.handleBattleStart === 'function') {
+            await cmd.handleBattleStart(interaction);
+          } else if (customId === BATTLE_SKIP_ID && typeof cmd.handleBattleSkip === 'function') {
+            await cmd.handleBattleSkip(interaction);
+          }
         }
       } catch (err) {
-        logger.error('InteractionCreate', 'Error in sanguo travel ack button', err);
+        logger.error('InteractionCreate', 'Error in sanguo battle button', err);
+      }
+      return;
+    }
+
+    // sanguo capture view (D-10) — the Bắt button on the battle-win row.
+    if (customId === CAPTURE_OPEN_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleCaptureOpen === 'function') {
+          await cmd.handleCaptureOpen(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo capture open button', err);
+      }
+      return;
+    }
+
+    // sanguo capture tier press — customId 'sanguo:capture:tier:{n}' carries
+    // ONLY the tier (anti-tamper, T-10-06-01). parseInt + isNaN guard first
+    // (interactionCreate.ts bxh pattern); the server validates 1-5 (V5).
+    if (customId.startsWith(CAPTURE_TIER_PREFIX)) {
+      try {
+        const rawTier = customId.slice(CAPTURE_TIER_PREFIX.length + 1);
+        const tier = parseInt(rawTier, 10);
+        if (isNaN(tier)) {
+          await interaction.deferUpdate();
+          return;
+        }
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleCaptureTierPress === 'function') {
+          await cmd.handleCaptureTierPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo capture tier button', err);
+      }
+      return;
+    }
+
+    // sanguo capture retry (after a failed attempt) / retreat (D-18).
+    if (customId === CAPTURE_RETRY_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleCaptureRetryPress === 'function') {
+          await cmd.handleCaptureRetryPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo capture retry button', err);
+      }
+      return;
+    }
+
+    if (customId === CAPTURE_RETREAT_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleCaptureRetreatPress === 'function') {
+          await cmd.handleCaptureRetreatPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo capture retreat button', err);
       }
       return;
     }

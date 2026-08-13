@@ -51,16 +51,19 @@ vi.mock('../../../services/sanguo/travelCheckInService.js', () => ({
 }));
 
 /**
- * db.select().from(table).where(cond).limit(1) — resolves the terminal results
+ * db.select().from(table).where(cond)...limit(1) — resolves the terminal results
  * in call order (users row read, travel status read, node name lookups, ...).
+ * Supports BOTH chain shapes: `.where().limit()` and `.where().orderBy().limit()`
+ * (the F4 pending/battle re-fetch reads in dispatchCheckIn).
  */
 function mockDbReads(results: unknown[][]) {
   const limit = vi.fn();
   for (const r of results) limit.mockResolvedValueOnce(r);
-  const where = vi.fn(() => ({ limit }));
+  const orderBy = vi.fn(() => ({ limit }));
+  const where = vi.fn(() => ({ orderBy, limit }));
   const from = vi.fn(() => ({ where }));
   (db.select as any).mockReturnValue({ from });
-  return { limit, where, from };
+  return { limit, where, orderBy, from };
 }
 
 const CURRENT_NODE = { id: 5, nameVi: 'Lạc Dương', nameEn: 'Luoyang', nameZh: '洛阳' };
@@ -270,23 +273,22 @@ describe('/sanguo travel command', () => {
     expect(embeds[0]?.data?.color).toBe(0xef4444); // COLORS.DANGER
   });
 
-  it('routes sanguo:travel:* component branches in interactionCreate BEFORE the chat-input gate', () => {
+  it('routes sanguo:travel:* component branches in interactionCreate BEFORE the chat-input gate; the ACK route is REMOVED (D-01)', () => {
     const source = readFileSync(
       new URL('../../../events/interactionCreate.ts', import.meta.url),
       'utf-8',
     );
     const destIdx = source.indexOf('customId === DEST_MENU_ID');
     const startIdx = source.indexOf('customId.startsWith(START_BTN_ID)');
-    const ackIdx = source.indexOf('customId === ACK_BTN_ID');
     const gateIdx = source.indexOf('if (!interaction.isChatInputCommand()) return;');
 
     expect(destIdx).toBeGreaterThan(-1);
     expect(startIdx).toBeGreaterThan(-1);
-    expect(ackIdx).toBeGreaterThan(-1);
     expect(gateIdx).toBeGreaterThan(-1);
     expect(destIdx).toBeLessThan(gateIdx);
     expect(startIdx).toBeLessThan(gateIdx);
-    expect(ackIdx).toBeLessThan(gateIdx);
+    // Pitfall 7: the D-25 ack route is removed, not dormant (battle entry D-01).
+    expect(source.indexOf('ACK_BTN_ID')).toBe(-1);
   });
 
   it('passes user.id (users.id) to every travelService call — never char.id', async () => {
@@ -354,7 +356,7 @@ describe('/sanguo travel command', () => {
     expect(reply.components).toHaveLength(2); // CR-09-02: + Start button row
   });
 
-  it('execute with an active journey — encounter mode replies the encounter embed (hero name/emoji) + ack button (D-24)', async () => {
+  it('execute with an active journey — encounter mode replies the encounter embed (hero name/emoji) + fight/skip battle row (D-01)', async () => {
     vi.mocked(fetchCommandContext).mockResolvedValue({
       locale: 'vi',
       t,
@@ -373,6 +375,8 @@ describe('/sanguo travel command', () => {
       [{ nameVi: 'Hứa Xương', nameEn: 'Xuchang', nameZh: null }], // fetchNodeName(7) — node display name
       [{ nameVi: 'Dự Châu', nameEn: 'Yuzhou', nameZh: null }], // zone name lookup
       [{ heroId: 'cao_cao', nameVi: 'Tào Tháo', nameEn: 'Cao Cao', nameZh: null }], // hero lookup
+      [{ id: 7, heroId: 5, zone: 'du_chau', status: 'pending' }], // F4 pending re-fetch
+      [], // sanguoBattles — no won battle yet → fight/skip row
     ]);
 
     const interaction = mockChatInputInteraction();
@@ -383,8 +387,8 @@ describe('/sanguo travel command', () => {
     expect(reply.embeds?.[0]?.data?.description).toContain('sanguo:encounter.body');
     expect(reply.embeds?.[0]?.data?.color).toBe(0x8b5cf6); // COLORS.SEASON normal encounter
     const row = reply.components?.[0] as ActionRowBuilder<any>;
-    const ackBtn = (row.components[0] as ButtonBuilder).toJSON() as { custom_id: string };
-    expect(ackBtn.custom_id).toBe('sanguo:travel:ack');
+    const ids = row.components.map((c: any) => ((c as ButtonBuilder).toJSON() as { custom_id: string }).custom_id);
+    expect(ids).toEqual(['sanguo:battle:start', 'sanguo:battle:skip']); // D-01: battle entry, not ack
   });
 
   it('execute with an active journey — encounterPending mode replies the boss GOLD embed, NO re-roll (F2/D-25)', async () => {
@@ -405,6 +409,8 @@ describe('/sanguo travel command', () => {
       [{ toNodeId: 7 }], // resolveEncounterDisplay: destination node id
       [{ nameVi: 'Hứa Xương', nameEn: 'Xuchang', nameZh: null }], // fetchNodeName(7) — node display name
       [{ nameVi: 'Dự Châu', nameEn: 'Yuzhou', nameZh: null }], // boss → zone name only, NO hero read
+      [{ id: 8, heroId: null, zone: 'du_chau', status: 'pending' }], // F4 pending re-fetch
+      [], // sanguoBattles — no won battle yet → fight/skip row
     ]);
 
     const interaction = mockChatInputInteraction();
@@ -416,41 +422,11 @@ describe('/sanguo travel command', () => {
     expect(reply.embeds?.[0]?.data?.description).toContain('sanguo:encounter.boss_body');
     expect(reply.embeds?.[0]?.data?.color).toBe(0xf59e0b); // COLORS.GOLD boss variant (UI-SPEC)
     const row = reply.components?.[0] as ActionRowBuilder<any>;
-    const ackBtn = (row.components[0] as ButtonBuilder).toJSON() as { custom_id: string };
-    expect(ackBtn.custom_id).toBe('sanguo:travel:ack');
+    const ids = row.components.map((c: any) => ((c as ButtonBuilder).toJSON() as { custom_id: string }).custom_id);
+    expect(ids).toEqual(['sanguo:battle:start', 'sanguo:battle:skip']); // D-01 battle row, not ack
   });
 
-  it('ack press (sanguo:travel:ack) clears encounterActive + sets updatedAt=now inside a FOR UPDATE tx, then edits the reply to the ack confirmation with components cleared (D-25, CR-09-05)', async () => {
-    mockDbReads([[USER_ROW], [XUCHANG_NODE]]);
-    const where = vi.fn((_q: any) => undefined);
-    const set = vi.fn((_v: any) => ({ where }));
-    const update = vi.fn((_t: any) => ({ set }));
-    const forUpdate = vi.fn().mockResolvedValue([
-      { encounterActive: true, userId: 42, toNodeId: 7, travelSecondsRemaining: 300 },
-    ]);
-    const txWhere = vi.fn(() => ({ for: forUpdate }));
-    const txFrom = vi.fn(() => ({ where: txWhere }));
-    const txSelect = vi.fn(() => ({ from: txFrom }));
-    (db.transaction as any).mockImplementation(async (cb: any) =>
-      cb({ select: txSelect, update }),
-    );
-
-    const interaction = mockButtonInteraction('sanguo:travel:ack');
-    await (travelModule as any).handleAckPress(interaction);
-
-    expect(interaction.deferUpdate).toHaveBeenCalled();
-    expect(forUpdate).toHaveBeenCalledWith('update'); // FOR UPDATE row lock (single writer)
-    expect(set.mock.calls[0]?.[0]).toMatchObject({
-      encounterActive: false,
-      updatedAt: expect.any(Date),
-    });
-    expect(where).toHaveBeenCalledTimes(1);
-
-    // CR-09-05: the reply replaces the stale encounter embed with the ack
-    // confirmation and clears the button (Discord PATCH merges — omitted
-    // components would leave the button interactive).
-    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
-    expect(reply.components).toEqual([]);
-    expect(reply.embeds?.[0]?.data?.title).toBe('sanguo:ack.title');
+  it('D-01 inversion: travel.ts no longer exports handleAckPress (retired with the ack route)', () => {
+    expect((travelModule as any).handleAckPress).toBeUndefined();
   });
 });

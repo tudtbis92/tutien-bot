@@ -12,11 +12,21 @@ import { buildSanguoMapEmbed, type SanguoMapEmbedData } from '../../ui/embeds/bu
 import { heroEmoji } from '../../assets/sanguoEmojis.js';
 import type { SupportedLocale } from '../../i18n/index.js';
 import { travelSubcommand, execute as travelExecute } from './travel.js';
+import { battleSubcommand, execute as battleExecute } from './battle.js';
 
-// Re-export the travel component handlers so the interaction router can find
+// Re-export the component handlers so the interaction router can find
 // them on the 'sanguo' command module (client.commands.get('sanguo') — Pitfall 3:
-// travel.ts must NOT export its own `data`; one command file owns the name).
-export { handleDestinationSelect, handleStartPress, handleAckPress } from './travel.js';
+// travel.ts/battle.ts must NOT export their own `data`; one command file owns
+// the name). handleAckPress is retired with the D-01 ack→battle inversion.
+export { handleDestinationSelect, handleStartPress } from './travel.js';
+export {
+  handleBattleStart,
+  handleBattleSkip,
+  handleCaptureOpen,
+  handleCaptureTierPress,
+  handleCaptureRetryPress,
+  handleCaptureRetreatPress,
+} from './battle.js';
 
 /* eslint-disable i18next/no-literal-string -- slash commands name/description are static Discord API strings */
 export const data = new SlashCommandBuilder()
@@ -35,7 +45,8 @@ export const data = new SlashCommandBuilder()
         'zh-CN': '查看三国地图',
       })
   )
-  .addSubcommand(travelSubcommand);
+  .addSubcommand(travelSubcommand)
+  .addSubcommand(battleSubcommand);
 /* eslint-enable i18next/no-literal-string */
 
 /**
@@ -71,6 +82,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const subcommand = interaction.options.getSubcommand();
   if (subcommand === 'travel') {
     await travelExecute(interaction);
+    return;
+  }
+  if (subcommand === 'battle') {
+    await battleExecute(interaction);
     return;
   }
   if (subcommand !== 'map') {
