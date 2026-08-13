@@ -115,14 +115,14 @@ Plans:
 
 ### Phase 9: Travel & Encounters
 
-**Goal**: Người chơi di chuyển real-time trên bản đồ mốc địa danh (trả Linh thạch theo khoảng cách, atomic) và nhận encounters dọc hành trình qua `sanguoTick` cron — core loop thời gian thực của game.
+**Goal**: Người chơi di chuyển real-time trên bản đồ mốc địa danh (time-only cost, atomic state) và nhận encounters dọc hành trình qua travel check-in khi gọi /sanguo travel — core loop thời gian thực của game.
 **Depends on**: Phase 8
 **Requirements**: TQC-06, TQC-07, TQC-08, TQC-09
 **Success Criteria** (what must be TRUE):
 
-  1. User can start travel to a map node with `/sanguo travel` — sees destination, ETA and cost; Linh thạch deducted atomically; arrival resolves at the displayed time.
-  2. User can cancel a journey mid-travel via the travel-cancel component — travel state resolves safely per the resolved charge model (no stuck/ghost journeys, no refund bugs).
-  3. User receives encounters along the route (rates scaled by route/zone, boss thường included) via REST notification even when the user's shard differs from the manager process.
+  1. User can start travel to a map node with `/sanguo travel` — sees destination and ETA; travel costs only time, never Linh thạch (D-01); arrival resolves at the displayed time when the player checks in (D-07).
+  2. User cannot cancel a journey; travel is a one-way commitment (D-03); position always equals the last arrived node; travel state resolves at arrival — no cancel, no refund path anywhere.
+  3. User receives encounters along the route (rates scaled by route/zone, boss thường included) when checking in with `/sanguo travel` — results are inline in the interaction on the user's own shard; no cron, no push notification (D-22/D-23).
   4. Encounter yield is capped per user (~20/hr) with cooldown enforced from day one — repeated travel cannot exceed the cap.
   5. Map/zone data research completed: node structure + 132 heroes distributed by zone/lore — consumed as seed data for travel and encounters.
 

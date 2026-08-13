@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-11
 - **One-line summary:** This is the design-gate document for the Tam Quốc (sanguo) sub-game economy — it fixes the sink/source model, the expected Linh thạch/hour bound below the tu vi cap, the convertibility matrix, and the net-sink/neutral hard constraint (D-19) that every Phase 9–11 money flow must satisfy before any content is authored.
+- **AMENDMENT (2026-08-12, Phase 9 D-01/D-22):** travel is now TIME-ONLY and PULL-BASED — no Linh thạch cost, no travel sink, and encounters accrue only when the player checks in with `/sanguo travel` (≤ 20/hr hard cap, but encounter SUPPLY = f(check-in cadence), not continuous). The main sink moves to the Phase 10 capture fee (D-02). This document's earlier travel-as-sink references (gating statement below) are superseded by the added line; a RE-SIGN with Phase 10 capture-fee values — assuming pull-driven encounter supply — is required before Phase 10 content ships (D-18 one-way gate).
 
 ---
 
@@ -77,7 +78,7 @@ The sanguo sub-game economy is denominated in **Linh thạch** (`users.balance`)
 |------|----|--------------|-------|
 | Tu vi | Linh thạch | **Never** | Tu vi is progression-only (`game.ts:14` cap context); no conversion path exists |
 | Linh thạch | Sinks (gather, farming subscriptions, football wagers) | Yes (spend) | Live sinks above; future sinks: travel, shop, evolution |
-| Linh thạch | Future travel / shop / evolution | Yes (spend) | Phase 9 (travel, TQC-06), Phase 11 (shop/evolution, TQC-16/TQC-15) — all must go through `wallet.deductBalance` (D-03) |
+| Linh thạch | Future travel / shop / evolution | Yes (spend) | Phase 11 (shop/evolution, TQC-16/TQC-15) — travel is time-only per D-01; all must go through `wallet.deductBalance` (D-03) |
 | Duplicate heroes | Hồn ngọc | Yes (Phase 11) | Tier-scaled, diminishing returns, daily conversion cap, **account-bound** (TQC-14) |
 | Hồn ngọc | Linh thạch | **Never** | Milestone v3 decision (STATE.md) — prevents dupe-loop economy collapse |
 | Free starter hero | Player collection | Yes (Phase 10, **only faucet**) | One free hero at onboarding (TQC-12); the ONLY faucet in the milestone (D-19 exception) |
@@ -116,7 +117,8 @@ For the sanguo sub-game: **total Linh thạch outflow (travel, items, evolution)
 
 **Gating statement — this sign-off is a prerequisite for content authoring in Phases 9–11 (D-18):**
 
-- **Phase 9** (travel costs TQC-06, encounter yields TQC-08) MUST comply with D-19 — travel prices are sinks, encounter yields must never turn the loop into a net source.
+- **Phase 9** (travel TQC-06 — time-only per D-01, no travel sink; encounter yields TQC-08) MUST comply with D-19 — encounter yields must never turn the loop into a net source.
+- Phase 9 travel contributes NO sink (D-01 — time-only); the Phase 10 capture fee is the planned main sink and MUST be priced + re-signed (D-02/D-18) assuming pull-driven encounter supply (check-in cadence ≤ 20/hr) before Phase 10 content ships.
 - **Phase 10** (TQC-12) — the starter faucet is the ONLY faucet; no other money-minting mechanic may be introduced.
 - **Phase 11** (TQC-14/15/16/17 — evolution fees, shop sinks, hồn ngọc conversion) MUST comply with D-19 and close the loop: every sink goes through `wallet.deductBalance` (D-03), hồn ngọc never converts to Linh thạch, boss drops are items only.
 - **No content work in Phases 9–11 may proceed on the assumption of a net source.**
