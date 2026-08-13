@@ -5,6 +5,9 @@
     },
     "travel": {
       "description": "Start a journey to a landmark"
+    },
+    "battle": {
+      "description": "Train against a random hero"
     }
   },
   "map": {
@@ -55,5 +58,33 @@
   "ack": {
     "title": "✅ Journey resumed",
     "body": "You overcome the encounter and continue your journey to **{{node}}**. {{eta}} remaining."
+  },
+  "battle": {
+    "fight_button": "Fight",
+    "skip_button": "Skip",
+    "log_title": "⚔️ Clash: {{player}} vs {{enemy}}",
+    "turn": "Round {{n}} — {{attacker}} → {{defender}}: **{{dmg}}** damage",
+    "turn_crit": "Round {{n}} — 💥 {{attacker}} crits {{defender}}: **{{dmg}}** damage",
+    "win": "🏆 Victory!",
+    "loss": "💔 Defeat — {{enemy}} has left",
+    "spar_hint": "Practice — no real HP loss, no rewards.",
+    "blocked_fainted": "Your companion **{{name}}** is exhausted. Switch heroes with /sanguo hero before fighting.",
+    "no_encounter": "No encounter is waiting.",
+    "error": "There was an error in the fight. Please try again."
+  },
+  "capture": {
+    "title": "🪤 Capture {{hero_emoji}} {{hero}}",
+    "chance": "Capture chance: **{{percent}}%**",
+    "open_button": "Capture",
+    "tier_button": "Tier {{tier}} — {{fee}} 💎",
+    "retry_button": "Try again",
+    "retreat_button": "Skip",
+    "success_title": "🎉 Captured {{hero_emoji}} {{hero}}!",
+    "fail_title": "❌ Capture failed",
+    "fail_body": "You can **Try again** (new fee) or **Skip**.",
+    "flee_title": "🏃 {{hero}} has fled!",
+    "retreat_body": "You skip {{hero}}. The journey continues.",
+    "insufficient": "Not enough Spirit Stones (need {{fee}} 💎). Check your balance and try again.",
+    "error": "There was an error capturing. Please try again."
   }
 }

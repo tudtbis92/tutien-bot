@@ -5,6 +5,9 @@
     },
     "travel": {
       "description": "Bắt đầu hành trình đến một địa danh"
+    },
+    "battle": {
+      "description": "Tập luyện với một hero ngẫu nhiên"
     }
   },
   "map": {
@@ -55,5 +58,33 @@
   "ack": {
     "title": "✅ Đã tiếp tục hành trình",
     "body": "Bạn vượt qua kỳ ngộ và tiếp tục hành trình đến **{{node}}**. Còn lại {{eta}}."
+  },
+  "battle": {
+    "fight_button": "Chiến đấu",
+    "skip_button": "Bỏ qua",
+    "log_title": "⚔️ Giao chiến: {{player}} vs {{enemy}}",
+    "turn": "Lượt {{n}} — {{attacker}} → {{defender}}: **{{dmg}}** sát thương",
+    "turn_crit": "Lượt {{n}} — 💥 {{attacker}} chí mạng {{defender}}: **{{dmg}}** sát thương",
+    "win": "🏆 Chiến thắng!",
+    "loss": "💔 Thất bại — {{enemy}} đã rời đi",
+    "spar_hint": "Tập luyện — không mất HP thật, không có phần thưởng.",
+    "blocked_fainted": "Hero đồng hành **{{name}}** đã kiệt sức. Đổi hero bằng /sanguo hero trước khi chiến đấu.",
+    "no_encounter": "Không có kỳ ngộ nào đang chờ.",
+    "error": "Có lỗi khi giao chiến. Hãy thử lại."
+  },
+  "capture": {
+    "title": "🪤 Thu phục {{hero_emoji}} {{hero}}",
+    "chance": "Tỷ lệ bắt: **{{percent}}%**",
+    "open_button": "Bắt",
+    "tier_button": "Mức {{tier}} — {{fee}} 💎",
+    "retry_button": "Bắt lại",
+    "retreat_button": "Bỏ qua",
+    "success_title": "🎉 Đã thu phục {{hero_emoji}} {{hero}}!",
+    "fail_title": "❌ Bắt thất bại",
+    "fail_body": "Bạn có thể **Bắt lại** (tính phí mới) hoặc **Bỏ qua**.",
+    "flee_title": "🏃 {{hero}} đã bỏ chạy!",
+    "retreat_body": "Bạn bỏ qua {{hero}}. Hành trình tiếp tục.",
+    "insufficient": "Không đủ Linh thạch (cần {{fee}} 💎). Hãy kiểm tra số dư và thử lại.",
+    "error": "Có lỗi khi thu phục. Hãy thử lại."
   }
 }

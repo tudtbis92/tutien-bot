@@ -5,6 +5,9 @@
     },
     "travel": {
       "description": "开始前往一处地名的旅程"
+    },
+    "battle": {
+      "description": "与随机英雄对战练习"
     }
   },
   "map": {
@@ -55,5 +58,33 @@
   "ack": {
     "title": "✅ 已继续旅程",
     "body": "你度过了奇遇，继续前往**{{node}}**。还剩{{eta}}。"
+  },
+  "battle": {
+    "fight_button": "战斗",
+    "skip_button": "跳过",
+    "log_title": "⚔️ 交战：{{player}} vs {{enemy}}",
+    "turn": "第{{n}}回合 — {{attacker}} → {{defender}}：**{{dmg}}** 伤害",
+    "turn_crit": "第{{n}}回合 — 💥 {{attacker}}暴击{{defender}}：**{{dmg}}** 伤害",
+    "win": "🏆 胜利！",
+    "loss": "💔 失败 — {{enemy}}已离开",
+    "spar_hint": "练习 — 不损失真实HP，没有奖励。",
+    "blocked_fainted": "同伴**{{name}}**已精疲力竭。战斗前请用 /sanguo hero 更换英雄。",
+    "no_encounter": "没有等待中的奇遇。",
+    "error": "交战时出错，请重试。"
+  },
+  "capture": {
+    "title": "🪤 收服 {{hero_emoji}} {{hero}}",
+    "chance": "捕捉概率：**{{percent}}%**",
+    "open_button": "捕捉",
+    "tier_button": "档位{{tier}} — {{fee}} 💎",
+    "retry_button": "再试一次",
+    "retreat_button": "跳过",
+    "success_title": "🎉 已收服 {{hero_emoji}} {{hero}}！",
+    "fail_title": "❌ 捕捉失败",
+    "fail_body": "你可以**再试一次**（需新费用）或**跳过**。",
+    "flee_title": "🏃 {{hero}}逃跑了！",
+    "retreat_body": "你跳过了{{hero}}。旅程继续。",
+    "insufficient": "灵石不足（需要{{fee}} 💎）。请检查余额后重试。",
+    "error": "收服时出错，请重试。"
   }
 }
