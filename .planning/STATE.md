@@ -5,15 +5,15 @@ milestone_name: Tam Quốc Collection
 current_phase: 10
 current_phase_name: Battle & Capture
 status: executing
-stopped_at: Completed 10-04-PLAN.md
-last_updated: "2026-08-13T07:54:22.517Z"
+stopped_at: Completed 10-05-PLAN.md
+last_updated: "2026-08-13T08:29:44.780Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 09 complete, transitioned to Phase 10
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # State: TuTien Bot
@@ -33,11 +33,11 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 ## Current Position
 
 Phase: 10 (Battle & Capture) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-08-13 — Phase 10 execution started
 
-Progress: [████████████████████] 9/9 plans ([████████░░] 81%)
+Progress: [████████████████████] 9/9 plans ([█████████░] 88%)
 
 ## Phase Registry (Milestone v3)
 
@@ -104,8 +104,8 @@ Progress: [████████████████████] 9/9 pla
 
 **Resume file:** None
 
-Last session: 2026-08-13T07:54:22.492Z
-Stopped at: Completed 10-04-PLAN.md
+Last session: 2026-08-13T08:29:44.755Z
+Stopped at: Completed 10-05-PLAN.md
 Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 
 ---
@@ -124,6 +124,7 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 | Phase 10-battle-capture P02 | 18min | 2 tasks | 10 files |
 | Phase 10-battle-capture P03 | 6 | 3 tasks | 3 files |
 | Phase 10-battle-capture P04 | 21 min | 2 tasks | 2 files |
+| Phase 10-battle-capture P05 | 22min | 3 tasks | 5 files |
 
 ## Quick Tasks Completed
 
@@ -153,3 +154,5 @@ Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
 - [Phase 10-battle-capture]: A2 template generation adopted: per-class stat templates + prominence (rarity) modifiers + deterministic FNV-1a hash jitter; no per-hero research round (RESEARCH OQ2 default)
 - [Phase 10-battle-capture]: Rarity binned to signed D-20 distribution at exactly 79/33/13/5/2 for 132 (per-bin deviation <=0.7, within +/-2 tolerance)
 - [Phase 10-battle-capture]: Public tier = rarity + hash jitter (-1/0/+1) clamped 1-5 — independent of hidden rarity, never derived at render time (D-12)
+- [Phase 10-battle-capture]: captureChance pity term is pity x PITY_INCREMENT (5pp per failure), not the raw count - the plan's literal '+ pity' would add +1.0 per failure; Task-3 contract (chance2 - chance1 === PITY_INCREMENT) pins the D-11 scaling — Rule 1 fix cc8fe40 - the D-11 bad-luck protection is +5pp per failed attempt, scaled by the failure count
+- [Phase 10-battle-capture]: Boss capture guarded with BOSS_CAPTURE_UNAVAILABLE pre-fee: encounter_runs.hero_id NULL for bosses (A3) + user_heroes.hero_id NOT NULL -> no heroes row for a captured boss; the literal insert would crash mid-tx. D-13 boss-capture mapping deferred (WINDOWS.md #5) — Rule 1 fix in 3b70abe - correctness: fail cleanly before charging
