@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { db } from '../../../db/client.js';
-import { deductHonNgoc, convertDuplicate, levelUp, evolveHero, TIER_VALUE } from '../soulgemService.js';
+import {
+  deductHonNgoc,
+  convertDuplicate,
+  levelUp,
+  evolveHero,
+  rerollSkill,
+  TIER_VALUE,
+} from '../soulgemService.js';
 import { userHeroes } from '../../../db/schema/userHeroes.js';
 import { userHeroSoulgems } from '../../../db/schema/userHeroSoulgems.js';
 import { userSanguoState } from '../../../db/schema/userSanguoState.js';
@@ -400,5 +407,106 @@ describe('evolveHero — level-gated tier evolution (D-06/D-07/D-09)', () => {
     await expect(promise).rejects.toThrow('T3_GATED');
     expect(tx.update).not.toHaveBeenCalled();
     expect(tx.insert).not.toHaveBeenCalled();
+  });
+});
+
+// ── rerollSkill (D-32 — TM-style, ONE slot at a time, crypto RNG) ────────────
+
+describe('rerollSkill — class-pool slot reroll (D-32 / D-30)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // The copy row as the service's projected lock read (userHeroes + heroes.class).
+  const COPY_VANGUARD = {
+    id: 11,
+    userId: USER_ID,
+    heroId: 5,
+    level: 1,
+    tier: 0,
+    skillNormalId: 101,
+    skillSpecialId: null,
+    heroClass: 'vanguard',
+  };
+  const NORMAL_COMMON = {
+    id: 101, code: 'vanguard_normal_common', class: 'vanguard', slot: 'normal',
+    rarity: 'common', mpCost: 0, mpGain: 12, effectType: 'damage', effectValue: 100, emoji: '🗡️',
+  };
+  const NORMAL_RARE = {
+    id: 102, code: 'vanguard_normal_rare', class: 'vanguard', slot: 'normal',
+    rarity: 'rare', mpCost: 0, mpGain: 12, effectType: 'damage', effectValue: 120, emoji: '⚔️',
+  };
+  const SPECIAL_COMMON = {
+    id: 201, code: 'vanguard_special_common', class: 'vanguard', slot: 'special',
+    rarity: 'common', mpCost: 15, mpGain: 0, effectType: 'damage', effectValue: 150, emoji: '💥',
+  };
+  const SPECIAL_RARE = {
+    id: 202, code: 'vanguard_special_rare', class: 'vanguard', slot: 'special',
+    rarity: 'rare', mpCost: 25, mpGain: 0, effectType: 'damage', effectValue: 200, emoji: '🔥',
+  };
+
+  it('R1: a copy with 10 hồn ngọc re-rolls the normal slot → charges REROLL_COST, the slot skill changes (injectable rng picks the rare), ledger type reroll', async () => {
+    const { promise, tx, updateSet, insertValues } = runInTx(
+      [
+        [COPY_VANGUARD],                     // copy lock + class (innerJoin)
+        [{ amount: 0 }],                     // deduct returning (10 − 10)
+        [NORMAL_COMMON, NORMAL_RARE],        // the vanguard NORMAL pool
+      ],
+      // rng 0.9 → cumulative walk: common w 80 → 90−80=10 > 0 → rare w 20 → 10−20≤0 → RARE.
+      () => rerollSkill(USER_ID, 11, 'normal', () => 0.9),
+    );
+
+    await expect(promise).resolves.toEqual({ newSkillCode: 'vanguard_normal_rare' });
+    // The slot write targets skillNormalId (slot isolation — normal reroll).
+    const normalSet = updateSet.mock.calls.find((c: any) => c[0]?.skillNormalId !== undefined)?.[0];
+    expect(normalSet).toMatchObject({ skillNormalId: 102 });
+    expect(updateSet).not.toHaveBeenCalledWith(expect.objectContaining({ skillSpecialId: 202 }));
+
+    // The ledger row records the −10 spend.
+    const ledger = insertValues.mock.calls.find((c: any) => c[0]?.type === 'reroll')?.[0];
+    expect(ledger).toMatchObject({
+      userId: USER_ID,
+      heroId: 5,
+      type: 'reroll',
+      amount: -10,
+      balanceAfter: 0,
+    });
+    expect(tx.update).toHaveBeenCalledWith(userHeroSoulgems); // the WHERE-guard charge
+  });
+
+  it('R2: pool 9 → INSUFFICIENT_HON_NGOC, the skill column is UNCHANGED (whole tx rolls back)', async () => {
+    const { promise, tx } = runInTx(
+      [
+        [COPY_VANGUARD],
+        [],                                // deduct matches zero rows (pool < 10)
+      ],
+      () => rerollSkill(USER_ID, 11, 'normal', () => 0.1),
+    );
+
+    await expect(promise).rejects.toThrow('INSUFFICIENT_HON_NGOC');
+    // No skill write ever ran.
+    expect(tx.update).not.toHaveBeenCalledWith(userHeroes);
+    expect(tx.insert).not.toHaveBeenCalled();
+  });
+
+  it('R3: slot isolation — the SPECIAL reroll draws ONLY from the class special pool and writes skillSpecialId', async () => {
+    const { promise, updateSet } = runInTx(
+      [
+        [COPY_VANGUARD],
+        [{ amount: 0 }],                   // deduct returning (10 − 10)
+        [SPECIAL_COMMON, SPECIAL_RARE],    // the vanguard SPECIAL pool ONLY
+      ],
+      // rng 0.9 → cumulative walk: common w 60 → 90−60=30 > 0 → rare w 30 → 30−30≤0 → RARE.
+      () => rerollSkill(USER_ID, 11, 'special', () => 0.9),
+    );
+
+    await expect(promise).resolves.toEqual({ newSkillCode: 'vanguard_special_rare' });
+    const specialSet = updateSet.mock.calls.find((c: any) => c[0]?.skillSpecialId !== undefined)?.[0];
+    expect(specialSet).toMatchObject({ skillSpecialId: 202 });
+    // A normal-slot column was NEVER written by a special reroll.
+    expect(updateSet).not.toHaveBeenCalledWith(expect.objectContaining({ skillNormalId: 102 }));
   });
 });
