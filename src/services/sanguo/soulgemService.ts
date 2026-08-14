@@ -7,11 +7,14 @@ import { userSanguoState } from '../../db/schema/userSanguoState.js';
 import { sanguoItems } from '../../db/schema/sanguoItems.js';
 import { userSanguoItems } from '../../db/schema/userSanguoItems.js';
 import { userLegionSlots } from '../../db/schema/userLegions.js';
+import { LEVEL_COST, MAX_LEVEL, EVOLUTION_COSTS } from '../../constants/sanguoProgression.js';
 
 /**
  * Hồn ngọc progression service (Phase 11 — TQC-14/TQC-15, D-01..D-12, D-32).
  * Task 1 (TRACER): the conversion tx + the WHERE-guard deduction primitive.
- * levelUp/evolveHero/rerollSkill land in Tasks 2/3 on the same patterns.
+ * Task 2: levelUp + evolveHero — explicit hồn ngọc-sink actions on the same
+ * single-writer pattern (one FOR UPDATE tx per action; the pool row is locked
+ * by the WHERE-guard UPDATE itself, the target copy by a FOR UPDATE read).
  *
  * Every hồn ngọc mutation (convert / level / evolve / reroll) runs in ONE
  * FOR UPDATE transaction that locks the user's OWN rows (the target
@@ -225,5 +228,137 @@ export async function convertDuplicate(
     });
 
     return { yield: yieldAmount, boosterUsed };
+  });
+}
+
+/**
+ * D-05/D-01: level ONE copy by one — an EXPLICIT hồn ngọc action (never
+ * passive), charged from the per-hero pool via the WHERE-guard primitive.
+ *
+ * ONE tx (single-writer): FOR UPDATE lock the copy (ownership re-gate) →
+ * LEVEL_MAX guard (hard cap 100) → cost = LEVEL_COST(current level) →
+ * deductHonNgoc (pool row locked by the conditional UPDATE; zero rows →
+ * INSUFFICIENT_HON_NGOC → whole tx rolls back) → level+1 write on the copy →
+ * ledger row { type: 'level', amount: −cost, balanceAfter }.
+ *
+ * Level is PER-COPY (each copy has its own level column — D-34); the cost
+ * curve is identical across tiers (D-05 — evolution never inflates leveling).
+ * IVs are NEVER re-rolled by leveling (D-02 Phase 10 / D-07).
+ *
+ * @throws Error('NOT_OWNED') — forged copy id.
+ * @throws Error('LEVEL_MAX') — the copy is already at MAX_LEVEL (100).
+ * @throws Error('INSUFFICIENT_HON_NGOC') — pool < LEVEL_COST(level).
+ */
+export async function levelUp(
+  userId: number,
+  userHeroId: number,
+): Promise<{ newLevel: number; cost: number }> {
+  return db.transaction(async (tx) => {
+    // 1. FOR UPDATE lock the copy — ownership re-gate inside the tx.
+    const [copy] = await tx
+      .select()
+      .from(userHeroes)
+      .where(and(eq(userHeroes.id, userHeroId), eq(userHeroes.userId, userId)))
+      .for('update');
+    if (!copy) throw new Error('NOT_OWNED');
+
+    // 2. Hard level cap (D-01) — checked BEFORE any charge.
+    if (copy.level >= MAX_LEVEL) throw new Error('LEVEL_MAX');
+
+    // 3. Accelerating cost from the hidden balance contract (D-05) — resolved
+    //    server-side, NEVER from the press payload (anti-tamper).
+    const cost = LEVEL_COST(copy.level);
+
+    // 4. WHERE-guard deduction — the single anti-double-spend control; a
+    //    failed deduction throws INSUFFICIENT_HON_NGOC and rolls back the
+    //    whole tx, so the level write below can never run uncharged.
+    const balanceAfter = await deductHonNgoc(tx, userId, copy.heroId, cost);
+
+    // 5. Level write — per-copy column, in the SAME tx as the charge.
+    await tx
+      .update(userHeroes)
+      .set({ level: copy.level + 1 })
+      .where(eq(userHeroes.id, copy.id));
+
+    // 6. Audit ledger row (repudiation — Phase 12 TQC-19).
+    await tx.insert(soulgemTransactions).values({
+      userId,
+      heroId: copy.heroId,
+      type: 'level',
+      amount: -cost,
+      balanceAfter,
+    });
+
+    return { newLevel: copy.level + 1, cost };
+  });
+}
+
+/**
+ * D-06/D-07/D-09: evolve ONE copy to the next tier — EXPLICIT (never
+ * automatic at the threshold), gated by level + hồn ngọc cost.
+ *
+ * ONE tx (single-writer): FOR UPDATE lock the copy (ownership re-gate) →
+ * T3_GATED guard (t2→t3 needs L80+ AND an event item — unreachable in v3) →
+ * level gate (L20 for t0→t1, L50 for t1→t2 — inclusive) → cost from
+ * EVOLUTION_COSTS → deductHonNgoc → tier+1 write on the copy → ledger row
+ * { type: 'evolve', amount: −cost, balanceAfter }.
+ *
+ * Evolution does NOT block leveling and NEVER re-rolls IVs (D-06/D-07 —
+ * IVs stay capture-locked). The emoji swap to the t1/t2 spritesheet variant
+ * (heroEmoji(heroId, newTier)) happens at the COMMAND layer (D-07).
+ *
+ * @throws Error('NOT_OWNED') — forged copy id.
+ * @throws Error('T3_GATED') — tier >= 2 (t3 needs L80+ AND an event item).
+ * @throws Error('LEVEL_REQUIRED') — below the tier's level gate (L20/L50).
+ * @throws Error('INSUFFICIENT_HON_NGOC') — pool < EVOLUTION_COSTS[newTier].
+ */
+export async function evolveHero(
+  userId: number,
+  userHeroId: number,
+): Promise<{ newTier: number; cost: number }> {
+  return db.transaction(async (tx) => {
+    // 1. FOR UPDATE lock the copy — ownership re-gate inside the tx.
+    const [copy] = await tx
+      .select()
+      .from(userHeroes)
+      .where(and(eq(userHeroes.id, userHeroId), eq(userHeroes.userId, userId)))
+      .for('update');
+    if (!copy) throw new Error('NOT_OWNED');
+
+    // 2. D-09: t2 → t3 is schema-gated — L80+ AND an event item, unreachable
+    //    in v3 by design (the evolve button renders disabled with
+    //    evolve.t3_gated at the command layer).
+    if (copy.tier >= 2) throw new Error('T3_GATED');
+
+    // 3. Level gate (D-06) — INCLUSIVE thresholds: exactly L20 may evolve to
+    //    t1, exactly L50 to t2 (flagged assumption, 11-03).
+    const targetTier = copy.tier + 1;
+    const levelRequired = targetTier === 1 ? 20 : 50;
+    if (copy.level < levelRequired) throw new Error('LEVEL_REQUIRED');
+
+    // 4. Cost from the hidden balance contract (D-06/D-09) — server-side.
+    const cost = EVOLUTION_COSTS[targetTier];
+
+    // 5. WHERE-guard deduction — rollback on insufficient pool.
+    const balanceAfter = await deductHonNgoc(tx, userId, copy.heroId, cost);
+
+    // 6. Tier write — in the SAME tx as the charge (D-10: user_heroes.tier is
+    //    the single source of truth for both player evolution AND the
+    //    captured boss's tier).
+    await tx
+      .update(userHeroes)
+      .set({ tier: targetTier })
+      .where(eq(userHeroes.id, copy.id));
+
+    // 7. Audit ledger row (repudiation — Phase 12 TQC-19).
+    await tx.insert(soulgemTransactions).values({
+      userId,
+      heroId: copy.heroId,
+      type: 'evolve',
+      amount: -cost,
+      balanceAfter,
+    });
+
+    return { newTier: targetTier, cost };
   });
 }

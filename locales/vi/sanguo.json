@@ -138,6 +138,25 @@
     "in_formation": "Không thể chuyển hóa bản đang nằm trong đội hình.",
     "error": "Có lỗi khi chuyển hóa. Hãy thử lại."
   },
+  "level": {
+    "title": "⬆️ Tăng cấp {{hero_emoji}} {{name}}",
+    "cost_line": "Cấp tiếp theo: **{{cost}}** 🧿",
+    "button": "Tăng cấp ({{cost}} 🧿)",
+    "up": "⬆️ {{name}} đã lên **Lv{{level}}**!",
+    "max": "{{name}} đã đạt cấp tối đa (**Lv100**).",
+    "insufficient": "Không đủ hồn ngọc (cần {{cost}} 🧿). Chuyển hóa bản trùng để có thêm.",
+    "error": "Có lỗi khi tăng cấp. Hãy thử lại."
+  },
+  "evolve": {
+    "title": "✨ Tiến hóa {{hero_emoji}} {{name}}",
+    "button": "Tiến hóa ({{cost}} 🧿)",
+    "requirement": "Cần **Lv{{req}}** để tiến hóa",
+    "level_required": "{{name}} cần đạt **Lv{{req}}** trước khi tiến hóa.",
+    "done": "🎉 {{hero_emoji}} {{name}} đã tiến hóa thành {{new_emoji}} **{{new_tier}}**!",
+    "t3_gated": "Bậc t3 chưa mở — cần vật phẩm sự kiện đặc biệt.",
+    "insufficient": "Không đủ hồn ngọc (cần {{cost}} 🧿).",
+    "error": "Có lỗi khi tiến hóa. Hãy thử lại."
+  },
   "skills": {
     "normal_label": "Đánh thường",
     "special_label": "Kỹ năng đặc biệt",

@@ -138,6 +138,25 @@
     "in_formation": "编入军阵的英雄不可转换。",
     "error": "转换时出错，请重试。"
   },
+  "level": {
+    "title": "⬆️ 升级 {{hero_emoji}} {{name}}",
+    "cost_line": "下一级: **{{cost}}** 🧿",
+    "button": "升级 ({{cost}} 🧿)",
+    "up": "⬆️ {{name}} 已达 **Lv{{level}}**！",
+    "max": "{{name}} 已达等级上限 (**Lv100**)。",
+    "insufficient": "魂玉不足 (需要 {{cost}} 🧿)。转换重复英雄可获得更多。",
+    "error": "升级时出错，请重试。"
+  },
+  "evolve": {
+    "title": "✨ 进化 {{hero_emoji}} {{name}}",
+    "button": "进化 ({{cost}} 🧿)",
+    "requirement": "需要 **Lv{{req}}** 才能进化",
+    "level_required": "{{name}} 需要达到 **Lv{{req}}** 才能进化。",
+    "done": "🎉 {{hero_emoji}} {{name}} 已进化为 {{new_emoji}} **{{new_tier}}**！",
+    "t3_gated": "t3 阶尚未开放 — 需要特殊活动道具。",
+    "insufficient": "魂玉不足 (需要 {{cost}} 🧿)。",
+    "error": "进化时出错，请重试。"
+  },
   "skills": {
     "normal_label": "普通攻击",
     "special_label": "特殊技能",

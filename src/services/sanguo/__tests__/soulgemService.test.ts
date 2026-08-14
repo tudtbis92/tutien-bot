@@ -256,7 +256,7 @@ describe('levelUp — explicit hồn ngọc leveling (D-05/D-01)', () => {
   });
 
   it('L1 copy with a pool of 10 levels to L2 and charges LEVEL_COST(1)=1 (pool 9)', async () => {
-    const { promise, tx, updateSet, insertValues } = runInTx(
+    const { promise, tx, updateSet, insert, insertValues } = runInTx(
       [
         [{ ...COPY_T0, level: 1 }],   // copy lock (L1)
         [{ amount: 9 }],              // deduct returning (10 - 1)

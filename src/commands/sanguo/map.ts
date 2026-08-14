@@ -37,6 +37,8 @@ export {
   handleCopyPress,
   handleCopyPage,
   handleConvertPress,
+  handleLevelPress,
+  handleEvolvePress,
 } from './hero.js';
 
 /* eslint-disable i18next/no-literal-string -- slash commands name/description are static Discord API strings */

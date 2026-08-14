@@ -15,7 +15,9 @@ import { userSanguoState } from '../../db/schema/userSanguoState.js';
 import { userSanguoItems } from '../../db/schema/userSanguoItems.js';
 import { sanguoItems } from '../../db/schema/sanguoItems.js';
 import { sanguoSkills } from '../../db/schema/sanguoSkills.js';
-import { heroEmoji } from '../../assets/sanguoEmojis.js';
+import { userHeroSoulgems } from '../../db/schema/userHeroSoulgems.js';
+import { heroEmoji, type SanguoTier } from '../../assets/sanguoEmojis.js';
+import { LEVEL_COST, MAX_LEVEL, EVOLUTION_COSTS } from '../../constants/sanguoProgression.js';
 import type { SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { resolveComponentUser as resolveInteractionUser } from '../../utils/componentContext.js';
@@ -27,7 +29,15 @@ import { COMPANION_PREFIX, buildCompanionButton } from '../../ui/components/sang
 import { buildSanguoHeroCopyMenu } from '../../ui/components/sanguoHeroCopyMenu.js';
 import { COPY_PAGE_PREFIX, buildSanguoHeroPageButtons } from '../../ui/components/sanguoHeroPageButtons.js';
 import { CONVERT_PREFIX, buildSanguoConvertButton } from '../../ui/components/sanguoConvertButton.js';
-import { convertDuplicate, TIER_VALUE, BOOSTER_ITEM_CODE } from '../../services/sanguo/soulgemService.js';
+import { LEVEL_PREFIX, buildSanguoLevelButton } from '../../ui/components/sanguoLevelButton.js';
+import { EVOLVE_PREFIX, buildSanguoEvolveButton } from '../../ui/components/sanguoEvolveButton.js';
+import {
+  convertDuplicate,
+  levelUp,
+  evolveHero,
+  TIER_VALUE,
+  BOOSTER_ITEM_CODE,
+} from '../../services/sanguo/soulgemService.js';
 
 /**
  * /sanguo hero command (Phase 10 — TQC-13, D-16/D-04).
@@ -97,9 +107,9 @@ function pickName(row: PerLocaleName, locale: SupportedLocale): string {
   return row.nameVi;
 }
 
-function safeHeroEmoji(heroId: string): string | undefined {
+function safeHeroEmoji(heroId: string, tier: number = 0): string | undefined {
   try {
-    return heroEmoji(heroId);
+    return heroEmoji(heroId, tier as SanguoTier);
   } catch {
     // EMOJI_NOT_FOUND → name-only rendering (map.ts:98 pattern)
     return undefined;
@@ -306,6 +316,15 @@ async function renderCopyDetail(
     boosterOwned = (ownedBooster?.quantity ?? 0) >= 1;
   }
 
+  // 5b. Per-hero hồn ngọc pool — the level/evolve disabled-state arbiter
+  //     (spendable resource, VISIBLE per D-12). Missing row = 0 hồn ngọc.
+  const [poolRow] = await db
+    .select({ amount: userHeroSoulgems.amount })
+    .from(userHeroSoulgems)
+    .where(and(eq(userHeroSoulgems.userId, userId), eq(userHeroSoulgems.heroId, target.heroId)))
+    .limit(1);
+  const poolAmount = poolRow?.amount ?? 0;
+
   // 6. Embed — existing fields + copy list + skills (visible only, D-12).
   const gradeFor = (c: Pick<CopyRow, 'ivStr' | 'ivAgi' | 'ivInt' | 'ivMov' | 'ivLea' | 'ivCha'>): string =>
     t(ivGradeKey(c.ivStr, c.ivAgi, c.ivInt, c.ivMov, c.ivLea, c.ivCha));
@@ -380,10 +399,45 @@ async function renderCopyDetail(
   }
 
   const convertAmount = TIER_VALUE[target.tier] * (boosterOwned ? 2 : 1);
+
+  // Level-button state (D-01/D-05): disabled at the hard cap or when the pool
+  // cannot cover the next cost — label shows the block reason, never a
+  // guaranteed-error press.
+  const levelCost = LEVEL_COST(target.level);
+  const levelAtMax = target.level >= MAX_LEVEL;
+  const levelDisabled = levelAtMax || poolAmount < levelCost;
+  const levelLabel = levelAtMax
+    ? t('sanguo:level.max', { name: pickName(target, locale) })
+    : poolAmount < levelCost
+      ? t('sanguo:level.insufficient', { cost: levelCost })
+      : undefined;
+
+  // Evolve-button state (D-06/D-07/D-09, UI-SPEC): disabled until the level
+  // gate + sufficient hồn ngọc; t2+ copies are gated forever in v3.
+  const evolveTargetTier = target.tier + 1;
+  const evolveCost = EVOLUTION_COSTS[evolveTargetTier] ?? 0;
+  let evolveDisabled = false;
+  let evolveLabel: string | undefined;
+  if (target.tier >= 2) {
+    evolveDisabled = true;
+    evolveLabel = t('sanguo:evolve.t3_gated');
+  } else {
+    const evolveReq = evolveTargetTier === 1 ? 20 : 50;
+    if (target.level < evolveReq) {
+      evolveDisabled = true;
+      evolveLabel = t('sanguo:evolve.requirement', { req: evolveReq });
+    } else if (poolAmount < evolveCost) {
+      evolveDisabled = true;
+      evolveLabel = t('sanguo:evolve.insufficient', { cost: evolveCost });
+    }
+  }
+
   const actionRow = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
     // User amendment: the ACTIVE companion is never convertible — disabled
     // at render (the service enforces ACTIVE_COMPANION server-side too).
     buildSanguoConvertButton(t, { userHeroId: target.id, amount: convertAmount, disabled: isActive }),
+    buildSanguoLevelButton(t, { userHeroId: target.id, cost: levelCost, disabled: levelDisabled, label: levelLabel }),
+    buildSanguoEvolveButton(t, { userHeroId: target.id, cost: evolveCost, disabled: evolveDisabled, label: evolveLabel }),
     buildCompanionButton(t, target.id, isActive),
   );
   rows.push(actionRow);
@@ -702,6 +756,197 @@ export async function handleConvertPress(interaction: ButtonInteraction): Promis
     logger.error('HeroConvertPress', 'Error converting duplicate', err);
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:convert.error'), shardId)],
+      components: [],
+    });
+  }
+}
+
+/**
+ * D-05 level press — charges LEVEL_COST from the per-hero pool (ONE tx,
+ * WHERE-guard) and renders the progression-result embed (SUCCESS —
+ * level.title + level.up with the NEW level only; NEVER stat deltas, D-12).
+ * The display data (name/emoji) is read BEFORE the tx — the level write is
+ * inside it.
+ */
+export async function handleLevelPress(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferUpdate();
+  const ctx = await resolveInteractionUser(interaction);
+  if (!ctx) return;
+  const { userId, t, locale, shardId } = ctx;
+
+  const rawId = interaction.customId.slice(LEVEL_PREFIX.length + 1);
+  const uhId = parseInt(rawId, 10);
+  if (isNaN(uhId)) {
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+      components: [],
+    });
+    return;
+  }
+
+  let copy: OwnedHeroRow | null = null;
+  try {
+    // Display data (pre-read — the level write is inside the tx).
+    [copy] = await db
+      .select(OWNED_COLUMNS)
+      .from(userHeroes)
+      .innerJoin(heroes, eq(userHeroes.heroId, heroes.id))
+      .where(eq(userHeroes.id, uhId))
+      .limit(1);
+    if (!copy || copy.userId !== userId) throw new Error('NOT_OWNED');
+
+    const result = await levelUp(userId, uhId);
+
+    await interaction.editReply({
+      embeds: [
+        buildSanguoProgressionResultEmbed({
+          state: 'success',
+          title: t('sanguo:level.title', {
+            hero_emoji: safeHeroEmoji(copy.heroHeroId) ?? '',
+            name: pickName(copy, locale),
+          }),
+          // D-12: level ONLY — never stat deltas / base stats / multipliers.
+          lines: [t('sanguo:level.up', { name: pickName(copy, locale), level: result.newLevel })],
+          shardId,
+        }),
+      ],
+      components: [],
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === 'NOT_OWNED') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'LEVEL_MAX') {
+      await interaction.editReply({
+        embeds: [
+          buildErrorEmbed(
+            t('sanguo:level.max', { name: copy ? pickName(copy, locale) : '' }),
+            shardId,
+          ),
+        ],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'INSUFFICIENT_HON_NGOC') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:level.insufficient', { cost: 0 }), shardId)],
+        components: [],
+      });
+      return;
+    }
+    logger.error('HeroLevelPress', 'Error leveling up', err);
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:level.error'), shardId)],
+      components: [],
+    });
+  }
+}
+
+/**
+ * D-06/D-07 evolve press — charges EVOLUTION_COSTS from the per-hero pool and
+ * renders the progression-result embed (SUCCESS — evolve.done with the NEW
+ * t1/t2 spritesheet emoji via heroEmoji(heroId, newTier), D-07). The display
+ * data (name/emoji/tier) is read BEFORE the tx — the tier write is inside it.
+ */
+export async function handleEvolvePress(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferUpdate();
+  const ctx = await resolveInteractionUser(interaction);
+  if (!ctx) return;
+  const { userId, t, locale, shardId } = ctx;
+
+  const rawId = interaction.customId.slice(EVOLVE_PREFIX.length + 1);
+  const uhId = parseInt(rawId, 10);
+  if (isNaN(uhId)) {
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+      components: [],
+    });
+    return;
+  }
+
+  let copy: OwnedHeroRow | null = null;
+  try {
+    // Display data (pre-read — the tier write is inside the tx).
+    [copy] = await db
+      .select(OWNED_COLUMNS)
+      .from(userHeroes)
+      .innerJoin(heroes, eq(userHeroes.heroId, heroes.id))
+      .where(eq(userHeroes.id, uhId))
+      .limit(1);
+    if (!copy || copy.userId !== userId) throw new Error('NOT_OWNED');
+
+    const result = await evolveHero(userId, uhId);
+    const name = pickName(copy, locale);
+
+    await interaction.editReply({
+      embeds: [
+        buildSanguoProgressionResultEmbed({
+          state: 'success',
+          title: t('sanguo:evolve.title', {
+            hero_emoji: safeHeroEmoji(copy.heroHeroId) ?? '',
+            name,
+          }),
+          // D-07: the NEW emoji is the t1/t2 spritesheet variant; the tier
+          // renders as the public ★ badge — NEVER stat deltas (D-12).
+          lines: [
+            t('sanguo:evolve.done', {
+              hero_emoji: safeHeroEmoji(copy.heroHeroId) ?? '',
+              name,
+              new_emoji: safeHeroEmoji(copy.heroHeroId, result.newTier) ?? '',
+              new_tier: '★'.repeat(result.newTier),
+            }),
+          ],
+          shardId,
+        }),
+      ],
+      components: [],
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === 'NOT_OWNED') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'LEVEL_REQUIRED') {
+      // The gate error only surfaces AFTER the pre-read succeeded — copy is
+      // non-null here; t0→t1 needs L20, t1→t2 needs L50.
+      const req = copy ? (copy.tier === 1 ? 50 : 20) : 20;
+      await interaction.editReply({
+        embeds: [
+          buildErrorEmbed(
+            t('sanguo:evolve.level_required', { name: copy ? pickName(copy, locale) : '', req }),
+            shardId,
+          ),
+        ],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'T3_GATED') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:evolve.t3_gated'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'INSUFFICIENT_HON_NGOC') {
+      const cost = copy ? (EVOLUTION_COSTS[copy.tier + 1] ?? 0) : 0;
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:evolve.insufficient', { cost }), shardId)],
+        components: [],
+      });
+      return;
+    }
+    logger.error('HeroEvolvePress', 'Error evolving hero', err);
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:evolve.error'), shardId)],
       components: [],
     });
   }

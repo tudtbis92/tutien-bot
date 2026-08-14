@@ -31,6 +31,8 @@ import { COMPANION_PREFIX } from '../ui/components/sanguoHeroCompanionButton.js'
 import { COPY_MENU_ID } from '../ui/components/sanguoHeroCopyMenu.js';
 import { COPY_PAGE_PREFIX } from '../ui/components/sanguoHeroPageButtons.js';
 import { CONVERT_PREFIX } from '../ui/components/sanguoConvertButton.js';
+import { LEVEL_PREFIX } from '../ui/components/sanguoLevelButton.js';
+import { EVOLVE_PREFIX } from '../ui/components/sanguoEvolveButton.js';
 
 export const name = Events.InteractionCreate;
 
@@ -52,6 +54,8 @@ interface SanguoComponentHandlers {
   handleCopyPress?: (interaction: StringSelectMenuInteraction) => Promise<void>;
   handleCopyPage?: (interaction: ButtonInteraction) => Promise<void>;
   handleConvertPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleLevelPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleEvolvePress?: (interaction: ButtonInteraction) => Promise<void>;
 }
 
 export async function execute(interaction: Interaction): Promise<void> {
@@ -224,6 +228,40 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo convert button', err);
+      }
+      return;
+    }
+
+    // sanguo:level:go — D-05 explicit leveling (customId
+    // 'sanguo:level:go:{userHeroId}' carries ONLY the copy id — the cost
+    // NEVER rides the payload; LEVEL_COST resolves server-side inside the tx).
+    if (customId.startsWith(LEVEL_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleLevelPress === 'function') {
+          await cmd.handleLevelPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo level button', err);
+      }
+      return;
+    }
+
+    // sanguo:evolve:go — D-06 explicit evolution (customId
+    // 'sanguo:evolve:go:{userHeroId}' carries ONLY the copy id — the cost
+    // NEVER rides the payload; EVOLUTION_COSTS resolve server-side).
+    if (customId.startsWith(EVOLVE_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleEvolvePress === 'function') {
+          await cmd.handleEvolvePress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo evolve button', err);
       }
       return;
     }

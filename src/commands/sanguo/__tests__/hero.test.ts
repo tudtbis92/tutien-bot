@@ -9,12 +9,14 @@ import {
 } from 'discord.js';
 import { db } from '../../../db/client.js';
 import { fetchCommandContext } from '../../../utils/commandContext.js';
-import { execute, handleCompanionPress, handleCopyPress, handleCopyPage, handleConvertPress } from '../hero.js';
+import { execute, handleCompanionPress, handleCopyPress, handleCopyPage, handleConvertPress, handleLevelPress, handleEvolvePress } from '../hero.js';
 import { COMPANION_PREFIX } from '../../../ui/components/sanguoHeroCompanionButton.js';
 import { COPY_MENU_ID } from '../../../ui/components/sanguoHeroCopyMenu.js';
 import { COPY_PAGE_PREFIX } from '../../../ui/components/sanguoHeroPageButtons.js';
 import { CONVERT_PREFIX } from '../../../ui/components/sanguoConvertButton.js';
-import { convertDuplicate } from '../../../services/sanguo/soulgemService.js';
+import { LEVEL_PREFIX } from '../../../ui/components/sanguoLevelButton.js';
+import { EVOLVE_PREFIX } from '../../../ui/components/sanguoEvolveButton.js';
+import { convertDuplicate, levelUp, evolveHero } from '../../../services/sanguo/soulgemService.js';
 
 vi.mock('../../../db/client.js', () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -26,6 +28,8 @@ vi.mock('../../../utils/commandContext.js', () => ({
 
 vi.mock('../../../services/sanguo/soulgemService.js', () => ({
   convertDuplicate: vi.fn(),
+  levelUp: vi.fn(),
+  evolveHero: vi.fn(),
   TIER_VALUE: { 0: 1, 1: 5, 2: 10, 3: 20 },
   BOOSTER_ITEM_CODE: 'booster_x2',
 }));
@@ -86,6 +90,34 @@ const { t } = vi.hoisted(() => {
         return 'Không thể chuyển hóa bản đang nằm trong đội hình.';
       case 'sanguo:convert.error':
         return 'Có lỗi khi chuyển hóa. Hãy thử lại.';
+      case 'sanguo:level.title':
+        return `⬆️ Tăng cấp ${opts.hero_emoji} ${opts.name}`;
+      case 'sanguo:level.button':
+        return `Tăng cấp (${opts.cost} 🧿)`;
+      case 'sanguo:level.up':
+        return `⬆️ ${opts.name} đã lên **Lv${opts.level}**!`;
+      case 'sanguo:level.max':
+        return `${opts.name} đã đạt cấp tối đa (**Lv100**).`;
+      case 'sanguo:level.insufficient':
+        return `Không đủ hồn ngọc (cần ${opts.cost} 🧿).`;
+      case 'sanguo:level.error':
+        return 'Có lỗi khi tăng cấp. Hãy thử lại.';
+      case 'sanguo:evolve.title':
+        return `✨ Tiến hóa ${opts.hero_emoji} ${opts.name}`;
+      case 'sanguo:evolve.button':
+        return `Tiến hóa (${opts.cost} 🧿)`;
+      case 'sanguo:evolve.requirement':
+        return `Cần **Lv${opts.req}** để tiến hóa`;
+      case 'sanguo:evolve.level_required':
+        return `${opts.name} cần đạt **Lv${opts.req}** trước khi tiến hóa.`;
+      case 'sanguo:evolve.done':
+        return `🎉 ${opts.hero_emoji} ${opts.name} đã tiến hóa thành ${opts.new_emoji} **${opts.new_tier}**!`;
+      case 'sanguo:evolve.t3_gated':
+        return 'Bậc t3 chưa mở — cần vật phẩm sự kiện đặc biệt.';
+      case 'sanguo:evolve.insufficient':
+        return `Không đủ hồn ngọc (cần ${opts.cost} 🧿).`;
+      case 'sanguo:evolve.error':
+        return 'Có lỗi khi tiến hóa. Hãy thử lại.';
       case 'iv_grade.gold':
         return 'Hoàng Kim';
       case 'iv_grade.ruby':
@@ -211,6 +243,7 @@ function copyDetailSpecs(
   copies: any[],
   stateRow: any = STATE_ROW,
   boosterOwned: any[] = [],
+  poolRow: any[] = [{ amount: 999 }],
 ) {
   return [
     { steps: ['innerJoin', 'where', 'limit'], result: [target] },   // target copy
@@ -218,6 +251,7 @@ function copyDetailSpecs(
     { steps: ['where', 'limit'], result: [stateRow] },               // companion state
     { steps: ['where', 'limit'], result: [{ id: 1 }] },              // booster catalog row
     { steps: ['where', 'limit'], result: boosterOwned },             // owned booster
+    { steps: ['where', 'limit'], result: poolRow },                  // per-hero pool amount
   ];
 }
 
@@ -339,13 +373,15 @@ describe('/sanguo hero command (10-07 + 11-03 copy selector)', () => {
     expect(selectJson.custom_id).toBe(COPY_MENU_ID);
     expect(selectJson.options).toHaveLength(2); // one option per copy
 
-    // The action row carries the CONVERT button + the companion button (the
-    // latter DISABLED when the copy is already the active companion).
+    // The action row carries CONVERT + LEVEL + EVOLVE + COMPANION (the latter
+    // DISABLED when the copy is already the active companion).
     const actionRow = lastRow(reply);
     const ids = customIdsIn(actionRow);
     expect(ids[0]).toBe(`${CONVERT_PREFIX}:11`);
-    expect(ids[1]).toBe(`${COMPANION_PREFIX}:11`);
-    const compBtn = (actionRow.components[1] as ButtonBuilder).toJSON() as {
+    expect(ids[1]).toBe(`${LEVEL_PREFIX}:11`);
+    expect(ids[2]).toBe(`${EVOLVE_PREFIX}:11`);
+    expect(ids[3]).toBe(`${COMPANION_PREFIX}:11`);
+    const compBtn = (actionRow.components[3] as ButtonBuilder).toJSON() as {
       disabled: boolean;
     };
     expect(compBtn.disabled).toBe(true);
@@ -437,7 +473,7 @@ describe('/sanguo hero command (10-07 + 11-03 copy selector)', () => {
     const embed = reply.embeds?.[0]?.data ?? {};
     expect(embed.title).toBe('🗡️ Lưu Bị');
     const actionRow = lastRow(reply);
-    const compBtn = (actionRow.components[1] as ButtonBuilder).toJSON() as {
+    const compBtn = (actionRow.components[3] as ButtonBuilder).toJSON() as {
       custom_id: string;
       disabled: boolean;
     };
@@ -622,6 +658,84 @@ describe('/sanguo hero command (10-07 + 11-03 copy selector)', () => {
     expect(reply.embeds?.[0]?.data?.description).toContain(
       'Không thể chuyển hóa bản đang nằm trong đội hình.',
     );
+  });
+
+  // ── D-05 level press ───────────────────────────────────────────────────
+  it('handleLevelPress charges the pool and renders the level-up result embed (level ONLY — D-12)', async () => {
+    vi.mocked(levelUp).mockResolvedValue({ newLevel: 2, cost: 1 });
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] }, // resolveInteractionUser
+      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] }, // pre-read target
+    ]);
+    mockTransaction(buildMockTx([]));
+
+    const interaction = mockButtonInteraction(`${LEVEL_PREFIX}:11`);
+    await handleLevelPress(interaction);
+
+    expect(levelUp).toHaveBeenCalledWith(42, 11);
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    const embed = reply.embeds?.[0]?.data ?? {};
+    expect(embed.color).toBe(0x10b981); // COLORS.SUCCESS
+    expect(embed.title).toBe('⬆️ Tăng cấp <a:mock:1> Tào Tháo');
+    expect(embed.description).toContain('⬆️ Tào Tháo đã lên **Lv2**!');
+    // D-12: NO stat deltas / base stats / tier multipliers in the result.
+    expect(embed.description).not.toMatch(/ivStr|ivAgi|ivInt|ivMov|ivLea|ivCha/);
+    expect(reply.components).toEqual([]);
+  });
+
+  it('handleLevelPress maps LEVEL_MAX → level.max (DANGER)', async () => {
+    vi.mocked(levelUp).mockRejectedValue(new Error('LEVEL_MAX'));
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] },
+    ]);
+    mockTransaction(buildMockTx([]));
+
+    const interaction = mockButtonInteraction(`${LEVEL_PREFIX}:11`);
+    await handleLevelPress(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.color).toBe(0xef4444);
+    expect(reply.embeds?.[0]?.data?.description).toContain('Tào Tháo đã đạt cấp tối đa');
+  });
+
+  // ── D-06/D-07 evolve press ─────────────────────────────────────────────
+  it('handleEvolvePress charges the pool and renders the result with the NEW tier emoji (D-07 swap)', async () => {
+    vi.mocked(evolveHero).mockResolvedValue({ newTier: 1, cost: 20 });
+    const t0Copy = { ...UH_CAO_CAO, id: 14, tier: 0, level: 20 };
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] }, // resolveInteractionUser
+      { steps: ['innerJoin', 'where', 'limit'], result: [t0Copy] }, // pre-read target
+    ]);
+    mockTransaction(buildMockTx([]));
+
+    const interaction = mockButtonInteraction(`${EVOLVE_PREFIX}:14`);
+    await handleEvolvePress(interaction);
+
+    expect(evolveHero).toHaveBeenCalledWith(42, 14);
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    const embed = reply.embeds?.[0]?.data ?? {};
+    expect(embed.color).toBe(0x10b981); // COLORS.SUCCESS
+    expect(embed.title).toBe('✨ Tiến hóa <a:mock:1> Tào Tháo');
+    expect(embed.description).toContain('đã tiến hóa thành <a:mock:1> **★**!');
+    expect(reply.components).toEqual([]);
+  });
+
+  it('handleEvolvePress maps LEVEL_REQUIRED → evolve.level_required with the gate level (DANGER)', async () => {
+    vi.mocked(evolveHero).mockRejectedValue(new Error('LEVEL_REQUIRED'));
+    const t0Copy = { ...UH_CAO_CAO, id: 14, tier: 0, level: 19 };
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['innerJoin', 'where', 'limit'], result: [t0Copy] },
+    ]);
+    mockTransaction(buildMockTx([]));
+
+    const interaction = mockButtonInteraction(`${EVOLVE_PREFIX}:14`);
+    await handleEvolvePress(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.color).toBe(0xef4444);
+    expect(reply.embeds?.[0]?.data?.description).toContain('Tào Tháo cần đạt **Lv20** trước khi tiến hóa.');
   });
 
   // ── Test 4: D-12 never-render on the detail surface ─────────────────────

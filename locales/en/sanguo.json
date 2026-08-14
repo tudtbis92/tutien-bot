@@ -138,6 +138,25 @@
     "in_formation": "A copy placed in the legion formation cannot be converted.",
     "error": "Something went wrong while converting. Please try again."
   },
+  "level": {
+    "title": "⬆️ Level up {{hero_emoji}} {{name}}",
+    "cost_line": "Next level: **{{cost}}** 🧿",
+    "button": "Level up ({{cost}} 🧿)",
+    "up": "⬆️ {{name}} reached **Lv{{level}}**!",
+    "max": "{{name}} reached the level cap (**Lv100**).",
+    "insufficient": "Not enough hồn ngọc (need {{cost}} 🧿). Convert duplicates to earn more.",
+    "error": "Something went wrong while leveling up. Please try again."
+  },
+  "evolve": {
+    "title": "✨ Evolve {{hero_emoji}} {{name}}",
+    "button": "Evolve ({{cost}} 🧿)",
+    "requirement": "Requires **Lv{{req}}** to evolve",
+    "level_required": "{{name}} needs to reach **Lv{{req}}** before evolving.",
+    "done": "🎉 {{hero_emoji}} {{name}} evolved into {{new_emoji}} **{{new_tier}}**!",
+    "t3_gated": "Tier t3 is locked — it needs a special event item.",
+    "insufficient": "Not enough hồn ngọc (need {{cost}} 🧿).",
+    "error": "Something went wrong while evolving. Please try again."
+  },
   "skills": {
     "normal_label": "Normal attack",
     "special_label": "Special skill",
