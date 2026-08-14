@@ -186,6 +186,6 @@ cd /path/to/tutien-bot
 | Production env (CLIENT_ID) | ✅ xác nhận = 1381818375633899562 |
 | Backup production DB | ✅ `/root/backups/tutien_20260814_0136.sql` (30M) |
 | Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo subcommands: map/travel/battle/heroes/hero registered, journal 19 rows, heroes=132 (đủ stats/rarity/tier) |
-| UAT (Phase 10) | 🔄 đang testing — 35/43 pass (automated), 8 human tests pending (2–8) |
+| UAT (Phase 10) | ✅ COMPLETE 2026-08-14 — 43/43 pass (8 human + 35 automated). CR-10-01 (seed node-ID wipe) + CR-10-02 (lockfile) fixes deployed. Boss mechanics redesign (3v1, random zone general t2/IV100) recorded for Phase 11+ (WINDOWS.md #5) |
 
-**Kết luận: ĐÃ DEPLOY Phase 10 thành công.** Còn 8 UAT tests human (2–8) chờ sign-off/live-Discord, sau đó commit UAT kết quả. Lưu ý: nhớ push 2 commits local (lockfile fix) lên origin. Lần deploy kế tiếp lặp lại gate 4.4–4.6.
+**Kết luận: ĐÃ DEPLOY + UAT COMPLETE Phase 10.** Nhớ push các commit local (lockfile `093754f`, seed fix `d45f9fb`, UAT docs) lên origin. Lần deploy kế tiếp lặp lại gate 4.4–4.6.
