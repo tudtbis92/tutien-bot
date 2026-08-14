@@ -1,10 +1,11 @@
 ---
 phase: 11
 slug: progression-chemistry-economy-depth
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-14
+reviewed_at: 2026-08-14
 ---
 
 # Phase 11 — UI Design Contract: Progression, Chemistry & Economy Depth
@@ -234,7 +235,7 @@ Canonical copy in **VI** (source locale). Every key MUST exist in `locales/vi|en
 
 ## UI Considerations
 
-Applicable state considerations resolved: **34 covered, 5 backstop, 0 unresolved** (probe: 8-category taxonomy across 10 Phase 11 surfaces + 5 carried Phase 10 surfaces)
+Applicable state considerations resolved: **31 covered, 2 backstop, 0 unresolved** (probe: 85 applicable across 16 surfaces — kind-confirmed 2026-08-14; the 3 unclassified elements legion-slot / legion-battle-log / battle-log confirmed as static-content; remaining probe over-classifications dismissed with reasons below)
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
@@ -319,11 +320,11 @@ No third-party registry vetting required: `components.json` does not exist, and 
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: FLAG (non-blocking — `bag.use_button` "Dùng" single-word CTA without noun; idiomatic on Discord)
+- [x] Dimension 2 Visuals: FLAG (non-blocking — no focal point declared per primary surface; `sanguo:hero:page` emoji-only buttons lack text-label fallback)
+- [x] Dimension 3 Color: FLAG (non-blocking — §Color visible-mechanics list shows "hồn ngọc 💠🧿" while Design System locks 🧿-only; 💠 is `linh_khi_tinh`'s glyph)
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved (3/6 PASS, 3 non-blocking FLAG — 2026-08-14)
