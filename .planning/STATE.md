@@ -5,10 +5,10 @@ milestone_name: Tam Quốc Collection
 current_phase: 11
 current_phase_name: Progression, Chemistry & Economy Depth
 status: planning
-stopped_at: Completed 10-07-PLAN.md
-last_updated: "2026-08-14T02:25:00.985Z"
+stopped_at: Phase 10 complete — deployed + UAT 43/43, ready to plan Phase 11
+last_updated: "2026-08-14T04:00:00.000Z"
 last_activity: 2026-08-14
-last_activity_desc: Phase 10 complete, transitioned to Phase 11
+last_activity_desc: Phase 10 complete (deployed + UAT 43/43), transitioned to Phase 11
 progress:
   total_phases: 3
   completed_phases: 3
@@ -25,17 +25,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-13)
+See: .planning/PROJECT.md (updated 2026-08-14)
 
 **Core value:** Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi phút voice, mỗi reaction đều âm thầm xây dựng hành trình tu tiên của người chơi.
-**Current focus:** Phase 10 — Battle & Capture
+**Current focus:** Phase 11 — Progression, Chemistry & Economy Depth
 
 ## Current Position
 
 Phase: 11 — Progression, Chemistry & Economy Depth
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-14 — Phase 10 complete, transitioned to Phase 11
+Last activity: 2026-08-14 — Phase 10 complete (deployed + UAT 43/43), transitioned to Phase 11
 
 Progress: [████████████████████] 9/9 plans ([██████████] 100%)
 
@@ -45,7 +45,7 @@ Progress: [████████████████████] 9/9 pla
 |---|-------|-------------|--------|-----------|
 | 08 | Foundation, Economy Budget & Content Infrastructure | TQC-01..05 | ✅ COMPLETE | 2026-08-12 (deployed) |
 | 09 | Travel & Encounters | TQC-06..09 | ✅ COMPLETE | 2026-08-13 (UAT 17/18 + 6 CR fixes) |
-| 10 | Battle & Capture | TQC-10..13 | ░░ Not started | - |
+| 10 | Battle & Capture | TQC-10..13 | ✅ COMPLETE | 2026-08-14 (deployed + UAT 43/43) |
 | 11 | Progression, Chemistry & Economy Depth | TQC-14..17 | ░░ Not started | - |
 | 12 | Anti-Abuse, Monitoring & Marketplace Gating | TQC-18..21 | ░░ Not started | - |
 
@@ -104,9 +104,9 @@ Progress: [████████████████████] 9/9 pla
 
 **Resume file:** None
 
-Last session: 2026-08-13T09:47:51.072Z
-Stopped at: Completed 10-07-PLAN.md
-Resume: `/gsd-plan-phase 10` (next: Battle & Capture)
+Last session: 2026-08-14
+Stopped at: Phase 10 complete — deployed + UAT 43/43, ready to plan Phase 11
+Resume: `/gsd-plan-phase 11` (next: Progression, Chemistry & Economy Depth)
 
 ---
 

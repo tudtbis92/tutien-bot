@@ -27,7 +27,8 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 - [x] Multi-shard architecture — Validated in Phase 01: Foundation (ShardingManager entry, shard entries, auto-shard count)
 - [x] Hỗ trợ đa ngôn ngữ (i18n) từ đầu — Validated in Phase 01: Foundation (i18next VI/EN/ZH-CN scaffold, ESLint i18n enforcement, zero hardcoded strings)
 - [x] Infrastructure backbone (DB, Redis, CI/CD) — Validated in Phase 01: Foundation (Drizzle + pg, ioredis, pg-boss, GitHub Actions CI/CD, Fastify health check)
-- [x] Bản đồ di chuyển + encounters (Tam Quốc) — Validated in Phase 09: Travel & Encounters (`/sanguo travel` time-only one-way journeys + pull-based check-in, crypto-RNG encounter rolls, boss sub-roll, ~20/hr cap, TQC-09 map data layer) — battle/capture/progression continue in Phases 10-11
+- [x] Bản đồ di chuyển + encounters (Tam Quốc) — Validated in Phase 09: Travel & Encounters (`/sanguo travel` time-only one-way journeys + pull-based check-in, crypto-RNG encounter rolls, boss sub-roll, ~20/hr cap, TQC-09 map data layer)
+- [x] Battle + thu phục hero (Tam Quốc) — Validated in Phase 10: Battle & Capture (seeded replayable `battleEngine` with pure-rand xoroshiro128plus, `/sanguo battle` spar + encounter battles, D-20-signed capture-fee tiers 5/15/40/100/250💎, server-authoritative capture with CR-01/CR-02 anti-tamper guards, IV 6-stat capture, starter onboarding faucet, collection + companion switch, TQC-10..13) — deployed + UAT 43/43 (2026-08-14); boss redesign (random zone general + 3v1) tracked to Phase 11+
 
 ### Active
 
@@ -64,7 +65,7 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 
 ## Current State
 
-Phase 09 (Travel & Encounters) complete + deployed + verified (2026-08-13). `/sanguo travel` ships the time-only one-way journey loop (StringSelectMenu destination + Start button, pull-based check-in with crypto-RNG encounter rolls, boss sub-roll, ~20/hr cap, ack-pause), the TQC-09 map data layer (18 zones / 73 nodes / 162 edges / 208 hero-zone rates), and migration 0018. Live-Discord UAT found 6 component/embed bugs (CR-09-01→06) — all fixed and regression-tested; 17/18 UAT pass (1 boss-variant skipped, automated-covered). Ready for Phase 10 (Battle & Capture), gated on the Phase 10 capture-fee re-sign (D-18).
+Phase 10 (Battle & Capture) complete + deployed + verified (2026-08-14). The first complete vertical loop ships: seeded battle engine (D-05/D-06, replayable via pure-rand), `/sanguo battle` spar + encounter battles, capture with D-20-signed fees + pity + audit trail, IV capture/starter grant (only faucet), `/sanguo heroes` collection + zone filter + companion switch, map current-position fix. Two critical review gaps (CR-01 capture-without-won-battle, CR-02 stale-button re-battle) fixed in `bec0c0e`; live UAT 43/43 pass. Ready for Phase 11 (Progression, Chemistry & Economy Depth), incl. the boss REDESIGN (random zone general, t2 + IV 100, 3v1 formation) and boss-capture mapping (WINDOWS.md #5).
 
 
 
@@ -128,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-13 after Phase 09 (Travel & Encounters)*
+*Last updated: 2026-08-14 after Phase 10 (Battle & Capture)*
