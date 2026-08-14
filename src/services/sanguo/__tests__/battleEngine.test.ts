@@ -3,9 +3,12 @@ import {
   combatStat,
   getAttackType,
   runBattle,
+  runLegionBattle,
   BATTLE_CONFIG,
   type CombatantInput,
+  type LegionBattleInput,
 } from '../battleEngine.js';
+import { STAT_GAIN_PER_LEVEL } from '../../../constants/sanguoProgression.js';
 
 /**
  * Fixed input fixture (Task 1, behaviors 1-6). Chosen so the MOV/AGI tie
@@ -36,6 +39,51 @@ const ENEMY: CombatantInput = {
 };
 
 const SEED = 12345;
+
+/**
+ * Phase 11 (11-05) legion fixtures — 3 mains + 1 boss. The mains' STR atk
+ * (100) exceeds the boss's STR def (50) so damage is not floored at 1; the
+ * boss's atk (50) equals the mains' def (50) so the boss deals the 1-dmg floor;
+ * boss HP is huge so the battle always reaches the round cap in the cap tests.
+ */
+const LEGION_MAIN_A: CombatantInput & { level: number } = {
+  heroId: 'main-a',
+  base: { str: 100, agi: 40, int: 30, mov: 35, lea: 20, cha: 20, hp: 2000, mp: 50 },
+  iv: { str: 0, agi: 0, int: 0, mov: 0, lea: 0, cha: 0 },
+  hpCurrent: 2000,
+  class: 'vanguard',
+  isPlayer: true,
+  level: 1,
+};
+
+const LEGION_MAIN_B: CombatantInput & { level: number } = {
+  ...LEGION_MAIN_A,
+  heroId: 'main-b',
+  base: { ...LEGION_MAIN_A.base, agi: 45, mov: 40 },
+};
+
+const LEGION_MAIN_C: CombatantInput & { level: number } = {
+  ...LEGION_MAIN_A,
+  heroId: 'main-c',
+  base: { ...LEGION_MAIN_A.base, agi: 50, mov: 45 },
+};
+
+const LEGION_BOSS: CombatantInput = {
+  heroId: 'legion-boss',
+  base: { str: 50, agi: 40, int: 30, mov: 35, lea: 20, cha: 20, hp: 100000, mp: 50 },
+  iv: { str: 0, agi: 0, int: 0, mov: 0, lea: 0, cha: 0 },
+  hpCurrent: 100000,
+  class: 'vanguard',
+  isPlayer: false,
+};
+
+const LEGION_INPUT: LegionBattleInput = {
+  mains: [LEGION_MAIN_A, LEGION_MAIN_B, LEGION_MAIN_C],
+  supports: [],
+  boss: LEGION_BOSS,
+};
+
+const LEGION_SEED = 12345;
 
 describe('replay contract (D-06)', () => {
   it('runBattle(seed, input) twice deep-equals itself', () => {
@@ -344,5 +392,189 @@ describe('replay determinism across the seed space (D-06)', () => {
     const maxLog = runBattle(seeds[seeds.length - 1], PLAYER, ENEMY).roundLogs;
     expect(JSON.stringify(minLog)).not.toBe(JSON.stringify(maxLog));
     expect(serialized.size).toBeGreaterThan(1);
+  });
+});
+
+// ================= Phase 11 (11-05): legion + MP/skills + level =================
+
+describe('legion battle (D-17) replay contract (D-06)', () => {
+  it('runLegionBattle(seed, input) twice deep-equals itself', () => {
+    const first = runLegionBattle(LEGION_SEED, LEGION_INPUT);
+    const second = runLegionBattle(LEGION_SEED, LEGION_INPUT);
+    expect(second).toEqual(first);
+    expect(second.roundLogs).toEqual(first.roundLogs);
+  });
+
+  it('different seeds produce different legion round logs', () => {
+    const serialized = new Set<string>();
+    for (let seed = 1; seed <= 10; seed++) {
+      serialized.add(JSON.stringify(runLegionBattle(seed, LEGION_INPUT).roundLogs));
+    }
+    expect(serialized.size).toBeGreaterThan(1);
+  });
+
+  it('the mains act in MOV desc order (main-c MOV 45 first, then B 40, then A 35)', () => {
+    const result = runLegionBattle(LEGION_SEED, LEGION_INPUT);
+    // three mains -> the first three player-side entries are main-c, main-b, main-a
+    const mains = result.roundLogs.filter((t) => t.attacker.startsWith('main-'));
+    expect(mains[0].attacker).toBe('main-c');
+    expect(mains[1].attacker).toBe('main-b');
+    expect(mains[2].attacker).toBe('main-a');
+  });
+
+  it('a side that starts at 0 HP loses immediately (D-04 fainted guard)', () => {
+    const deadBoss: LegionBattleInput = { ...LEGION_INPUT, boss: { ...LEGION_BOSS, hpCurrent: 0 } };
+    const r = runLegionBattle(LEGION_SEED, deadBoss);
+    expect(r.rounds).toBe(0);
+    expect(r.winner).toBe('player');
+  });
+});
+
+describe('legion round cap (D-05)', () => {
+  it('resolves at exactly ROUND_CAP with winner = higher total damage', () => {
+    const result = runLegionBattle(LEGION_SEED, LEGION_INPUT);
+    expect(result.rounds).toBe(20);
+    expect(result.roundLogs.length).toBeLessThanOrEqual(20 * 4); // 3 mains + boss
+    // 3 mains out-damage the 1-dmg-floor boss across the full battle
+    expect(result.totalDamagePlayer).toBeGreaterThan(result.totalDamageEnemy);
+    expect(result.winner).toBe('player');
+    // HP bookkeeping: boss HP never rises above its start, mains stay >= 0
+    for (const turn of result.roundLogs) expect(turn.defenderHpAfter).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('support effects (D-18)', () => {
+  // Single main with a high-LEA vu_co support carrying the attack_up special.
+  // Unbuffed: atk 100 vs boss def 50 -> dmg 50. Buffed (+20% atk, effectValue
+  // 20): atk 120 -> dmg 70. Seed 2 verified: the support triggers at round 7
+  // and the buffed main lands a 70-dmg non-crit hit (deterministic per seed).
+  const buffedInput: LegionBattleInput = {
+    mains: [LEGION_MAIN_A],
+    supports: [
+      {
+        heroId: 's1',
+        class: 'vu_co',
+        lea: 60, // triggerChance = clamp(0.15 x (1 + 1.0), 0.05, 0.35) = 0.30
+        special: { id: 'vu_co_attack_up', effectType: 'attack_up', effectValue: 20 },
+      },
+    ],
+    boss: LEGION_BOSS,
+  };
+
+  it('a high-LEA support triggers its attack_up buff within a seeded battle', () => {
+    const seed = 2; // verified: trigger at round 7 -> buffed hit dmg 70
+    const result = runLegionBattle(seed, buffedInput);
+    const buffedHit = result.roundLogs.find(
+      (t) => t.attacker === 'main-a' && t.hit && !t.crit && t.dmg === 70,
+    );
+    expect(buffedHit).toBeDefined();
+    // replay determinism at this seed
+    expect(runLegionBattle(seed, buffedInput)).toEqual(result);
+  });
+
+  it('the attack_up buff is one-turn: buffed AND unbuffed hits coexist in one run', () => {
+    const seed = 2;
+    const result = runLegionBattle(seed, buffedInput);
+    const playerHits = result.roundLogs.filter((t) => t.attacker === 'main-a' && t.hit);
+    // buffed (dmg 70 / crit 140) and unbuffed (dmg 50 / crit 100) both appear
+    // -> the +20% atk applies to a single action, never the whole battle
+    expect(playerHits.some((t) => t.dmg === 70 || t.dmg === 140)).toBe(true);
+    expect(playerHits.some((t) => t.dmg === 50 || t.dmg === 100)).toBe(true);
+  });
+});
+
+describe('level term (D-08)', () => {
+  it('a L50 main deals (L-1) x STAT_GAIN_PER_LEVEL more per hit than the L1 main', () => {
+    const inputFor = (level: number): LegionBattleInput => ({
+      mains: [{ ...LEGION_MAIN_A, level }],
+      supports: [],
+      boss: LEGION_BOSS,
+    });
+    const r1 = runLegionBattle(LEGION_SEED, inputFor(1));
+    const r50 = runLegionBattle(LEGION_SEED, inputFor(50));
+    // Non-crit hits: L1 max(100-50,1) = 50; L50 max(100+98-50,1) = 148 — the
+    // levelGain (49 levels x 2) on STR. (AGI/MOV also gain the level term, so
+    // hit/crit patterns legitimately diverge between the two runs.)
+    const l1Hit = r1.roundLogs.find((t) => t.attacker === 'main-a' && t.hit && !t.crit);
+    const l50Hit = r50.roundLogs.find((t) => t.attacker === 'main-a' && t.hit && !t.crit);
+    expect(l1Hit!.dmg).toBe(50);
+    expect(l50Hit!.dmg).toBe(148);
+    expect(l50Hit!.dmg - l1Hit!.dmg).toBe(49 * STAT_GAIN_PER_LEVEL);
+    expect(r50.totalDamagePlayer).toBeGreaterThan(r1.totalDamagePlayer);
+  });
+});
+
+describe('MP economy (D-29 / PLAN-FIX P0-3)', () => {
+  it('skill fields ABSENT -> legacy turns carry ONLY the 7 Phase 10 keys (byte-identical shape)', () => {
+    const legacy = runBattle(SEED, PLAYER, ENEMY);
+    for (const turn of legacy.roundLogs) {
+      expect(Object.keys(turn).sort()).toEqual([
+        'attacker',
+        'crit',
+        'defender',
+        'defenderHpAfter',
+        'dmg',
+        'hit',
+        'round',
+      ]);
+    }
+  });
+
+  it('a hero with insufficient MP falls back to a normal attack and gains MP', () => {
+    const starved: CombatantInput = {
+      ...PLAYER,
+      mpCurrent: 10, // below the 25-cost special
+      skillNormal: { id: 'n', mpGain: 12 },
+      skillSpecial: { id: 's', mpCost: 25, effectType: 'damage', effectValue: 150 },
+    };
+    const result = runBattle(SEED, starved, ENEMY);
+    const first = result.roundLogs.find((t) => t.attacker === PLAYER.heroId)!;
+    expect(first.action).toBe('normal');
+    expect(first.mpFallback).toBe(true); // intended special, insufficient MP
+    expect(first.attackerMpAfter).toBe(22); // 10 + 12 (skillNormal.mpGain)
+  });
+
+  it('with sufficient MP the SAME runBattle resolves specials then the fallback (P0-3)', () => {
+    const skilledPlayer: CombatantInput = {
+      ...PLAYER,
+      mpCurrent: 50,
+      skillNormal: { id: 'n', mpGain: 12 },
+      skillSpecial: { id: 's', mpCost: 25, effectType: 'damage', effectValue: 150 },
+    };
+    const result = runBattle(SEED, skilledPlayer, ENEMY);
+    const playerTurns = result.roundLogs.filter((t) => t.attacker === PLAYER.heroId);
+    expect(playerTurns.length).toBeGreaterThan(2);
+    // MP bookkeeping is deterministic (independent of hit/miss):
+    // special (50-25=25), special (25-25=0), then insufficient-MP fallback (0+12=12)
+    expect(playerTurns[0].action).toBe('special');
+    expect(playerTurns[0].attackerMpAfter).toBe(25);
+    expect(playerTurns[1].action).toBe('special');
+    expect(playerTurns[1].attackerMpAfter).toBe(0);
+    expect(playerTurns[2].action).toBe('normal');
+    expect(playerTurns[2].mpFallback).toBe(true);
+    expect(playerTurns[2].attackerMpAfter).toBe(12);
+    // the special multiplier shows up in the damage: base non-crit 1 -> round(1 x 1.5) = 2
+    const specialHit = result.roundLogs.find(
+      (t) => t.attacker === PLAYER.heroId && t.action === 'special' && t.hit && !t.crit,
+    );
+    expect(specialHit).toBeDefined();
+    expect(specialHit!.dmg).toBe(2);
+  });
+
+  it('the boss resolves its own rolled skills/MP when present (D-31)', () => {
+    const skilledBoss: CombatantInput = {
+      ...ENEMY,
+      mpCurrent: 50,
+      skillNormal: { id: 'n', mpGain: 12 },
+      skillSpecial: { id: 's', mpCost: 25, effectType: 'damage', effectValue: 150 },
+    };
+    const result = runBattle(SEED, PLAYER, skilledBoss);
+    const first = result.roundLogs.find((t) => t.attacker === ENEMY.heroId)!;
+    expect(first.action).toBe('special'); // enemy MOV 38 > player 37 -> acts first
+    expect(first.attackerMpAfter).toBe(25);
+    // the player's turns stay legacy (no skill fields -> no MP keys)
+    const playerTurn = result.roundLogs.find((t) => t.attacker === PLAYER.heroId)!;
+    expect(playerTurn.action).toBeUndefined();
+    expect(playerTurn.attackerMpAfter).toBeUndefined();
   });
 });
