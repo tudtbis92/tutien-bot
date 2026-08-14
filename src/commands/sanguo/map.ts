@@ -16,6 +16,7 @@ import { battleSubcommand, execute as battleExecute } from './battle.js';
 import { heroesSubcommand, execute as heroesExecute } from './heroes.js';
 import { heroSubcommand, execute as heroExecute } from './hero.js';
 import { shopSubcommand, execute as shopExecute } from './shop.js';
+import { bagSubcommand, execute as bagExecute } from './bag.js';
 import { getCurrentPosition } from '../../services/sanguo/travelService.js';
 
 // Re-export the component handlers so the interaction router can find
@@ -45,6 +46,7 @@ export {
   handleRerollGo,
 } from './hero.js';
 export { handleTabPress, handleBuyPress } from './shop.js';
+export { handleUsePress } from './bag.js';
 
 /* eslint-disable i18next/no-literal-string -- slash commands name/description are static Discord API strings */
 export const data = new SlashCommandBuilder()
@@ -67,7 +69,8 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(battleSubcommand)
   .addSubcommand(heroesSubcommand)
   .addSubcommand(heroSubcommand)
-  .addSubcommand(shopSubcommand);
+  .addSubcommand(shopSubcommand)
+  .addSubcommand(bagSubcommand);
 /* eslint-enable i18next/no-literal-string */
 
 /**
@@ -119,6 +122,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
   if (subcommand === 'shop') {
     await shopExecute(interaction);
+    return;
+  }
+  if (subcommand === 'bag') {
+    await bagExecute(interaction);
     return;
   }
   if (subcommand !== 'map') {

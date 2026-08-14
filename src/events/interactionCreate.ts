@@ -37,6 +37,7 @@ import { REROLL_OPEN_PREFIX, REROLL_SLOT_PREFIX } from '../ui/components/sanguoR
 import { REROLL_GO_PREFIX } from '../ui/components/sanguoRerollButton.js';
 import { SHOP_TAB_PREFIX } from '../ui/components/sanguoShopTabs.js';
 import { SHOP_BUY_PREFIX } from '../ui/components/sanguoShopBuyButtons.js';
+import { BAG_USE_PREFIX } from '../ui/components/sanguoBagUseButtons.js';
 
 export const name = Events.InteractionCreate;
 
@@ -358,6 +359,23 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo shop buy button', err);
+      }
+      return;
+    }
+
+    // sanguo:bag:use — D-13 item use (customId 'sanguo:bag:use:{itemCode}'
+    // carries ONLY the item code; the heal effect resolves server-side inside
+    // the bag tx — T-11-04-04 single-writer, no double-heal).
+    if (customId.startsWith(BAG_USE_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleBagUsePress === 'function') {
+          await cmd.handleBagUsePress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo bag use button', err);
       }
       return;
     }
