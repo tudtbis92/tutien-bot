@@ -38,6 +38,40 @@
 
   **RE-SIGNED (2026-08-13, Phase 10 D-20):** the capture-fee values above are the approved Phase 10 contract; any rebalancing requires a new sign-off (D-18 one-way gate).
 
+- **AMENDMENT (2026-08-14, Phase 11 D-18 one-way gate):** the Phase 11 economy contract is now signed (checkpoint decision `adopt-a5` — research prices/drop-weights adopted as-is). The **ONLY new Linh thạch sinks** in Phase 11 are the sanguo shop (`heal_pill` **50💎**, `booster_x2` **100💎**) and formation purchases (**200/300/500💎**), all via `wallet.deductBalance` (D-03). Evolution/leveling/re-roll are **HỒN NGỌC sinks** (D-01/D-06) — never Linh thạch; the superseded "Linh thạch → evolution" convertibility row below is replaced by "Linh thạch → hồn ngọc: only via the booster (bounded, one-way)". Boss drops are **items only, never money** (D-19), with signed drop weights below.
+
+  **Phase 11 Linh thạch sink table (D-18 contract — single source the 11-02 seed writes and the 11-04 shopService charges, Pitfall 8):**
+
+  | Sink | Price (Linh thạch) | Mechanism | Consumer |
+  |------|--------------------|-----------|----------|
+  | Shop — `heal_pill` | 50💎 | `wallet.deductBalance` inside the shopService tx | 11-04 (seed: 11-02) |
+  | Shop — `booster_x2` | 100💎 | `wallet.deductBalance`; consumed in the SAME convert tx it doubles (D-12, no cloning) | 11-04 (seed: 11-02) |
+  | Formation purchase | 200/300/500💎 | `wallet.deductBalance` + `user_formations` insert (ALREADY_OWNED gate) | 11-04 (seed: 11-02) |
+
+  **Boss drop weights (items only, never money — D-19):**
+
+  | Item | Weight |
+  |------|--------|
+  | `heal_pill` | 70% |
+  | `booster_x2` | 25% |
+  | `capture_tier4_key` | 4.9% |
+  | `capture_tier5_key` | 0.1% |
+
+  **E[net/hour] recomputation (Phase 11, adopted prices):**
+
+  `E[net/hour] = E[inflow] − E[outflow]` over the loop (travel → encounter → battle → capture → shop/formation).
+
+  - **E[inflow] = 0** — the booster is a Linh thạch **SINK** (100💎), not a source; the free starter hero (10-07) remains the ONLY faucet (D-19 exception); boss drops are items, never money; no sanguo mechanic mints Linh thạch (D-19 restated).
+  - **E[outflow] = E[shop spend/hr] + E[formation spend/hr]** (Phase 10 capture fees already signed at 75–394💎/hr):
+    - `heal_pill` at realistic cadence (5–10 encounters/hr): bounded by heal demand, ~1–2/hr → **50–100💎/hr**.
+    - `booster_x2`: occasional, bounded Linh thạch→hồn ngọc bridge (A11) — amortized ≪ 100💎/hr (≤ ~20💎/hr at one-per-5-hours).
+    - Formation purchases: one-time 200–500💎, amortized over the phase → ≤ ~10💎/hr.
+  - **E[net] = 0 − E[outflow] < 0** → satisfies D-19 (net <= 0) at every cadence and model — trivially, since every Phase 11 price is a pure sink.
+  - **Gross per-hour** at realistic cadence 5–10/hr: Phase 11 shop/formation flow ≈ **50–130💎/hr**, and the full loop (incl. signed capture fees) ≈ **~160–520💎/hr** — the upper-realistic corner (10/hr × flee-adjusted capture 216💎 + 2 heal pills 100💎 + occasional booster) stays **below the ~416/hr magnitude bound** in the realistic model; only the theoretical 20/hr supply-ceiling corner (one full battle+capture chain every 3 minutes continuously — not human-achievable) can push the combined gross above it, mirroring the Phase 10 F8 analysis.
+  - **Conclusion:** E[net] <= 0 (D-19 hard constraint) and gross < ~416/hr at realistic cadence — **Phase 11 economy contract compliant**.
+
+  **RE-SIGNED (2026-08-14, Phase 11 D-18):** the shop prices (heal_pill 50💎, booster_x2 100💎), formation prices (200/300/500💎), and boss drop weights (70/25/4.9/0.1) above are the approved Phase 11 economy contract — the single source the 11-02 seed writes and the 11-04 shopService charges (Pitfall 8); evolution/leveling/re-roll are hồn ngọc sinks and NEVER call `wallet.deductBalance` (D-01/D-06 hard prohibition); the booster is a documented, bounded Linh thạch→hồn ngọc bridge (flagged A11, Phase 12 TQC-19 monitoring). Any rebalancing requires a new sign-off (D-18 one-way gate).
+
 ---
 
 ## Context
@@ -110,8 +144,9 @@ The sanguo sub-game economy is denominated in **Linh thạch** (`users.balance`)
 | From | To | Convertible? | Notes |
 |------|----|--------------|-------|
 | Tu vi | Linh thạch | **Never** | Tu vi is progression-only (`game.ts:14` cap context); no conversion path exists |
-| Linh thạch | Sinks (gather, farming subscriptions, football wagers) | Yes (spend) | Live sinks above; future sinks: travel, shop, evolution |
-| Linh thạch | Future travel / shop / evolution | Yes (spend) | Phase 11 (shop/evolution, TQC-16/TQC-15) — travel is time-only per D-01; all must go through `wallet.deductBalance` (D-03) |
+| Linh thạch | Sinks (gather, farming subscriptions, football wagers) | Yes (spend) | Live sinks above; future sinks: Phase 11 shop + formations (see AMENDMENT 2026-08-14) |
+| Linh thạch | Phase 11 shop / formations | Yes (spend) | Phase 11 (TQC-16): heal_pill 50💎, booster_x2 100💎, formations 200/300/500💎 — all via `wallet.deductBalance` (D-03). Travel is time-only (D-01); **evolution/leveling/re-roll are HỒN NGỌC sinks, never Linh thạch** (D-01/D-06 — supersedes the earlier "Linh thạch → evolution" row) |
+| Linh thạch | Hồn ngọc (via booster) | Yes, bounded one-way | booster_x2 (100💎) doubles ONE conversion (D-12) — the ONLY Linh thạch → hồn ngọc path; hồn ngọc never converts back to Linh thạch (D-02) |
 | Duplicate heroes | Hồn ngọc | Yes (Phase 11) | Tier-scaled, diminishing returns, daily conversion cap, **account-bound** (TQC-14) |
 | Hồn ngọc | Linh thạch | **Never** | Milestone v3 decision (STATE.md) — prevents dupe-loop economy collapse |
 | Free starter hero | Player collection | Yes (Phase 10, **only faucet**) | One free hero at onboarding (TQC-12); the ONLY faucet in the milestone (D-19 exception) |
