@@ -74,6 +74,22 @@ Phase 11 delivers the depth layer of the Tam Quốc Collection vertical loop: h�
 - **D-34:** **The captured hero KEEPS the encounter level.** A captured L22 hero starts at L22; hồn ngọc only adds further levels. Level is NOT reset on capture. — **Reversibility:** one-way — the D-04 copy-level identity; resetting later would retroactively change owned heroes.
 - **D-35:** **The boss (zone general) fights at a FIXED level: L50** (the t2 evolution threshold) — t2 base stats + IV100 + L50. Boss difficulty is a deliberate wall independent of the wild distribution; beating it proves L50+ legion strength. — **Reversibility:** reversible — boss level is a constant.
 - **D-36:** **Boss capture result is unaffected by the L50 fight** — the captured boss copy is still a random roll (D-28): random IV + random tier t0 95% / t1 4.98% / t2 0.02%, and the captured LEVEL is a fixed **L20** (not L50, not the wild distribution). Fight difficulty ≠ prize applies to level too.
+- **D-37 (PLAN-FIX P0-3, added 2026-08-14 post-plan-review):** **The 2-slot skill/MP system applies to BOTH solo and legion battles.** D-29/D-31's "every hero has exactly 2 skill slots" and "the wild hero's rolled skills determine the battle" apply to solo encounters (the 95% case), not just the boss legion battle. The battleEngine gains a SHARED turn-resolution helper (`resolveTurn`) used by both `runBattle` (solo) and `runLegionBattle` (legion); skill/MP fields are OPTIONAL on `CombatantInput` — when present (solo wild battles feed the encounter_runs-rolled skills + the player main's user_heroes skills; the boss feeds its rolled skills), the turn resolves MP/skills; when absent (Phase 10 tests, old records, spar), the turn is byte-identical to the Phase 10 formula (non-breaking contract holds). — **Reversibility:** reversible — if solo skill/MP proves too strong/grindy, the fix is a constant/seed edit (MP costs, rarity weights) or a revert to legion-only via a flag, no schema change.
+
+### PLAN-FIX record (2026-08-14 post-plan-review)
+
+Applied fixes to the 8 plans (also mirrored in the plan files themselves — each fix is marked `PLAN-FIX`):
+
+| ID | Fix | Location |
+|----|-----|----------|
+| P0-1 | Migration 0020 adds missing unique indexes `formation_slots(formationId, slotOrder)` + `user_formations(userId, formationId)` — without them the 11-02 seed's formation_slots upsert (`ON CONFLICT (formation_id, slot_order)`) fails and 11-04's buyFormation ALREADY_OWNED has a TOCTOU race | 11-01 Task 2 + verify probe + acceptance; 11-02 Task 2; 11-04 Task 1 |
+| P0-2 | The legion builder applies `TIER_MULTIPLIERS[userHeroes.tier]` to EACH main's base stats (like the boss) — without it an evolved t2 main is combat-identical to a t0 main, violating D-07 and making the 11-08 balance pass green while production is broken | 11-06 Task 3 + acceptance pin; 11-08 Task 1 |
+| P0-3 | Skill/MP resolves in SOLO battles too via a shared `resolveTurn` (see D-37) — D-29/D-31 covered solo, the plans only wired legion | 11-05 Task 1 + must_haves; 11-06 Task 3; D-37 |
+| P1-1 | The WILD capture insert (captureService.ts:223, hardcoded `level: 1`) must write `encounter.level` + encounter_runs skill ids — D-31/D-34 were only pinned for the boss branch | 11-06 Task 3 + acceptance |
+| P1-2 | Boss capture rarity stays keyed on `encounterType === 'boss'`, NOT `heroId == null` — after D-24 the boss has a real heroId with a real rarity; keying on heroId would silently break the signed rarity-5 10% base (D-26) | 11-06 Task 3 + acceptance pin |
+| P1-3 | Chemistry link scoring is FIRST-MATCH per support (family/spouse 3 > faction 2 > role 1, never additive) — locks the RESEARCH-vs-code-sketch ambiguity; thresholds S≥12 etc. are calibrated on first-match | 11-05 Task 2 + must_haves |
+| P1-4 | Balance pass gains a hồn ngọc PACING sanity check (time-to-L20/L50 vs the cumulative curve) — combat was calibrated but the cost-to-reach-the-wall was never modeled | 11-08 Task 1 |
+| P2 | `drop_weight` numeric must be `Number()`-converted in dropService (drizzle numeric returns strings); starter-formation grant wording (first-use upsert, not onboarding); supports' `lea` in the legion input uses the EFFECTIVE LEA incl. the D-08 level term | 11-04 Task 3; 11-07 flagged assumption; 11-06 Task 1 |
 
 ### the agent's Discretion
 - Exact accelerating level-cost curve numbers; flat stat gain per level; exact wild-level distribution roll mechanics (band roll then uniform-within-band).
