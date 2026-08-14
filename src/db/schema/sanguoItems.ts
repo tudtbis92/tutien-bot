@@ -27,6 +27,11 @@ export const sanguoItems = pgTable('sanguo_items', {
   saleState: varchar('sale_state', { length: 10 }).notNull().default('locked'),
   // Percent 0-100 — boss drop pool weight (4.9 needs scale 2)
   dropWeight: numeric('drop_weight', { precision: 5, scale: 2 }).notNull().default('0'),
+  // Content-driven emoji (UI-SPEC) — never theme constants (RESEARCH
+  // don't-hand-roll). 11-02 fix: migration 0020 only added emoji to
+  // formations; the D-11 item catalog carries per-item emoji, so this
+  // nullable column was added by migration 0021 (sanguoItems mirror).
+  emoji: varchar('emoji', { length: 100 }),
   descriptionVi: text('description_vi'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -308,33 +308,93 @@ interface HeroJsonEntry {
   role: string;
 }
 
-// Placeholder sanguo_items (2-4) — unique code per item.
-const SANGUO_ITEMS = [
-  {
-    code: 'heal_pill',
-    nameVi: 'Đan Trị Thương',
-    nameEn: 'Healing Pill',
-    itemType: 'support',
-    rarity: 1,
-    basePrice: 10n,
-  },
-  {
-    code: 'xian_tea',
-    nameVi: 'Linh Trà',
-    nameEn: 'Spirit Tea',
-    itemType: 'support',
-    rarity: 1,
-    basePrice: 25n,
-  },
-  {
-    code: 'qinglong_dan',
-    nameVi: 'Thanh Long Đan',
-    nameEn: 'Azure Dragon Pill',
-    itemType: 'consumable',
-    rarity: 2,
-    basePrice: 120n,
-  },
-];
+// ---------------------------------------------------------------------------
+// Phase 11 content datasets (11-02, D-11/D-30/D-21) — committed dev-time data
+// consumed by the seed. All three are REQUIRED (FATAL on missing/corrupt —
+// mirror sanguo-base-stats.json): the shop (11-04), boss drops (11-04) and
+// the encounter skill roll (11-06) resolve against these catalogs, so a
+// silently-empty catalog would break every Phase 11 service.
+//
+// sanguo-skills.json    — class-based skill pools (mechanics + emoji ONLY;
+//                         names are i18n keys sanguo:skills.*, D-30)
+// sanguo-items.json     — the D-11 item catalog (REPLACES the Phase 8
+//                         placeholder SANGUO_ITEMS below)
+// sanguo-formations.json— starter (free) + purchasable formations with their
+//                         12-slot class layouts (D-21)
+// ---------------------------------------------------------------------------
+interface SkillDef {
+  skillId: string;
+  class: string;
+  slot: 'normal' | 'special';
+  rarity: 'common' | 'rare' | 'epic';
+  mpCost: number;
+  mpGain: number;
+  effectType: 'damage' | 'attack_up' | 'hp_regen' | 'mp_regen';
+  effectValue: number;
+  emoji: string;
+}
+
+interface ItemDef {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  itemType: string;
+  rarity: number;
+  priceLinh: number;
+  priceEvent: number;
+  saleState: 'sold' | 'locked';
+  dropWeight: number;
+  emoji: string;
+}
+
+interface FormationSlotDef {
+  slotOrder: number;
+  class: string;
+  position: string | null;
+}
+
+interface FormationDef {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  slotCount: number;
+  basePrice: number;
+  emoji: string;
+  slots: FormationSlotDef[];
+}
+
+const SKILLS_PATH = fileURLToPath(new URL('./data/sanguo-skills.json', import.meta.url));
+function loadSkills(): SkillDef[] {
+  try {
+    const data = JSON.parse(fs.readFileSync(SKILLS_PATH, 'utf8')) as { skills: SkillDef[] };
+    return data.skills;
+  } catch {
+    console.error('[Seed] FATAL: scripts/data/sanguo-skills.json not found or corrupt — class-based skill pools (normal + special per class) required');
+    process.exit(1);
+  }
+}
+
+const ITEMS_PATH = fileURLToPath(new URL('./data/sanguo-items.json', import.meta.url));
+function loadItems(): ItemDef[] {
+  try {
+    const data = JSON.parse(fs.readFileSync(ITEMS_PATH, 'utf8')) as { items: ItemDef[] };
+    return data.items;
+  } catch {
+    console.error('[Seed] FATAL: scripts/data/sanguo-items.json not found or corrupt — the D-11 item catalog (heal_pill/booster_x2/capture keys) required');
+    process.exit(1);
+  }
+}
+
+const FORMATIONS_PATH = fileURLToPath(new URL('./data/sanguo-formations.json', import.meta.url));
+function loadFormations(): FormationDef[] {
+  try {
+    const data = JSON.parse(fs.readFileSync(FORMATIONS_PATH, 'utf8')) as { formations: FormationDef[] };
+    return data.formations;
+  } catch {
+    console.error('[Seed] FATAL: scripts/data/sanguo-formations.json not found or corrupt — formation catalog (starter + purchasable) required');
+    process.exit(1);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Seed
@@ -589,9 +649,15 @@ async function seed() {
     if (inserted) rateCount++;
   }
 
-  // --- Sanguo items ----------------------------------------------------------
+  // --- Sanguo items (11-02 D-11 catalog — REPLACES the Phase 8 placeholder) --
+  // The D-11 catalog is the single source for shop prices + boss drop weights
+  // (Pitfall 8 single-source rule). capture_key sale_state stays 'locked'
+  // (shown-not-sold, D-15) with dropWeight 0 — the drop pool's
+  // WHERE drop_weight > 0 excludes the generic key by construction.
+  const items = loadItems();
+  const itemCodes = new Set(items.map((i) => i.code));
   let itemCount = 0;
-  for (const item of SANGUO_ITEMS) {
+  for (const item of items) {
     const zh = zhNames.items[item.code] ?? null;
     const [inserted] = await db
       .insert(schema.sanguoItems)
@@ -602,7 +668,11 @@ async function seed() {
         nameZh: zh,
         itemType: item.itemType,
         rarity: item.rarity,
-        basePrice: item.basePrice,
+        priceLinh: BigInt(item.priceLinh),
+        priceEvent: BigInt(item.priceEvent),
+        saleState: item.saleState,
+        dropWeight: item.dropWeight,
+        emoji: item.emoji,
       })
       .onConflictDoUpdate({
         target: schema.sanguoItems.code,
@@ -611,13 +681,118 @@ async function seed() {
           nameEn: item.nameEn,
           itemType: item.itemType,
           rarity: item.rarity,
-          basePrice: item.basePrice,
+          priceLinh: BigInt(item.priceLinh),
+          priceEvent: BigInt(item.priceEvent),
+          saleState: item.saleState,
+          dropWeight: item.dropWeight,
+          emoji: item.emoji,
           ...(zh ? { nameZh: zh } : {}),
         },
       })
       .returning({ id: schema.sanguoItems.id });
     if (!inserted) throw new Error(`[Seed] Failed to upsert item: ${item.code}`);
     itemCount++;
+  }
+  // Delete codes no longer in the catalog (the Phase 8 placeholder item
+  // codes) so no stale purchasable/droppable item survives (T-11-02-02
+  // spoofing mitigation).
+  const staleRows = await db.delete(schema.sanguoItems).where(notInArray(schema.sanguoItems.code, [...itemCodes]));
+  if (staleRows.rowCount > 0) {
+    console.log(`[Seed] Removed ${staleRows.rowCount} stale sanguo_items row(s) no longer in the catalog`);
+  }
+
+  // --- Sanguo skills (11-02 D-30 class-based pools) -------------------------
+  // Mechanics + emoji ONLY — skill names render via i18n keys (sanguo:skills.*).
+  // Each class gets a normal pool (common 80 / rare 20 weight) + a special
+  // pool (common 60 / rare 30 / epic 10); vu_co carries a support-type
+  // special (attack_up "buff sỹ khí", D-18).
+  const skills = loadSkills();
+  let skillCount = 0;
+  for (const sk of skills) {
+    const [inserted] = await db
+      .insert(schema.sanguoSkills)
+      .values({
+        code: sk.skillId,
+        class: sk.class,
+        slot: sk.slot,
+        rarity: sk.rarity,
+        mpCost: sk.mpCost,
+        mpGain: sk.mpGain,
+        effectType: sk.effectType,
+        effectValue: sk.effectValue,
+        emoji: sk.emoji,
+      })
+      .onConflictDoUpdate({
+        target: schema.sanguoSkills.code,
+        set: {
+          class: sk.class,
+          slot: sk.slot,
+          rarity: sk.rarity,
+          mpCost: sk.mpCost,
+          mpGain: sk.mpGain,
+          effectType: sk.effectType,
+          effectValue: sk.effectValue,
+          emoji: sk.emoji,
+        },
+      })
+      .returning({ id: schema.sanguoSkills.id });
+    if (!inserted) throw new Error(`[Seed] Failed to upsert skill: ${sk.skillId}`);
+    skillCount++;
+  }
+
+  // --- Formations + slots (11-02 D-21 catalog) ------------------------------
+  // Starter 'can_ban' is FREE (basePrice 0 — onboarding grant, D-21); the two
+  // purchasable formations carry the checkpoint-confirmed prices (thien_co
+  // 200💎 / vu_sat 300💎 from the adopt-a5 200/300/500 set). formation_slots
+  // upsert targets the P0-1 unique index (formationId, slotOrder) — added by
+  // migration 0020 (11-01).
+  const formations = loadFormations();
+  let formationCount = 0;
+  let formationSlotCount = 0;
+  for (const f of formations) {
+    const [inserted] = await db
+      .insert(schema.formations)
+      .values({
+        code: f.code,
+        nameVi: f.nameVi,
+        nameEn: f.nameEn,
+        slotCount: f.slotCount,
+        basePrice: BigInt(f.basePrice),
+        emoji: f.emoji,
+      })
+      .onConflictDoUpdate({
+        target: schema.formations.code,
+        set: {
+          nameVi: f.nameVi,
+          nameEn: f.nameEn,
+          slotCount: f.slotCount,
+          basePrice: BigInt(f.basePrice),
+          emoji: f.emoji,
+        },
+      })
+      .returning({ id: schema.formations.id });
+    if (!inserted) throw new Error(`[Seed] Failed to upsert formation: ${f.code}`);
+    for (const slot of f.slots) {
+      await db
+        .insert(schema.formationSlots)
+        .values({
+          formationId: inserted.id,
+          slotOrder: slot.slotOrder,
+          class: slot.class,
+          position: slot.position ?? null,
+          quantity: 1,
+        })
+        .onConflictDoUpdate({
+          target: [schema.formationSlots.formationId, schema.formationSlots.slotOrder],
+          set: {
+            class: slot.class,
+            position: slot.position ?? null,
+            quantity: 1,
+          },
+        });
+      formationSlotCount++;
+    }
+    formationCount++;
   }
 
   // --- Hero relations (Phase 8 post-gate — direct spouse pairs only) ---------
@@ -640,7 +815,7 @@ async function seed() {
     if (inserted) relationCount++;
   }
 
-  console.log(`[Seed] ${factionCount} factions, ${familyCount} families, ${relationCount} relations, ${heroCount} heroes, ${nodeCount} map_nodes, ${zoneCount} map_zones, ${edgeCount} map_edges, ${rateCount} hero_zone_rates, ${itemCount} items upserted`);
+  console.log(`[Seed] ${factionCount} factions, ${familyCount} families, ${relationCount} relations, ${heroCount} heroes, ${nodeCount} map_nodes, ${zoneCount} map_zones, ${edgeCount} map_edges, ${rateCount} hero_zone_rates, ${itemCount} items, ${skillCount} skills, ${formationCount} formations (${formationSlotCount} slots) upserted`);
   console.log('[Seed] Sanguo seed complete!');
 }
 

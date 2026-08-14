@@ -1,0 +1,1 @@
+ALTER TABLE "sanguo_items" ADD COLUMN "emoji" varchar(100);

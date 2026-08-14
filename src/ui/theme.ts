@@ -16,6 +16,7 @@ export const EMOJI = {
   TU_VI: '🔮',           // Tu vi / cultivation
   SKILL_POINT: '✨',     // Skill points
   LINH_THACH: '💎',      // Linh thạch / currency
+  HON_NGOC: '🧿',        // Hồn ngọc / per-hero progression currency (D-02)
   REALM: '🏛️',           // Realm / cảnh giới
   ROOT: '🌿',            // Spiritual root / linh căn
   STREAK: '🔥',          // Daily streak

@@ -1,0 +1,71 @@
+{
+  "_comment": "Formation catalog (11-02, D-21 + amendment): free STARTER formation at onboarding + purchasable formations via the shop (11-04). basePrice: can_ban 0 (FREE — starter grant, D-21), thien_co 200💎, vu_sat 300💎 (checkpoint-confirmed 200/300/500 set, adopt-a5 — 2 purchasable seed in v3). Each formation has 12 slots (3 mains + 9 support, D-17) with class requirements per slot — class values match formation_slots.class / heroes.class (8-class enum). Emojis are content-driven (never theme constants).",
+  "formations": [
+    {
+      "code": "can_ban",
+      "nameVi": "Trận Cơ Bản",
+      "nameEn": "Basic Formation",
+      "slotCount": 12,
+      "basePrice": 0,
+      "emoji": "📜",
+      "slots": [
+        { "slotOrder": 0, "class": "vanguard", "position": "main" },
+        { "slotOrder": 1, "class": "archer", "position": "main" },
+        { "slotOrder": 2, "class": "spellcaster", "position": "main" },
+        { "slotOrder": 3, "class": "cavalry", "position": "support" },
+        { "slotOrder": 4, "class": "schemer", "position": "support" },
+        { "slotOrder": 5, "class": "vu_co", "position": "support" },
+        { "slotOrder": 6, "class": "thu_binh", "position": "support" },
+        { "slotOrder": 7, "class": "cong_binh", "position": "support" },
+        { "slotOrder": 8, "class": "vanguard", "position": "support" },
+        { "slotOrder": 9, "class": "archer", "position": "support" },
+        { "slotOrder": 10, "class": "spellcaster", "position": "support" },
+        { "slotOrder": 11, "class": "schemer", "position": "support" }
+      ]
+    },
+    {
+      "code": "thien_co",
+      "nameVi": "Trận Thiên Cơ",
+      "nameEn": "Heavenly Mechanism Formation",
+      "slotCount": 12,
+      "basePrice": 200,
+      "emoji": "🪐",
+      "slots": [
+        { "slotOrder": 0, "class": "spellcaster", "position": "main" },
+        { "slotOrder": 1, "class": "schemer", "position": "main" },
+        { "slotOrder": 2, "class": "vu_co", "position": "main" },
+        { "slotOrder": 3, "class": "vanguard", "position": "support" },
+        { "slotOrder": 4, "class": "archer", "position": "support" },
+        { "slotOrder": 5, "class": "spellcaster", "position": "support" },
+        { "slotOrder": 6, "class": "schemer", "position": "support" },
+        { "slotOrder": 7, "class": "vu_co", "position": "support" },
+        { "slotOrder": 8, "class": "thu_binh", "position": "support" },
+        { "slotOrder": 9, "class": "cong_binh", "position": "support" },
+        { "slotOrder": 10, "class": "cavalry", "position": "support" },
+        { "slotOrder": 11, "class": "spellcaster", "position": "support" }
+      ]
+    },
+    {
+      "code": "vu_sat",
+      "nameVi": "Trận Vũ Sát",
+      "nameEn": "Martial Slaughter Formation",
+      "slotCount": 12,
+      "basePrice": 300,
+      "emoji": "🔱",
+      "slots": [
+        { "slotOrder": 0, "class": "vanguard", "position": "main" },
+        { "slotOrder": 1, "class": "cavalry", "position": "main" },
+        { "slotOrder": 2, "class": "archer", "position": "main" },
+        { "slotOrder": 3, "class": "vanguard", "position": "support" },
+        { "slotOrder": 4, "class": "cavalry", "position": "support" },
+        { "slotOrder": 5, "class": "archer", "position": "support" },
+        { "slotOrder": 6, "class": "spellcaster", "position": "support" },
+        { "slotOrder": 7, "class": "schemer", "position": "support" },
+        { "slotOrder": 8, "class": "vu_co", "position": "support" },
+        { "slotOrder": 9, "class": "thu_binh", "position": "support" },
+        { "slotOrder": 10, "class": "cong_binh", "position": "support" },
+        { "slotOrder": 11, "class": "vanguard", "position": "support" }
+      ]
+    }
+  ]
+}
