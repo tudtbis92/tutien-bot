@@ -14,6 +14,12 @@
     },
     "hero": {
       "description": "Xem chi tiết một hero"
+    },
+    "shop": {
+      "description": "Mua vật phẩm và trận hình"
+    },
+    "bag": {
+      "description": "Xem và dùng vật phẩm trong túi"
     }
   },
   "map": {
@@ -210,6 +216,34 @@
     "cong_binh_special_common": "Công binh · Kỹ năng · Thường",
     "cong_binh_special_rare": "Công binh · Kỹ năng · Hiếm",
     "cong_binh_special_epic": "Công binh · Kỹ năng · Sử thi"
+  },
+  "shop": {
+    "title": "🛒 Cửa hàng ({{tab}})",
+    "tab_linh": "💎 Linh thạch",
+    "tab_event": "🎁 Sự kiện",
+    "item_line": "{{emoji}} {{name}} — **{{price}}** 💎",
+    "section_items": "Vật phẩm",
+    "section_formations": "Trận hình",
+    "buy_button": "Mua ({{price}} 💎)",
+    "bought": "✅ Đã mua {{emoji}} {{name}} ×{{qty}} ({{price}} 💎)",
+    "bought_formation": "✅ Đã mua trận hình {{emoji}} {{name}} ({{price}} 💎)",
+    "capture_key_locked": "Chỉ nhận từ boss thường — chưa mở bán",
+    "empty": "Cửa hàng chưa có vật phẩm nào. Hãy thử lại sau.",
+    "event_empty": "Chưa có vật phẩm sự kiện trong mùa này.",
+    "error": "Có lỗi khi tải cửa hàng. Hãy thử lại.",
+    "insufficient": "Không đủ Linh thạch (cần {{price}} 💎). Hãy kiểm tra số dư và thử lại.",
+    "not_for_sale": "Vật phẩm này chưa được mở bán.",
+    "already_owned": "Bạn đã sở hữu trận hình này rồi."
+  },
+  "bag": {
+    "title": "🎒 Túi đồ ({{count}})",
+    "line": "{{emoji}} {{name}} ×{{qty}}",
+    "use_button": "Dùng",
+    "empty": "🎒 Túi trống. Mua vật phẩm tại /sanguo shop hoặc đánh boss thường để nhận vật phẩm.",
+    "used": "✅ Đã dùng {{emoji}} {{name}}.",
+    "healed": "✅ {{hero_emoji}} {{hero}} hồi phục **{{hp}}** HP.",
+    "no_target": "Không có hero nào để dùng vật phẩm này.",
+    "error": "Có lỗi khi tải túi đồ. Hãy thử lại."
   },
   "iv_grade": {
     "gold": "Hoàng Kim",

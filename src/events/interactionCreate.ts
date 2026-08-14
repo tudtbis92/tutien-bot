@@ -35,6 +35,8 @@ import { LEVEL_PREFIX } from '../ui/components/sanguoLevelButton.js';
 import { EVOLVE_PREFIX } from '../ui/components/sanguoEvolveButton.js';
 import { REROLL_OPEN_PREFIX, REROLL_SLOT_PREFIX } from '../ui/components/sanguoRerollSlotMenu.js';
 import { REROLL_GO_PREFIX } from '../ui/components/sanguoRerollButton.js';
+import { SHOP_TAB_PREFIX } from '../ui/components/sanguoShopTabs.js';
+import { SHOP_BUY_PREFIX } from '../ui/components/sanguoShopBuyButtons.js';
 
 export const name = Events.InteractionCreate;
 
@@ -61,6 +63,9 @@ interface SanguoComponentHandlers {
   handleRerollPress?: (interaction: ButtonInteraction) => Promise<void>;
   handleRerollSlot?: (interaction: StringSelectMenuInteraction) => Promise<void>;
   handleRerollGo?: (interaction: ButtonInteraction) => Promise<void>;
+  handleShopTabPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleShopBuyPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleBagUsePress?: (interaction: ButtonInteraction) => Promise<void>;
 }
 
 export async function execute(interaction: Interaction): Promise<void> {
@@ -319,6 +324,40 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo reroll button', err);
+      }
+      return;
+    }
+
+    // sanguo:shop:tab — D-16 currency tab toggle (customId
+    // 'sanguo:shop:tab:{linh|event}' — the tab key only; the handler
+    // validates it against the two known values, unknown → Linh thạch tab).
+    if (customId.startsWith(SHOP_TAB_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleShopTabPress === 'function') {
+          await cmd.handleShopTabPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo shop tab button', err);
+      }
+      return;
+    }
+
+    // sanguo:shop:buy — D-16 purchase (customId 'sanguo:shop:buy:{itemCode}'
+    // carries ONLY the code — the PRICE NEVER rides the payload, anti-tamper
+    // T-11-04-01; prices resolve server-side inside the shop tx).
+    if (customId.startsWith(SHOP_BUY_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleShopBuyPress === 'function') {
+          await cmd.handleShopBuyPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo shop buy button', err);
       }
       return;
     }

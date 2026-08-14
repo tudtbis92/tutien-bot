@@ -14,6 +14,12 @@
     },
     "hero": {
       "description": "查看英雄详情"
+    },
+    "shop": {
+      "description": "购买物品和阵型"
+    },
+    "bag": {
+      "description": "查看并使用背包中的物品"
     }
   },
   "map": {
@@ -210,6 +216,34 @@
     "cong_binh_special_common": "工兵 · 特殊 · 普通",
     "cong_binh_special_rare": "工兵 · 特殊 · 稀有",
     "cong_binh_special_epic": "工兵 · 特殊 · 史诗"
+  },
+  "shop": {
+    "title": "🛒 商店 ({{tab}})",
+    "tab_linh": "💎 灵石",
+    "tab_event": "🎁 活动",
+    "item_line": "{{emoji}} {{name}} — **{{price}}** 💎",
+    "section_items": "物品",
+    "section_formations": "阵型",
+    "buy_button": "购买 ({{price}} 💎)",
+    "bought": "✅ 已购买 {{emoji}} {{name}} ×{{qty}} ({{price}} 💎)",
+    "bought_formation": "✅ 已购买阵型 {{emoji}} {{name}} ({{price}} 💎)",
+    "capture_key_locked": "仅可从普通首领获得 — 尚未开放购买",
+    "empty": "商店暂无物品。请稍后再试。",
+    "event_empty": "本季暂无活动物品。",
+    "error": "加载商店时出错。请重试。",
+    "insufficient": "灵石不足 (需要 {{price}} 💎)。请检查余额后重试。",
+    "not_for_sale": "该物品尚未开放出售。",
+    "already_owned": "你已经拥有此阵型。"
+  },
+  "bag": {
+    "title": "🎒 背包 ({{count}})",
+    "line": "{{emoji}} {{name}} ×{{qty}}",
+    "use_button": "使用",
+    "empty": "🎒 背包空空如也。前往 /sanguo shop 购买物品或击败普通首领获取物品。",
+    "used": "✅ 已使用 {{emoji}} {{name}}。",
+    "healed": "✅ {{hero_emoji}} {{hero}} 恢复了 **{{hp}}** 生命。",
+    "no_target": "没有可以使用的英雄。",
+    "error": "加载背包时出错。请重试。"
   },
   "iv_grade": {
     "gold": "金色",

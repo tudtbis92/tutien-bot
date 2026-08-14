@@ -4,7 +4,7 @@ import { db } from '../../../db/client.js';
 import { buyItem, buyFormation } from '../shopService.js';
 import { users } from '../../../db/schema/users.js';
 import { userSanguoItems } from '../../../db/schema/userSanguoItems.js';
-import { userFormations } from '../../../db/schema/userFormations.js';
+import { userFormations } from '../../../db/schema/formations.js';
 
 vi.mock('../../../db/client.js', () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -140,7 +140,7 @@ describe('buyItem — wallet-sink purchase, anti-tamper price, saleState gate', 
   });
 
   it('S2: insufficient balance → INSUFFICIENT_BALANCE, NO inventory change (whole tx rolls back)', async () => {
-    const { promise, tx } = runInTx(
+    const { promise, tx, insert } = runInTx(
       [
         [ITEM_HEAL],
         [],                        // wallet WHERE-guard matches zero rows (balance < 50)
@@ -183,6 +183,7 @@ describe('buyFormation — wallet-sink formation purchase, ALREADY_OWNED guard',
         [FORMATION_THIEN_CO],     // 1. formation by code
         [],                       // 2. owned check — NOT owned
         [{ balance: 200n }],      // 3. wallet deductBalance returning (200 - 200)
+        [{ id: 55 }],             // 4. insert.onConflictDoNothing().returning() — the ownership row
       ],
       () => buyFormation(USER_ID, 'thien_co'),
     );
@@ -209,7 +210,7 @@ describe('buyFormation — wallet-sink formation purchase, ALREADY_OWNED guard',
   });
 
   it('F2: already-owned formation → ALREADY_OWNED, no deduction, no duplicate ownership row', async () => {
-    const { promise, insert } = runInTx(
+    const { promise, tx, insert } = runInTx(
       [
         [FORMATION_THIEN_CO],
         [{ id: 9 }],              // owned check — already owned

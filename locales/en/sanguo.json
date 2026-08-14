@@ -14,6 +14,12 @@
     },
     "hero": {
       "description": "View a hero's details"
+    },
+    "shop": {
+      "description": "Buy items and formations"
+    },
+    "bag": {
+      "description": "View and use items in your bag"
     }
   },
   "map": {
@@ -210,6 +216,34 @@
     "cong_binh_special_common": "Engineer · Special · Common",
     "cong_binh_special_rare": "Engineer · Special · Rare",
     "cong_binh_special_epic": "Engineer · Special · Epic"
+  },
+  "shop": {
+    "title": "🛒 Shop ({{tab}})",
+    "tab_linh": "💎 Spirit Stones",
+    "tab_event": "🎁 Event",
+    "item_line": "{{emoji}} {{name}} — **{{price}}** 💎",
+    "section_items": "Items",
+    "section_formations": "Formations",
+    "buy_button": "Buy ({{price}} 💎)",
+    "bought": "✅ Bought {{emoji}} {{name}} ×{{qty}} ({{price}} 💎)",
+    "bought_formation": "✅ Bought formation {{emoji}} {{name}} ({{price}} 💎)",
+    "capture_key_locked": "Only obtainable from normal bosses — not for sale yet",
+    "empty": "The shop has no items yet. Please try again later.",
+    "event_empty": "No event items this season.",
+    "error": "There was an error loading the shop. Please try again.",
+    "insufficient": "Not enough Spirit Stones (need {{price}} 💎). Check your balance and try again.",
+    "not_for_sale": "This item is not for sale yet.",
+    "already_owned": "You already own this formation."
+  },
+  "bag": {
+    "title": "🎒 Bag ({{count}})",
+    "line": "{{emoji}} {{name}} ×{{qty}}",
+    "use_button": "Use",
+    "empty": "🎒 Your bag is empty. Buy items at /sanguo shop or defeat normal bosses to receive items.",
+    "used": "✅ Used {{emoji}} {{name}}.",
+    "healed": "✅ {{hero_emoji}} {{hero}} recovered **{{hp}}** HP.",
+    "no_target": "There is no hero to use this item on.",
+    "error": "There was an error loading the bag. Please try again."
   },
   "iv_grade": {
     "gold": "Gold",
