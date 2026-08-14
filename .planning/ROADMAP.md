@@ -196,7 +196,37 @@ Plans:
   4. User can field a legion of 3 mains + 9 buff heroes in legion battle; chemistry buffs (bonus-only, no penalty) apply per system/faction via `battleEngine` extension.
   5. Full collection filters (faction/zone/IV) available in `/sanguo heroes` for team building.
 
-**Plans**: TBD
+**Plans**: 8/8 plans planned (2026-08-14)
+Plans:
+**Wave 1**
+
+- [ ] 11-01-PLAN.md — [BLOCKING] Economy amendment (checkpoint:decision, D-18) + schema migration 0020 (5 new tables + 4 extends) + [BLOCKING] migrate (TQC-14..17)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 11-02-PLAN.md — Hidden balance constants (progression + chemistry, TDD) + content seed (skills/items/formations) + theme HON_NGOC (TQC-14..17)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 11-03-PLAN.md — TRACER: hồn ngọc progression (deductHonNgoc + convert/level/evolve/reroll) + copy selector in /sanguo hero (TQC-14/15)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 11-04-PLAN.md — Shop + bag + drop services (wallet sinks, multi-currency tabs, guaranteed boss drops) (TQC-16)
+- [ ] 11-05-PLAN.md — battleEngine legion extension (runLegionBattle + MP/skills/support effects) + chemistryService (TQC-17)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 11-06-PLAN.md — Boss redesign (checkpoint:decision D-24) + spawn integration (levels/skills) + boss legion routing + capture (TQC-16/17)
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 11-07-PLAN.md — Legion assembly command + /sanguo heroes SC5 filters (faction/IV) (TQC-17)
+
+**Wave 7** *(blocked on Wave 6)*
+
+- [ ] 11-08-PLAN.md — Balance pass + economy compliance verification + i18n parity + full regression (TQC-14..17)
+
 **UI hint**: yes
 
 ### Phase 12: Anti-Abuse, Monitoring & Marketplace Gating
@@ -220,7 +250,7 @@ Plans:
 | 8. Foundation, Economy Budget & Content Infrastructure | 4/4 | In Progress|  |
 | 9. Travel & Encounters | 5/5 | Complete    | 2026-08-13 |
 | 10. Battle & Capture | 7/7 | Complete    | 2026-08-14 |
-| 11. Progression, Chemistry & Economy Depth | 0/TBD | Not started | - |
+| 11. Progression, Chemistry & Economy Depth | 0/8 | Not started | - |
 | 12. Anti-Abuse, Monitoring & Marketplace Gating | 0/TBD | Not started | - |
 
 ---
