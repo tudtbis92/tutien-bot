@@ -70,6 +70,7 @@
 
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { notInArray } from 'drizzle-orm';
 import { Pool } from 'pg';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -476,17 +477,21 @@ async function seed() {
   // --- Map data (TQC-09, D-20 full-replace) ---------------------------------
   // The committed dataset (scripts/data/sanguo-map-data.json) fully owns the
   // map data: 18 zones, 73 nodes, 162 edges, 208 hero_zone_rates. The D-20
-  // reseed REPLACES the Phase 8 placeholder nodes. Full-replace flow (B3):
-  // delete child collections FIRST (mapEdges, heroZoneRates) then mapNodes —
-  // the delete+re-insert assigns NEW serial ids each run, so edges/rates keyed
-  // on those ids must be cleared before re-inserting, otherwise they accumulate
-  // (onConflictDoNothing can never collide with fresh ids). Hero/faction/family/
-  // relation/item seeding above is untouched (D-20 replaces ONLY map data).
+  // reseed REPLACES the Phase 8 placeholder nodes. Child collections (edges +
+  // rates, keyed on node ids) are deleted each run and re-derived below.
+  //
+  // CR-10-01: mapNodes is NOT full-deleted — deleting + re-inserting assigns
+  // NEW serial ids each run, orphaning any in-flight player_travel_state row
+  // (from_node_id/to_node_id) → NODE_NOT_FOUND on /sanguo travel (observed
+  // live 2026-08-14: Phase 10 reseed broke user 3's journey). Instead, ONLY
+  // stale nodes (code no longer in the dataset) are deleted; surviving codes
+  // keep their ids via the onConflictDoUpdate(code) upsert below.
   const mapData = loadSanguoMapData();
+  const mapCodes = new Set(mapData.nodes.map((n) => n.code));
 
-  await db.delete(schema.mapEdges); // child first (no FK)
+  await db.delete(schema.mapEdges); // child first (no FK) — re-derived below
   await db.delete(schema.heroZoneRates); // child (references heroes + zone code)
-  await db.delete(schema.mapNodes); // D-20 placeholder replacement (heroes untouched)
+  await db.delete(schema.mapNodes).where(notInArray(schema.mapNodes.code, [...mapCodes]));
 
   // Zones (D-19 reference table) — clobber-safe nameZh spread (Pitfall 6)
   let zoneCount = 0;

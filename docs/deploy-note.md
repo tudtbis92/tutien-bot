@@ -1,16 +1,16 @@
 # Deploy Note — TuTien Bot
 
 > Tài liệu tham khảo cho agent/bạn chạy deploy trên production server.
-> Cập nhật: 2026-08-13 — **ĐÃ DEPLOY** toàn bộ Phase 9 (travel map) lên production.
-> **Production hiện chạy `origin/main` = HEAD `fcda410` (Phase 9 + UAT session đã bắt đầu).**
+> Cập nhật: 2026-08-14 — **ĐÃ DEPLOY** toàn bộ Phase 10 (battle & capture) lên production.
+> **Production hiện chạy `origin/main` = HEAD `fc2ee69` + 2 commits local (lockfile fix `093754f`).**
 
 ---
 
 ## 1. QUYẾT ĐỊNH QUAN TRỌNG NHẤT
 
-**Deploy Phase 9 ĐÃ HOÀN TẤT an toàn (2026-08-13).**
-- Quy trình deploy vẫn theo gate mục 4 (journal check trước migrate là bắt buộc).
-- Migration 0018 có `DROP COLUMN arrive_at/cost` trên `player_travel_state` — **AN TOÀN vì bảng rỗng (0 rows)** đã xác nhận trước deploy. Nếu lần sau bảng có data, DROP sẽ mất dữ liệu journey đang chạy.
+**Deploy Phase 10 ĐÃ HOÀN TẤT an toàn (2026-08-14).**
+- Migration **0019** hoàn toàn **ADDITIVE** (tạo bảng capture_attempts/user_sanguo_state, thêm cột heroes stats/rarity/tier, user_heroes hp_current/captured_zone, sanguo_battles replay record, encounter_runs.pity_count; FK + CHECK + index) — **không có DROP/TRUNCATE/DELETE** → không cần rollback DB, chỉ rollback code nếu lỗi.
+- **npm ci lần đầu deploy Phase 10 BỊ LỖI**: lockfile thiếu esbuild optional deps (`Missing @esbuild/*@0.28.2 from lock file`). Đã sửa bằng `npm install` → 512 entries optional được bổ sung vào package-lock.json (commit `093754f`), verify `rm -rf node_modules && npm ci` chạy sạch. → **Các deploy sau đừng xóa commit này.**
 
 ---
 
@@ -25,7 +25,7 @@
 
 ## 3. CẤU TRÚC CƠ SỞ DỮ LIỆU (sau Phase 8 + post-gate)
 
-### Migrations: 0000 → 0018
+### Migrations: 0000 → 0019
 
 | Migration | Nội dung | Đặc điểm |
 |---|---|---|
@@ -35,6 +35,7 @@
 | 0016 | hero_families + heroes.family_id FK | ADDITIVE |
 | 0017 | hero_relations (spouse) | ADDITIVE |
 | 0018 | map_zones/map_edges/hero_zone_rates tables; player_travel_state +travel_seconds_remaining/encounter_active, −arrive_at/−cost; encounter_runs +encounter_type/user_status_idx | ADDITIVE + DROP 2 cột trên bảng RỖNG (an toàn 2026-08-13) |
+| 0019 | capture_attempts + user_sanguo_state tables; heroes +str/agi/int/mov/lea/cha/hp/mp/rarity/tier; user_heroes +hp_current/captured_zone; sanguo_battles +encounter_id/type/seed/input/result; encounter_runs +pity_count; FK + CHECK (rarity/tier 1–5) + indexes | ADDITIVE 100% (không DROP/TRUNCATE) — deploy 2026-08-14 |
 
 ### ⚠️ Điểm cần biết về migration
 
@@ -175,16 +176,16 @@ cd /path/to/tutien-bot
 
 ---
 
-## 8. TRẠNG THÁI HIỆN TẠI (2026-08-13 — ĐÃ DEPLOY PHASE 9)
+## 8. TRẠNG THÁI HIỆN TẠI (2026-08-14 — ĐÃ DEPLOY PHASE 10)
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Code quality gates (build/test/lint/typecheck/i18n) | ✅ xanh (186 tests / 24 files) |
-| Migrations trên production | ✅ (0014–0018 đã apply, journal 18 rows) |
-| Push lên origin/main | ✅ (HEAD `fcda410`, sync) |
+| Code quality gates (build/test/lint/typecheck/i18n) | ✅ xanh (291 tests / 31 files) |
+| Migrations trên production | ✅ (0014–0019 đã apply, journal 19 rows) |
+| Push lên origin/main | ✅ HEAD `fc2ee69` + local `093754f` (lockfile fix) — chưa push 2 commits |
 | Production env (CLIENT_ID) | ✅ xác nhận = 1381818375633899562 |
-| Backup production DB | ✅ `/root/backups/tutien_20260813_0218.sql` (30M) |
-| Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo travel+map registered, journal 18 rows, zones=18/nodes=73/edges=162/rates=208/heroes=132/factions=14/families=12/items=3 |
-| UAT (Phase 9) | ✅ COMPLETE 2026-08-13 — 17/18 pass (4 manual live-Discord + 14 automated), 1 skipped (boss GOLD variant — low rate, covered by automated tests). CR-09-01→06 fixes deployed |
+| Backup production DB | ✅ `/root/backups/tutien_20260814_0136.sql` (30M) |
+| Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo subcommands: map/travel/battle/heroes/hero registered, journal 19 rows, heroes=132 (đủ stats/rarity/tier) |
+| UAT (Phase 10) | 🔄 đang testing — 35/43 pass (automated), 8 human tests pending (2–8) |
 
-**Kết luận: ĐÃ DEPLOY + UAT COMPLETE Phase 9.** Lần deploy kế tiếp lặp lại gate 4.4–4.6.
+**Kết luận: ĐÃ DEPLOY Phase 10 thành công.** Còn 8 UAT tests human (2–8) chờ sign-off/live-Discord, sau đó commit UAT kết quả. Lưu ý: nhớ push 2 commits local (lockfile fix) lên origin. Lần deploy kế tiếp lặp lại gate 4.4–4.6.
