@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { db } from '../../../db/client.js';
-import { deductHonNgoc, convertDuplicate, TIER_VALUE } from '../soulgemService.js';
+import { deductHonNgoc, convertDuplicate, levelUp, evolveHero, TIER_VALUE } from '../soulgemService.js';
 import { userHeroes } from '../../../db/schema/userHeroes.js';
 import { userHeroSoulgems } from '../../../db/schema/userHeroSoulgems.js';
 import { userSanguoState } from '../../../db/schema/userSanguoState.js';
@@ -241,6 +241,164 @@ describe('convertDuplicate — dupe → per-hero hồn ngọc (D-03/D-04/D-12)',
 
     await expect(promise).rejects.toThrow('IN_FORMATION');
     expect(tx.delete).not.toHaveBeenCalled();
+    expect(tx.insert).not.toHaveBeenCalled();
+  });
+});
+
+// ── levelUp (D-05 / D-01 — explicit hồn ngọc leveling, max 100) ─────────────
+
+describe('levelUp — explicit hồn ngọc leveling (D-05/D-01)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('L1 copy with a pool of 10 levels to L2 and charges LEVEL_COST(1)=1 (pool 9)', async () => {
+    const { promise, tx, updateSet, insertValues } = runInTx(
+      [
+        [{ ...COPY_T0, level: 1 }],   // copy lock (L1)
+        [{ amount: 9 }],              // deduct returning (10 - 1)
+      ],
+      () => levelUp(USER_ID, 11),
+    );
+
+    await expect(promise).resolves.toEqual({ newLevel: 2, cost: 1 });
+    // The WHERE-guard deduction ran against the pool…
+    expect(tx.update).toHaveBeenCalledWith(userHeroSoulgems);
+    // …and the copy's level column was written in the SAME tx.
+    expect(tx.update).toHaveBeenCalledWith(userHeroes);
+    const levelSet = updateSet.mock.calls.find((c: any) => c[0]?.level !== undefined)?.[0];
+    expect(levelSet).toMatchObject({ level: 2 });
+
+    // The ledger row records the −cost spend with the post-deduction balance.
+    expect(insert).toHaveBeenCalledWith(soulgemTransactions);
+    const ledger = insertValues.mock.calls.find(
+      (c: any) => c[0]?.type === 'level',
+    )?.[0];
+    expect(ledger).toMatchObject({
+      userId: USER_ID,
+      heroId: 5,
+      type: 'level',
+      amount: -1,
+      balanceAfter: 9,
+    });
+  });
+
+  it('pool EXACTLY equal to the cost succeeds (pool 0 after)', async () => {
+    const { promise } = runInTx(
+      [
+        [{ ...COPY_T0, level: 1 }],
+        [{ amount: 0 }],              // pool 1 − cost 1 = 0
+      ],
+      () => levelUp(USER_ID, 11),
+    );
+    await expect(promise).resolves.toEqual({ newLevel: 2, cost: 1 });
+  });
+
+  it('pool 1 short → INSUFFICIENT_HON_NGOC with NO level change (whole tx rolls back)', async () => {
+    const { promise, tx } = runInTx(
+      [
+        [{ ...COPY_T0, level: 1 }],
+        [],                           // deduct matches zero rows
+      ],
+      () => levelUp(USER_ID, 11),
+    );
+
+    await expect(promise).rejects.toThrow('INSUFFICIENT_HON_NGOC');
+    // The level write NEVER ran — no userHeroes update beyond the copy lock read.
+    expect(tx.update).not.toHaveBeenCalledWith(userHeroes);
+    expect(tx.update).not.toHaveBeenCalledWith(userSanguoState);
+  });
+
+  it('a L100 copy → LEVEL_MAX error, NO deduction', async () => {
+    const { promise, tx } = runInTx(
+      [
+        [{ ...COPY_T0, level: 100 }], // already maxed
+      ],
+      () => levelUp(USER_ID, 11),
+    );
+
+    await expect(promise).rejects.toThrow('LEVEL_MAX');
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+});
+
+// ── evolveHero (D-06/D-07/D-09 — L20→t1 / L50→t2, t3 gated) ─────────────────
+
+describe('evolveHero — level-gated tier evolution (D-06/D-07/D-09)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('a L20 t0 copy with 20+ hồn ngọc evolves to t1 and charges 20', async () => {
+    const { promise, tx, updateSet, insertValues } = runInTx(
+      [
+        [{ ...COPY_T0, level: 20 }],  // t0, exactly at the L20 gate
+        [{ amount: 0 }],              // deduct returning (20 − 20)
+      ],
+      () => evolveHero(USER_ID, 11),
+    );
+
+    await expect(promise).resolves.toEqual({ newTier: 1, cost: 20 });
+    expect(tx.update).toHaveBeenCalledWith(userHeroSoulgems); // the WHERE-guard charge
+    expect(tx.update).toHaveBeenCalledWith(userHeroes);       // tier write in the SAME tx
+    const tierSet = updateSet.mock.calls.find((c: any) => c[0]?.tier !== undefined)?.[0];
+    expect(tierSet).toMatchObject({ tier: 1 });
+
+    const ledger = insertValues.mock.calls.find(
+      (c: any) => c[0]?.type === 'evolve',
+    )?.[0];
+    expect(ledger).toMatchObject({
+      userId: USER_ID,
+      heroId: 5,
+      type: 'evolve',
+      amount: -20,
+      balanceAfter: 0,
+    });
+  });
+
+  it('a L19 t0 copy → LEVEL_REQUIRED error, no mutation', async () => {
+    const { promise, tx } = runInTx(
+      [
+        [{ ...COPY_T0, level: 19 }],  // one short of the L20 gate
+      ],
+      () => evolveHero(USER_ID, 11),
+    );
+
+    await expect(promise).rejects.toThrow('LEVEL_REQUIRED');
+    expect(tx.update).not.toHaveBeenCalled();
+    expect(tx.insert).not.toHaveBeenCalled();
+  });
+
+  it('a L50 t1 copy evolves to t2 for 50 (tier writes to user_heroes.tier)', async () => {
+    const { promise, updateSet } = runInTx(
+      [
+        [{ ...COPY_T1, level: 50 }],  // t1, at the L50 gate
+        [{ amount: 0 }],              // deduct returning (50 − 50)
+      ],
+      () => evolveHero(USER_ID, 13),
+    );
+
+    await expect(promise).resolves.toEqual({ newTier: 2, cost: 50 });
+    const tierSet = updateSet.mock.calls.find((c: any) => c[0]?.tier !== undefined)?.[0];
+    expect(tierSet).toMatchObject({ tier: 2 });
+  });
+
+  it('a t2 copy pressing evolve → T3_GATED error (D-09 — L80+ AND event item, unreachable in v3)', async () => {
+    const { promise, tx } = runInTx(
+      [
+        [{ ...COPY_T1, tier: 2, level: 80 }],
+      ],
+      () => evolveHero(USER_ID, 13),
+    );
+
+    await expect(promise).rejects.toThrow('T3_GATED');
+    expect(tx.update).not.toHaveBeenCalled();
     expect(tx.insert).not.toHaveBeenCalled();
   });
 });
