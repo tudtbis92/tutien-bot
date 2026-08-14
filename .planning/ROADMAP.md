@@ -190,7 +190,7 @@ Plans:
 **Requirements**: TQC-14, TQC-15, TQC-16, TQC-17
 **Success Criteria** (what must be TRUE):
 
-  1. User can convert duplicate heroes to hồn ngọc (tier-scaled, diminishing returns, daily conversion cap) — hồn ngọc account-bound, never convertible to Linh thạch.
+  1. User can convert duplicate heroes to hồn ngọc (tier-scaled; diminishing returns via the flat-by-tier rarity curve — D-03 amends away TQC-14's "daily conversion cap") — hồn ngọc account-bound, never convertible to Linh thạch.
   2. User can evolve heroes at L20→t1 and L50→t2; t3 is schema-gated and unreachable in v3.
   3. User can buy support items from `/sanguo shop` and use them from the bag; boss thường drops items only, never money; every sink goes through `wallet.deductBalance`.
   4. User can field a legion of 3 mains + 9 buff heroes in legion battle; chemistry buffs (bonus-only, no penalty) apply per system/faction via `battleEngine` extension.

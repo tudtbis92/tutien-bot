@@ -603,25 +603,27 @@ export async function buyItem(userId: number, itemCode: string): Promise<{ name:
 
 ## Open Questions
 
-1. **Economy-budget.md amendment (BLOCKING, D-18 one-way gate)**
+> All four questions are RESOLVED by in-plan tasks (revision 2026-08-14); each carries its resolution mapping.
+
+1. **Economy-budget.md amendment (BLOCKING, D-18 one-way gate) — (RESOLVED → 11-01 Task 1 checkpoint:decision)**
    - What we know: the convertibility matrix's "Linh thạch → evolution" row conflicts with CONTEXT D-01/D-06 (evolution/leveling/reroll = hồn ngọc, never Linh thạch). The only new Linh thạch sinks are shop + formation purchases.
    - What's unclear: the exact amended wording + the recomputed `E[net/hour]` with Phase 11 shop prices (proposed heal 50 / booster 100 / formations 200-500💎) vs the ~416/hr gross bound.
-   - Recommendation: in-plan BLOCKING task (mirror Phase 10's 10-03 D-20 re-sign): amend the convertibility matrix + add a Phase 11 sink table + recompute `E[net/hour] ≤ 0` and gross < ~416/hr, then re-sign. User confirmation required (one-way gate).
+   - Resolution: 11-01 Task 1 is the blocking checkpoint:decision that amends the convertibility matrix, restates the Linh thạch sink set (shop + formations only, all via wallet.deductBalance), records the boss drop weights (70/25/4.9/0.1), recomputes `E[net/hour] ≤ 0` + gross < ~416/hr with the confirmed prices, and re-signs the document (D-18). The seed (11-02) then writes the confirmed values.
 
-2. **Boss-wall balance calibration**
+2. **Boss-wall balance calibration — (RESOLVED → 11-08 Task 1 balance pass)**
    - What we know: D-05's `damage = max(atk−def, 1)` with mirrored stat pairs makes a uniformly-stronger boss (t2×IV100×L50 ≈ +25-35 edge over a same-level main) near-unbeatable at exactly L50.
    - What's unclear: the exact level/tier/chemistry combination that makes the L50+ legion wall beatable-but-hard.
-   - Recommendation: the balance pass (in-plan) simulates the seeded stat ranges; if the wall is too hard, tune tier multipliers or STAT_GAIN_PER_LEVEL — NOT the fight formula (D-05 locked).
+   - Resolution: 11-08 Task 1 runs the balance-pass simulation (legion-vs-boss over the seeded stat ranges at L50/60/70 × t0/t1/t2 × chemistry tiers via runLegionBattle) and tunes the constants (STAT_GAIN_PER_LEVEL / TIER_MULTIPLIERS / CHEMISTRY_TIERS buffs) — NEVER the D-05 fight formula (locked). The wall asserts beatable-but-hard at L60+ t2 S-legions.
 
-3. **Booster as Linh thạch→hồn ngọc bridge (A11)**
+3. **Booster as Linh thạch→hồn ngọc bridge (A11) — (RESOLVED → flagged assumption A11, 11-01 + 11-04)**
    - What we know: D-11/D-12 lock the booster (Linh thạch-priced, doubles ONE conversion's hồn ngọc); D-02 says hồn ngọc never converts TO Linh thạch (which holds — one-way only).
    - What's unclear: whether the user considers Linh thạch→hồn ngọc (via booster) consistent with the account-bound stance, and what volume Phase 12 should monitor.
-   - Recommendation: keep as designed (net Linh thạch sink — compliant), flag in the amendment + Phase 12 audit; discuss-phase confirmation recommended.
+   - Resolution: kept as designed — a documented, bounded bridge (net Linh thạch flow stays ≤ 0; the booster is a sink, E[inflow] stays 0). Recorded as flagged assumption A11 in 11-01 (economy amendment) + 11-04 (booster volume), with Phase 12 TQC-19 monitoring; no runtime cap in v3 (D-11/D-12).
 
-4. **Support-effect randomness inside the replayable engine**
+4. **Support-effect randomness inside the replayable engine — (RESOLVED → 11-05 Task 1, seeded-rng note)**
    - What we know: D-18 support effects roll on a chance; D-06 demands full replayability.
    - What's unclear: none technically — the trigger rolls ride the seeded rng (snapshot carries the support loadouts); this is locked by the D-06 contract.
-   - Recommendation: adopt seeded-rng support rolls; document in the engine header that support-effect outcomes are part of the replay (like hit/crit).
+   - Resolution: adopted seeded-rng support rolls — 11-05 Task 1 threads the support-trigger rolls through the same xoroshiro128plus (uniformFloat64) as hit/crit, and documents in the battleEngine header that support-effect outcomes are part of the replay (11-05 flagged assumption 'support-trigger determinism, RESEARCH OQ4').
 
 ## Environment Availability
 
