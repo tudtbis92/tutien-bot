@@ -28,6 +28,9 @@ import {
 import { ZONE_MENU_ID } from '../ui/components/sanguoHeroesZoneMenu.js';
 import { STARTER_PICK_PREFIX } from '../ui/components/sanguoStarterButtons.js';
 import { COMPANION_PREFIX } from '../ui/components/sanguoHeroCompanionButton.js';
+import { COPY_MENU_ID } from '../ui/components/sanguoHeroCopyMenu.js';
+import { COPY_PAGE_PREFIX } from '../ui/components/sanguoHeroPageButtons.js';
+import { CONVERT_PREFIX } from '../ui/components/sanguoConvertButton.js';
 
 export const name = Events.InteractionCreate;
 
@@ -46,6 +49,9 @@ interface SanguoComponentHandlers {
   handleStarterPick?: (interaction: ButtonInteraction) => Promise<void>;
   handleZoneFilterSelect?: (interaction: StringSelectMenuInteraction) => Promise<void>;
   handleCompanionPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleCopyPress?: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  handleCopyPage?: (interaction: ButtonInteraction) => Promise<void>;
+  handleConvertPress?: (interaction: ButtonInteraction) => Promise<void>;
 }
 
 export async function execute(interaction: Interaction): Promise<void> {
@@ -89,6 +95,24 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo heroes zone filter', err);
+      }
+      return;
+    }
+
+    // sanguo:hero:copy — D-04 copy selector (select menu, static customId; the
+    // CHOSEN copy rides interaction.values[0], parsed with the parseInt +
+    // isNaN guard inside the handler — the pressed userHeroId is re-validated
+    // server-side on every press, never trusted on its own).
+    if (customId === COPY_MENU_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleCopyPress === 'function') {
+          await cmd.handleCopyPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo hero copy select', err);
       }
       return;
     }
@@ -166,6 +190,40 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo companion switch', err);
+      }
+      return;
+    }
+
+    // sanguo:hero:page — D-04 copy-list paging (customId
+    // 'sanguo:hero:page:{dir}:{offset}:{targetUhId}'); dir/offset parsed with
+    // the parseInt + isNaN guard inside the handler.
+    if (customId.startsWith(COPY_PAGE_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleCopyPage === 'function') {
+          await cmd.handleCopyPage(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo hero copy page', err);
+      }
+      return;
+    }
+
+    // sanguo:convert:go — D-03 dupe conversion (customId
+    // 'sanguo:convert:go:{userHeroId}' carries ONLY the copy id — the yield
+    // NEVER rides the payload; it resolves server-side inside the tx).
+    if (customId.startsWith(CONVERT_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleConvertPress === 'function') {
+          await cmd.handleConvertPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo convert button', err);
       }
       return;
     }

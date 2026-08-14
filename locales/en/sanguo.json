@@ -116,7 +116,30 @@
     "companion_button": "Set as companion",
     "companion_label": "⭐ Companion hero",
     "fainted": "💀 Exhausted",
-    "error": "You do not own this hero."
+    "error": "You do not own this hero.",
+    "copy_select": "Select copy",
+    "copy_option": "#{{i}} — Lv{{level}} • {{grade}}",
+    "copy_line": "#{{i}} — Lv{{level}} • {{grade}} • **{{hp}}** HP",
+    "copy_list": "📋 Copy list",
+    "copy_page": "Page {{page}}/{{total}}",
+    "convert_button": "Convert",
+    "level_button": "Level up ({{cost}} 🧿)",
+    "evolve_button": "Evolve",
+    "reroll_button": "Reroll skill",
+    "field_skills": "🎯 Skills"
+  },
+  "convert": {
+    "title": "💠 Convert {{hero_emoji}} {{name}}",
+    "button": "Convert → **{{amount}}** 🧿",
+    "done": "💠 Converted copy #{{i}} → +**{{amount}}** 🧿 of {{name}}.",
+    "booster_hint": "✨ Booster ×2 ready — the next conversion yields double.",
+    "insufficient": "No duplicate copies to convert.",
+    "error": "Something went wrong while converting. Please try again."
+  },
+  "skills": {
+    "normal_label": "Normal attack",
+    "special_label": "Special skill",
+    "line": "{{skill_emoji}} {{name}} ({{mp_cost}} MP)"
   },
   "iv_grade": {
     "gold": "Gold",

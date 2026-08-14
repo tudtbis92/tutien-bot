@@ -5,11 +5,16 @@ import {
   ButtonBuilder,
   type ButtonInteraction,
   type ChatInputCommandInteraction,
+  type StringSelectMenuInteraction,
 } from 'discord.js';
 import { db } from '../../../db/client.js';
 import { fetchCommandContext } from '../../../utils/commandContext.js';
-import { execute, handleCompanionPress } from '../hero.js';
+import { execute, handleCompanionPress, handleCopyPress, handleCopyPage, handleConvertPress } from '../hero.js';
 import { COMPANION_PREFIX } from '../../../ui/components/sanguoHeroCompanionButton.js';
+import { COPY_MENU_ID } from '../../../ui/components/sanguoHeroCopyMenu.js';
+import { COPY_PAGE_PREFIX } from '../../../ui/components/sanguoHeroPageButtons.js';
+import { CONVERT_PREFIX } from '../../../ui/components/sanguoConvertButton.js';
+import { convertDuplicate } from '../../../services/sanguo/soulgemService.js';
 
 vi.mock('../../../db/client.js', () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -19,8 +24,15 @@ vi.mock('../../../utils/commandContext.js', () => ({
   fetchCommandContext: vi.fn(),
 }));
 
+vi.mock('../../../services/sanguo/soulgemService.js', () => ({
+  convertDuplicate: vi.fn(),
+  TIER_VALUE: { 0: 1, 1: 5, 2: 10, 3: 20 },
+  BOOSTER_ITEM_CODE: 'booster_x2',
+}));
+
 // t renders real copy for the keys the hero detail surface interpolates so the
-// tests assert the actual rendered text (stars, grade, HP/MP, companion).
+// tests assert the actual rendered text (stars, grade, HP/MP, companion,
+// copy list, skills, convert result).
 const { t } = vi.hoisted(() => {
   const t = ((key: string, opts: Record<string, unknown> = {}) => {
     switch (key) {
@@ -38,6 +50,38 @@ const { t } = vi.hoisted(() => {
         return 'Chọn làm hero đồng hành';
       case 'sanguo:hero.fainted':
         return '💀 Kiệt sức';
+      case 'sanguo:hero.copy_select':
+        return 'Chọn bản';
+      case 'sanguo:hero.copy_option':
+        return `#${opts.i} — Lv${opts.level} • ${opts.grade}`;
+      case 'sanguo:hero.copy_line':
+        return `#${opts.i} — Lv${opts.level} • ${opts.grade} • **${opts.hp}** HP`;
+      case 'sanguo:hero.copy_list':
+        return '📋 Danh sách bản';
+      case 'sanguo:hero.copy_page':
+        return `Trang ${opts.page}/${opts.total}`;
+      case 'sanguo:hero.field_skills':
+        return '🎯 Kỹ năng';
+      case 'sanguo:hero.convert_button':
+        return 'Chuyển hóa';
+      case 'sanguo:skills.normal_label':
+        return 'Đánh thường';
+      case 'sanguo:skills.special_label':
+        return 'Kỹ năng đặc biệt';
+      case 'sanguo:skills.line':
+        return `${opts.skill_emoji} ${opts.name} (${opts.mp_cost} MP)`;
+      case 'sanguo:convert.title':
+        return `💠 Chuyển hóa ${opts.hero_emoji} ${opts.name}`;
+      case 'sanguo:convert.button':
+        return `Chuyển hóa → **${opts.amount}** 🧿`;
+      case 'sanguo:convert.done':
+        return `💠 Đã chuyển hóa bản #${opts.i} → +**${opts.amount}** 🧿 của ${opts.name}.`;
+      case 'sanguo:convert.booster_hint':
+        return '✨ Bộ kích hoạt ×2 đang sẵn sàng — lần chuyển hóa tiếp theo nhận gấp đôi.';
+      case 'sanguo:convert.insufficient':
+        return 'Không có bản trùng nào để chuyển hóa.';
+      case 'sanguo:convert.error':
+        return 'Có lỗi khi chuyển hóa. Hãy thử lại.';
       case 'iv_grade.gold':
         return 'Hoàng Kim';
       case 'iv_grade.ruby':
@@ -131,6 +175,18 @@ function mockButtonInteraction(customId: string): ButtonInteraction {
   } as unknown as ButtonInteraction;
 }
 
+function mockSelectInteraction(customId: string, values: string[]): StringSelectMenuInteraction {
+  return {
+    deferUpdate: vi.fn().mockResolvedValue(undefined),
+    editReply: vi.fn().mockResolvedValue(undefined),
+    customId,
+    values,
+    user: { id: '123' },
+    locale: 'vi',
+    client: { shard: { ids: [0] } },
+  } as unknown as StringSelectMenuInteraction;
+}
+
 function mockChatInputInteraction(raw: string): ChatInputCommandInteraction {
   return {
     deferReply: vi.fn().mockResolvedValue(undefined),
@@ -143,6 +199,31 @@ function mockChatInputInteraction(raw: string): ChatInputCommandInteraction {
     locale: 'vi',
     client: { shard: { ids: [0] } },
   } as unknown as ChatInputCommandInteraction;
+}
+
+/** The renderCopyDetail db.select sequence (skills guarded off — null slots). */
+function copyDetailSpecs(
+  target: any,
+  copies: any[],
+  stateRow: any = STATE_ROW,
+  boosterOwned: any[] = [],
+) {
+  return [
+    { steps: ['innerJoin', 'where', 'limit'], result: [target] },   // target copy
+    { steps: ['where', 'orderBy'], result: copies },                 // copies of species
+    { steps: ['where', 'limit'], result: [stateRow] },               // companion state
+    { steps: ['where', 'limit'], result: [{ id: 1 }] },              // booster catalog row
+    { steps: ['where', 'limit'], result: boosterOwned },             // owned booster
+  ];
+}
+
+/** The last ActionRow (the action-buttons row) of an editReply payload. */
+function lastRow(reply: any): ActionRowBuilder<any> {
+  return reply.components[reply.components.length - 1] as ActionRowBuilder<any>;
+}
+
+function customIdsIn(row: ActionRowBuilder<any>): string[] {
+  return row.components.map((c: any) => c.toJSON().custom_id);
 }
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -159,11 +240,15 @@ const UH_CAO_CAO = {
   nameEn: 'Cao Cao',
   nameZh: null,
   tier: 3,
+  level: 1,
   ivStr: 31, ivAgi: 31, ivInt: 31, ivMov: 31, ivLea: 31, ivCha: 31,
   hpCurrent: 120,
   hp: 120,
   mp: 40,
   capturedZone: 'trung_nguyen',
+  capturedAt: new Date('2026-08-01T00:00:00Z'),
+  skillNormalId: null,
+  skillSpecialId: null,
 };
 const UH_LIU_BEI = {
   id: 12,
@@ -174,19 +259,24 @@ const UH_LIU_BEI = {
   nameEn: 'Liu Bei',
   nameZh: null,
   tier: 4,
+  level: 1,
   ivStr: 10, ivAgi: 10, ivInt: 10, ivMov: 10, ivLea: 10, ivCha: 10,
   hpCurrent: 140,
   hp: 140,
   mp: 50,
   capturedZone: 'du_chau',
+  capturedAt: new Date('2026-08-01T00:00:00Z'),
+  skillNormalId: null,
+  skillSpecialId: null,
 };
-// A second owned copy of the same catalog hero — for the F9 duplicate
-// disambiguation: prefer the ACTIVE copy, else the earliest (lowest id).
+// A second owned copy of the same catalog hero — the D-04 dupe (duplicate
+// disambiguation prefers the ACTIVE copy, else the earliest).
 const UH_CAO_CAO_DUP = {
   ...UH_CAO_CAO,
   id: 13,
   ivStr: 5, ivAgi: 5, ivInt: 5, ivMov: 5, ivLea: 5, ivCha: 5,
   hpCurrent: 90,
+  capturedAt: new Date('2026-08-02T00:00:00Z'),
 };
 
 const CONTEXT = {
@@ -197,22 +287,21 @@ const CONTEXT = {
   shardId: 0,
 };
 
-describe('/sanguo hero command (10-07)', () => {
+describe('/sanguo hero command (10-07 + 11-03 copy selector)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  // ── Test 1: owned hero renders the detail (D-16)
-  it('an OWNED hero renders the detail: emoji, name, stars, grade, HP/MP (base-only), companion status + button (disabled when active)', async () => {
+  // ── Test 1: owned hero renders the detail (D-16) ────────────────────────
+  it('an OWNED hero renders the detail: emoji, name, stars, grade, HP/MP (base-only), companion status + action row (companion disabled when active)', async () => {
     vi.mocked(fetchCommandContext).mockResolvedValue(CONTEXT as never);
     mockDbSelects([
-      { steps: ['innerJoin', 'where', 'orderBy'], result: [UH_CAO_CAO, UH_LIU_BEI] }, // resolveOwnedHero
+      { steps: ['innerJoin', 'where', 'orderBy'], result: [UH_CAO_CAO, UH_CAO_CAO_DUP] }, // resolveOwnedHero
       { steps: ['where', 'limit'], result: [STATE_ROW] }, // disambiguation (active 11)
-      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] }, // renderHeroDetail row
-      { steps: ['where', 'limit'], result: [STATE_ROW] }, // renderHeroDetail state
+      ...copyDetailSpecs(UH_CAO_CAO, [UH_CAO_CAO, UH_CAO_CAO_DUP]), // renderCopyDetail (2 copies)
     ]);
 
-    const interaction = mockChatInputInteraction('Tào Tháo'); // match by per-locale name
+    const interaction = mockChatInputInteraction('Tào Tháo');
     await execute(interaction);
 
     expect(interaction.deferReply).not.toHaveBeenCalled(); // parent command owns it
@@ -234,15 +323,28 @@ describe('/sanguo hero command (10-07)', () => {
     const compField = fields.find((f: any) => f.name === '⭐ Hero đồng hành');
     expect(compField).toBeDefined();
 
-    // The companion button is DISABLED when the hero is already active (D-16).
-    const row = reply.components?.[0] as ActionRowBuilder<any>;
-    expect(row.components).toHaveLength(1);
-    const btn = (row.components[0] as ButtonBuilder).toJSON() as {
-      custom_id: string;
+    // D-04: 2 copies → the copy-list field + page counter render.
+    const copyListField = fields.find((f: any) => f.name === '📋 Danh sách bản');
+    expect(copyListField).toBeDefined();
+    expect(copyListField.value).toContain('#1 — Lv1 • Hoàng Kim • **120** HP');
+
+    // 3 rows: copy select + action row (no page row — 2 copies ≤ 25).
+    expect(reply.components).toHaveLength(2);
+    const selectRow = reply.components[0] as ActionRowBuilder<any>;
+    const selectJson = (selectRow.components[0] as any).toJSON();
+    expect(selectJson.custom_id).toBe(COPY_MENU_ID);
+    expect(selectJson.options).toHaveLength(2); // one option per copy
+
+    // The action row carries the CONVERT button + the companion button (the
+    // latter DISABLED when the copy is already the active companion).
+    const actionRow = lastRow(reply);
+    const ids = customIdsIn(actionRow);
+    expect(ids[0]).toBe(`${CONVERT_PREFIX}:11`);
+    expect(ids[1]).toBe(`${COMPANION_PREFIX}:11`);
+    const compBtn = (actionRow.components[1] as ButtonBuilder).toJSON() as {
       disabled: boolean;
     };
-    expect(btn.custom_id).toBe('sanguo:hero:companion:11');
-    expect(btn.disabled).toBe(true);
+    expect(compBtn.disabled).toBe(true);
   });
 
   it('a NON-OWNED hero renders hero.error (DANGER) — no stat leak (D-16 ownership gate)', async () => {
@@ -262,7 +364,7 @@ describe('/sanguo hero command (10-07)', () => {
     expect(reply.components).toEqual([]);
   });
 
-  it('F9 duplicate disambiguation: prefers the ACTIVE companion copy over a newer duplicate', async () => {
+  it('F9 duplicate disambiguation: prefers the ACTIVE companion copy over a newer duplicate (action buttons carry the active id)', async () => {
     vi.mocked(fetchCommandContext).mockResolvedValue(CONTEXT as never);
     mockDbSelects([
       {
@@ -270,8 +372,7 @@ describe('/sanguo hero command (10-07)', () => {
         result: [UH_CAO_CAO, UH_CAO_CAO_DUP], // same catalog hero, two copies (id 11 active, 13 newer)
       },
       { steps: ['where', 'limit'], result: [STATE_ROW] }, // activeHeroId = 11
-      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] }, // renderHeroDetail → the ACTIVE copy
-      { steps: ['where', 'limit'], result: [STATE_ROW] },
+      ...copyDetailSpecs(UH_CAO_CAO, [UH_CAO_CAO, UH_CAO_CAO_DUP]), // renderCopyDetail → the ACTIVE copy
     ]);
 
     const interaction = mockChatInputInteraction('Tào Tháo'); // name matches BOTH copies → F9 picks the active one
@@ -280,19 +381,38 @@ describe('/sanguo hero command (10-07)', () => {
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     const embed = reply.embeds?.[0]?.data ?? {};
     expect(embed.title).toBe('🗡️ Tào Tháo');
-    // The active copy renders — its button is DISABLED.
-    const btn = ((reply.components?.[0] as ActionRowBuilder<any>).components[0] as ButtonBuilder).toJSON() as {
-      custom_id: string;
-    };
-    expect(btn.custom_id).toBe('sanguo:hero:companion:11');
+    // The action buttons target the ACTIVE copy (11).
+    const actionRow = lastRow(reply);
+    expect(customIdsIn(actionRow)[0]).toBe(`${CONVERT_PREFIX}:11`);
   });
 
-  // ── Test 3: handleCompanionPress (D-16/D-04)
+  // ── zero-one-many (D-04): 1 copy → NO select, actions directly ──────────
+  it('a hero with exactly 1 copy renders NO copy select — action buttons directly (zero-one-many)', async () => {
+    vi.mocked(fetchCommandContext).mockResolvedValue(CONTEXT as never);
+    mockDbSelects([
+      { steps: ['innerJoin', 'where', 'orderBy'], result: [UH_LIU_BEI] }, // resolveOwnedHero (1 copy of Lưu Bị)
+      { steps: ['where', 'limit'], result: [STATE_ROW] }, // disambiguation
+      ...copyDetailSpecs(UH_LIU_BEI, [UH_LIU_BEI]), // renderCopyDetail (1 copy → no select)
+    ]);
+
+    const interaction = mockChatInputInteraction('Lưu Bị');
+    await execute(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    // ONLY the action row — no copy select, no page buttons.
+    expect(reply.components).toHaveLength(1);
+    const actionRow = lastRow(reply);
+    expect(customIdsIn(actionRow)[0]).toBe(`${CONVERT_PREFIX}:12`);
+    // No copy-list field for a single copy.
+    const fields = reply.embeds?.[0]?.data?.fields ?? [];
+    expect(fields.find((f: any) => f.name === '📋 Danh sách bản')).toBeUndefined();
+  });
+
+  // ── Test 3: handleCompanionPress (D-16/D-04) ────────────────────────────
   it('handleCompanionPress switches activeHeroId inside a FOR UPDATE tx and re-renders with the button disabled', async () => {
     mockDbSelects([
       { steps: ['where', 'limit'], result: [USER_ROW] }, // resolveInteractionUser
-      { steps: ['innerJoin', 'where', 'limit'], result: [UH_LIU_BEI] }, // renderHeroDetail row (post-switch)
-      { steps: ['where', 'limit'], result: [STATE_ROW_ACTIVE_12] }, // renderHeroDetail state
+      ...copyDetailSpecs(UH_LIU_BEI, [UH_LIU_BEI], STATE_ROW_ACTIVE_12), // renderCopyDetail (post-switch — now active)
     ]);
     const mockTx = buildMockTx([
       { steps: ['where', 'limit'], result: [UH_LIU_BEI] }, // ownership gate
@@ -312,19 +432,19 @@ describe('/sanguo hero command (10-07)', () => {
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     const embed = reply.embeds?.[0]?.data ?? {};
     expect(embed.title).toBe('🗡️ Lưu Bị');
-    const btn = ((reply.components?.[0] as ActionRowBuilder<any>).components[0] as ButtonBuilder).toJSON() as {
+    const actionRow = lastRow(reply);
+    const compBtn = (actionRow.components[1] as ButtonBuilder).toJSON() as {
       custom_id: string;
       disabled: boolean;
     };
-    expect(btn.custom_id).toBe('sanguo:hero:companion:12');
-    expect(btn.disabled).toBe(true); // now the active companion
+    expect(compBtn.custom_id).toBe('sanguo:hero:companion:12');
+    expect(compBtn.disabled).toBe(true); // now the active companion
   });
 
   it('pressing the ALREADY-ACTIVE hero is a no-op (no state write — defense in depth, D-16)', async () => {
     mockDbSelects([
       { steps: ['where', 'limit'], result: [USER_ROW] },
-      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] },
-      { steps: ['where', 'limit'], result: [STATE_ROW] }, // activeHeroId 11 already
+      ...copyDetailSpecs(UH_CAO_CAO, [UH_CAO_CAO]),
     ]);
     const mockTx = buildMockTx([
       { steps: ['where', 'limit'], result: [UH_CAO_CAO] }, // ownership gate
@@ -367,7 +487,107 @@ describe('/sanguo hero command (10-07)', () => {
     expect(db.transaction).not.toHaveBeenCalled();
   });
 
-  // ── Test 4: D-12 never-render on the detail surface
+  // ── D-04 copy select press ──────────────────────────────────────────────
+  it('handleCopyPress re-renders with the action buttons targeting the CHOSEN copy (ownership re-gated)', async () => {
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] }, // resolveInteractionUser
+      ...copyDetailSpecs(UH_CAO_CAO_DUP, [UH_CAO_CAO, UH_CAO_CAO_DUP]), // renderCopyDetail(13)
+    ]);
+
+    const interaction = mockSelectInteraction(COPY_MENU_ID, ['13']);
+    await handleCopyPress(interaction);
+
+    expect(interaction.deferUpdate).toHaveBeenCalled();
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    const actionRow = lastRow(reply);
+    expect(customIdsIn(actionRow)[0]).toBe(`${CONVERT_PREFIX}:13`); // chosen copy
+  });
+
+  it('handleCopyPress rejects a NaN select value without rendering (parseInt + isNaN guard)', async () => {
+    mockDbSelects([{ steps: ['where', 'limit'], result: [USER_ROW] }]);
+
+    const interaction = mockSelectInteraction(COPY_MENU_ID, ['notanumber']);
+    await handleCopyPress(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.color).toBe(0xef4444);
+    expect(reply.components).toEqual([]);
+  });
+
+  // ── D-04 copy page press ────────────────────────────────────────────────
+  it('handleCopyPage moves the copy-list page and keeps the action target pinned', async () => {
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] }, // resolveInteractionUser
+      ...copyDetailSpecs(UH_CAO_CAO, [UH_CAO_CAO, UH_CAO_CAO_DUP]), // renderCopyDetail(11, next page)
+    ]);
+
+    const interaction = mockButtonInteraction(`${COPY_PAGE_PREFIX}:next:0:11`);
+    await handleCopyPage(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.components).toHaveLength(2); // select + action rows
+    const actionRow = lastRow(reply);
+    expect(customIdsIn(actionRow)[0]).toBe(`${CONVERT_PREFIX}:11`); // pinned target
+  });
+
+  // ── D-03 convert press ──────────────────────────────────────────────────
+  it('handleConvertPress consumes the dupe and renders the SUCCESS progression-result embed with the yield', async () => {
+    vi.mocked(convertDuplicate).mockResolvedValue({ yield: 1, boosterUsed: false });
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] }, // resolveInteractionUser
+      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] }, // pre-read target
+      { steps: ['where', 'orderBy'], result: [UH_CAO_CAO, UH_CAO_CAO_DUP] }, // pre-read copies (index 1)
+    ]);
+    mockTransaction(buildMockTx([])); // the convert tx — mocked service, tx unused
+
+    const interaction = mockButtonInteraction(`${CONVERT_PREFIX}:13`);
+    await handleConvertPress(interaction);
+
+    expect(convertDuplicate).toHaveBeenCalledWith(42, 13);
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    const embed = reply.embeds?.[0]?.data ?? {};
+    expect(embed.color).toBe(0x10b981); // COLORS.SUCCESS
+    expect(embed.title).toBe('💠 Chuyển hóa <a:mock:1> Tào Tháo');
+    expect(embed.description).toContain('💠 Đã chuyển hóa bản #2 → +**1** 🧿 của Tào Tháo.');
+    expect(reply.components).toEqual([]); // terminal state
+  });
+
+  it('handleConvertPress with a booster shows the ×2 hint in the result', async () => {
+    vi.mocked(convertDuplicate).mockResolvedValue({ yield: 2, boosterUsed: true });
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] },
+      { steps: ['where', 'orderBy'], result: [UH_CAO_CAO, UH_CAO_CAO_DUP] },
+    ]);
+    mockTransaction(buildMockTx([]));
+
+    const interaction = mockButtonInteraction(`${CONVERT_PREFIX}:13`);
+    await handleConvertPress(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    const embed = reply.embeds?.[0]?.data ?? {};
+    expect(embed.description).toContain('+**2** 🧿');
+    expect(embed.description).toContain('✨ Bộ kích hoạt ×2');
+  });
+
+  it('handleConvertPress maps NOT_ENOUGH_COPIES → convert.insufficient (DANGER)', async () => {
+    vi.mocked(convertDuplicate).mockRejectedValue(new Error('NOT_ENOUGH_COPIES'));
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] },
+      { steps: ['where', 'orderBy'], result: [UH_CAO_CAO] },
+    ]);
+    mockTransaction(buildMockTx([]));
+
+    const interaction = mockButtonInteraction(`${CONVERT_PREFIX}:13`);
+    await handleConvertPress(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.color).toBe(0xef4444);
+    expect(reply.embeds?.[0]?.data?.description).toContain('Không có bản trùng nào để chuyển hóa.');
+  });
+
+  // ── Test 4: D-12 never-render on the detail surface ─────────────────────
   it('the detail embed renders NO raw IV numbers and NO rarity — grade key + stars only (D-12)', () => {
     // The render path is covered above; this pins the DATA contract: the embed
     // data carries gradeKey/stars/hp/mp, never iv_* columns or rarity.

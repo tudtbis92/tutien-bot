@@ -116,7 +116,30 @@
     "companion_button": "设为同伴",
     "companion_label": "⭐ 同伴英雄",
     "fainted": "💀 精疲力竭",
-    "error": "你尚未拥有该英雄。"
+    "error": "你尚未拥有该英雄。",
+    "copy_select": "选择副本",
+    "copy_option": "#{{i}} — Lv{{level}} • {{grade}}",
+    "copy_line": "#{{i}} — Lv{{level}} • {{grade}} • **{{hp}}** HP",
+    "copy_list": "📋 副本列表",
+    "copy_page": "第 {{page}}/{{total}} 页",
+    "convert_button": "转换",
+    "level_button": "升级 ({{cost}} 🧿)",
+    "evolve_button": "进化",
+    "reroll_button": "重洗技能",
+    "field_skills": "🎯 技能"
+  },
+  "convert": {
+    "title": "💠 转换 {{hero_emoji}} {{name}}",
+    "button": "转换 → **{{amount}}** 🧿",
+    "done": "💠 已转换 #{{i}} 号 → +**{{amount}}** 🧿（{{name}}）。",
+    "booster_hint": "✨ ×2 增幅器已就绪 — 下次转换收益翻倍。",
+    "insufficient": "没有可转换的重复英雄。",
+    "error": "转换时出错，请重试。"
+  },
+  "skills": {
+    "normal_label": "普通攻击",
+    "special_label": "特殊技能",
+    "line": "{{skill_emoji}} {{name}} ({{mp_cost}} MP)"
   },
   "iv_grade": {
     "gold": "金色",

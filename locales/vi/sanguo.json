@@ -116,7 +116,30 @@
     "companion_button": "Chọn làm hero đồng hành",
     "companion_label": "⭐ Hero đồng hành",
     "fainted": "💀 Kiệt sức",
-    "error": "Bạn chưa sở hữu hero này."
+    "error": "Bạn chưa sở hữu hero này.",
+    "copy_select": "Chọn bản",
+    "copy_option": "#{{i}} — Lv{{level}} • {{grade}}",
+    "copy_line": "#{{i}} — Lv{{level}} • {{grade}} • **{{hp}}** HP",
+    "copy_list": "📋 Danh sách bản",
+    "copy_page": "Trang {{page}}/{{total}}",
+    "convert_button": "Chuyển hóa",
+    "level_button": "Tăng cấp ({{cost}} 🧿)",
+    "evolve_button": "Tiến hóa",
+    "reroll_button": "Đổi kỹ năng",
+    "field_skills": "🎯 Kỹ năng"
+  },
+  "convert": {
+    "title": "💠 Chuyển hóa {{hero_emoji}} {{name}}",
+    "button": "Chuyển hóa → **{{amount}}** 🧿",
+    "done": "💠 Đã chuyển hóa bản #{{i}} → +**{{amount}}** 🧿 của {{name}}.",
+    "booster_hint": "✨ Bộ kích hoạt ×2 đang sẵn sàng — lần chuyển hóa tiếp theo nhận gấp đôi.",
+    "insufficient": "Không có bản trùng nào để chuyển hóa.",
+    "error": "Có lỗi khi chuyển hóa. Hãy thử lại."
+  },
+  "skills": {
+    "normal_label": "Đánh thường",
+    "special_label": "Kỹ năng đặc biệt",
+    "line": "{{skill_emoji}} {{name}} ({{mp_cost}} MP)"
   },
   "iv_grade": {
     "gold": "Hoàng Kim",
