@@ -46,16 +46,21 @@ describe('CHEMISTRY_TIERS (S>=12 +10% ... D 1-2 +2%, 0 = bonus-only)', () => {
     }
   });
 
-  it('buffs are strictly ascending (S +10% ... D +2%, 0 -> +0%)', () => {
+  it('buffs are strictly descending across the S..D block (S +10% ... D +2%)', () => {
     expect(CHEMISTRY_TIERS[0]!.buff).toBeCloseTo(0.1, 10);
     expect(CHEMISTRY_TIERS[1]!.buff).toBeCloseTo(0.08, 10);
     expect(CHEMISTRY_TIERS[2]!.buff).toBeCloseTo(0.06, 10);
     expect(CHEMISTRY_TIERS[3]!.buff).toBeCloseTo(0.04, 10);
     expect(CHEMISTRY_TIERS[4]!.buff).toBeCloseTo(0.02, 10);
-    expect(CHEMISTRY_TIERS[5]!.buff).toBe(0);
-    for (let i = 1; i < CHEMISTRY_TIERS.length; i++) {
-      expect(CHEMISTRY_TIERS[i]!.buff > CHEMISTRY_TIERS[i - 1]!.buff).toBe(true);
+    // Along the S-first array (min descending), buffs strictly DESCEND with
+    // tier quality: S is the best tier (+10%), D the weakest (+2%). The
+    // final min-0 entry is the bonus-only FLOOR (buff 0 — a decrease by
+    // design, never a penalty), so the strict-descent invariant spans the
+    // S..D block only.
+    for (let i = 1; i <= 4; i++) {
+      expect(CHEMISTRY_TIERS[i]!.buff < CHEMISTRY_TIERS[i - 1]!.buff).toBe(true);
     }
+    expect(CHEMISTRY_TIERS[5]!.buff).toBe(0);
   });
 
   it('tier labels are the UI-SPEC-locked set S/A/B/C/D + a null 0-tier (bonus-only)', () => {
