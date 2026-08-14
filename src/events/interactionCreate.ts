@@ -33,6 +33,8 @@ import { COPY_PAGE_PREFIX } from '../ui/components/sanguoHeroPageButtons.js';
 import { CONVERT_PREFIX } from '../ui/components/sanguoConvertButton.js';
 import { LEVEL_PREFIX } from '../ui/components/sanguoLevelButton.js';
 import { EVOLVE_PREFIX } from '../ui/components/sanguoEvolveButton.js';
+import { REROLL_OPEN_PREFIX, REROLL_SLOT_PREFIX } from '../ui/components/sanguoRerollSlotMenu.js';
+import { REROLL_GO_PREFIX } from '../ui/components/sanguoRerollButton.js';
 
 export const name = Events.InteractionCreate;
 
@@ -56,6 +58,9 @@ interface SanguoComponentHandlers {
   handleConvertPress?: (interaction: ButtonInteraction) => Promise<void>;
   handleLevelPress?: (interaction: ButtonInteraction) => Promise<void>;
   handleEvolvePress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleRerollPress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleRerollSlot?: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  handleRerollGo?: (interaction: ButtonInteraction) => Promise<void>;
 }
 
 export async function execute(interaction: Interaction): Promise<void> {
@@ -117,6 +122,23 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo hero copy select', err);
+      }
+      return;
+    }
+
+    // sanguo:reroll:slot — D-32 reroll SLOT pick (select menu, customId
+    // 'sanguo:reroll:slot:{userHeroId}'; the CHOSEN slot ('normal'|'special')
+    // rides interaction.values[0], validated inside the handler).
+    if (customId.startsWith(REROLL_SLOT_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleRerollSlot === 'function') {
+          await cmd.handleRerollSlot(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo reroll slot select', err);
       }
       return;
     }
@@ -262,6 +284,41 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo evolve button', err);
+      }
+      return;
+    }
+
+    // sanguo:reroll:open — D-32 reroll flow ENTRY (the action-row reroll
+    // button, customId 'sanguo:reroll:open:{userHeroId}'): re-renders the
+    // copy detail with the slot-pick select replacing the action row.
+    if (customId.startsWith(REROLL_OPEN_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleRerollPress === 'function') {
+          await cmd.handleRerollPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo reroll open button', err);
+      }
+      return;
+    }
+
+    // sanguo:reroll:go — D-32 reroll CONFIRM (customId
+    // 'sanguo:reroll:go:{userHeroId}:{slot}' carries ONLY the copy id + the
+    // slot — the cost NEVER rides the payload; REROLL_COST resolves
+    // server-side; the slot is validated inside the handler).
+    if (customId.startsWith(REROLL_GO_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleRerollGo === 'function') {
+          await cmd.handleRerollGo(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo reroll button', err);
       }
       return;
     }

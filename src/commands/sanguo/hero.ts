@@ -1,5 +1,7 @@
 import {
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   SlashCommandSubcommandBuilder,
   type ButtonInteraction,
   type ChatInputCommandInteraction,
@@ -17,7 +19,7 @@ import { sanguoItems } from '../../db/schema/sanguoItems.js';
 import { sanguoSkills } from '../../db/schema/sanguoSkills.js';
 import { userHeroSoulgems } from '../../db/schema/userHeroSoulgems.js';
 import { heroEmoji, type SanguoTier } from '../../assets/sanguoEmojis.js';
-import { LEVEL_COST, MAX_LEVEL, EVOLUTION_COSTS } from '../../constants/sanguoProgression.js';
+import { LEVEL_COST, MAX_LEVEL, EVOLUTION_COSTS, REROLL_COST } from '../../constants/sanguoProgression.js';
 import type { SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { resolveComponentUser as resolveInteractionUser } from '../../utils/componentContext.js';
@@ -31,10 +33,13 @@ import { COPY_PAGE_PREFIX, buildSanguoHeroPageButtons } from '../../ui/component
 import { CONVERT_PREFIX, buildSanguoConvertButton } from '../../ui/components/sanguoConvertButton.js';
 import { LEVEL_PREFIX, buildSanguoLevelButton } from '../../ui/components/sanguoLevelButton.js';
 import { EVOLVE_PREFIX, buildSanguoEvolveButton } from '../../ui/components/sanguoEvolveButton.js';
+import { REROLL_OPEN_PREFIX, REROLL_SLOT_PREFIX, buildSanguoRerollSlotMenu } from '../../ui/components/sanguoRerollSlotMenu.js';
+import { REROLL_GO_PREFIX, buildSanguoRerollButton } from '../../ui/components/sanguoRerollButton.js';
 import {
   convertDuplicate,
   levelUp,
   evolveHero,
+  rerollSkill,
   TIER_VALUE,
   BOOSTER_ITEM_CODE,
 } from '../../services/sanguo/soulgemService.js';
@@ -252,6 +257,7 @@ async function renderCopyDetail(
   t: TFunction,
   locale: SupportedLocale,
   shardId: number | undefined,
+  opts: { rerollOpen?: boolean; rerollSlot?: 'normal' | 'special' } = {},
 ): Promise<{
   embed: ReturnType<typeof buildSanguoHeroEmbed>;
   rows: ActionRowBuilder<MessageActionRowComponentBuilder>[];
@@ -438,9 +444,36 @@ async function renderCopyDetail(
     buildSanguoConvertButton(t, { userHeroId: target.id, amount: convertAmount, disabled: isActive }),
     buildSanguoLevelButton(t, { userHeroId: target.id, cost: levelCost, disabled: levelDisabled, label: levelLabel }),
     buildSanguoEvolveButton(t, { userHeroId: target.id, cost: evolveCost, disabled: evolveDisabled, label: evolveLabel }),
+    // D-32 reroll ENTRY (hero.reroll_button) — opens the slot-pick flow.
+    new ButtonBuilder()
+      .setCustomId(`${REROLL_OPEN_PREFIX}:${target.id}`)
+      .setLabel(t('sanguo:hero.reroll_button'))
+      .setStyle(ButtonStyle.Primary),
     buildCompanionButton(t, target.id, isActive),
   );
   rows.push(actionRow);
+
+  // Reroll-flow states replace the action row (the surface stays at its 3-row
+  // budget): rerollOpen → the SLOT select; rerollSlot → the CONFIRM button.
+  if (opts.rerollOpen) {
+    rows.pop();
+    rows.push(
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        buildSanguoRerollSlotMenu(t, { userHeroId: target.id }),
+      ),
+    );
+  } else if (opts.rerollSlot) {
+    rows.pop();
+    rows.push(
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        buildSanguoRerollButton(t, {
+          userHeroId: target.id,
+          slot: opts.rerollSlot,
+          cost: REROLL_COST,
+        }),
+      ),
+    );
+  }
 
   return { embed, rows };
 }
@@ -947,6 +980,182 @@ export async function handleEvolvePress(interaction: ButtonInteraction): Promise
     logger.error('HeroEvolvePress', 'Error evolving hero', err);
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:evolve.error'), shardId)],
+      components: [],
+    });
+  }
+}
+
+/**
+ * D-32 reroll flow step 1 — the action-row reroll button (hero.reroll_button,
+ * customId sanguo:reroll:open:{userHeroId}): re-renders the copy detail with
+ * the action row REPLACED by the slot-pick select (normal / special).
+ */
+export async function handleRerollPress(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferUpdate();
+  const ctx = await resolveInteractionUser(interaction);
+  if (!ctx) return;
+  const { userId, t, locale, shardId } = ctx;
+
+  const rawId = interaction.customId.slice(REROLL_OPEN_PREFIX.length + 1);
+  const uhId = parseInt(rawId, 10);
+  if (isNaN(uhId)) {
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+      components: [],
+    });
+    return;
+  }
+
+  try {
+    const detail = await renderCopyDetail(userId, uhId, 0, t, locale, shardId, { rerollOpen: true });
+    if (!detail) {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    await interaction.editReply({ embeds: [detail.embed], components: detail.rows });
+  } catch (err) {
+    logger.error('HeroRerollPress', 'Error opening reroll slot pick', err);
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:reroll.error'), shardId)],
+      components: [],
+    });
+  }
+}
+
+/**
+ * D-32 reroll flow step 2 — the slot select (customId
+ * sanguo:reroll:slot:{userHeroId}; the slot rides values[0]): re-renders the
+ * copy detail with the action row REPLACED by the confirm button
+ * (sanguo:reroll:go:{userHeroId}:{slot}).
+ */
+export async function handleRerollSlot(interaction: StringSelectMenuInteraction): Promise<void> {
+  await interaction.deferUpdate();
+  const ctx = await resolveInteractionUser(interaction);
+  if (!ctx) return;
+  const { userId, t, locale, shardId } = ctx;
+
+  const rawId = interaction.customId.slice(REROLL_SLOT_PREFIX.length + 1);
+  const uhId = parseInt(rawId, 10);
+  const slot = interaction.values[0] as 'normal' | 'special' | undefined;
+  if (isNaN(uhId) || (slot !== 'normal' && slot !== 'special')) {
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+      components: [],
+    });
+    return;
+  }
+
+  try {
+    const detail = await renderCopyDetail(userId, uhId, 0, t, locale, shardId, { rerollSlot: slot });
+    if (!detail) {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    await interaction.editReply({ embeds: [detail.embed], components: detail.rows });
+  } catch (err) {
+    logger.error('HeroRerollSlot', 'Error in reroll slot select', err);
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:reroll.error'), shardId)],
+      components: [],
+    });
+  }
+}
+
+/**
+ * D-32 reroll flow step 3 — the confirm button (customId
+ * sanguo:reroll:go:{userHeroId}:{slot}): calls rerollSkill (ONE tx — charge +
+ * weighted class-pool pick + slot write) and renders the progression-result
+ * embed (SUCCESS — reroll.title + reroll.done stating the REPLACEMENT skill,
+ * Secondary-destructive consequence copy). The display data is read BEFORE
+ * the tx; the new skill row is fetched for its name + content emoji.
+ */
+export async function handleRerollGo(interaction: ButtonInteraction): Promise<void> {
+  await interaction.deferUpdate();
+  const ctx = await resolveInteractionUser(interaction);
+  if (!ctx) return;
+  const { userId, t, locale, shardId } = ctx;
+
+  const raw = interaction.customId.slice(REROLL_GO_PREFIX.length + 1);
+  const [uhIdRaw, slotRaw] = raw.split(':');
+  const uhId = parseInt(uhIdRaw ?? '', 10);
+  const slot = slotRaw === 'normal' || slotRaw === 'special' ? slotRaw : null;
+  if (isNaN(uhId) || !slot) {
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+      components: [],
+    });
+    return;
+  }
+
+  let copy: OwnedHeroRow | null = null;
+  try {
+    // Display data (pre-read — the slot write is inside the tx).
+    [copy] = await db
+      .select(OWNED_COLUMNS)
+      .from(userHeroes)
+      .innerJoin(heroes, eq(userHeroes.heroId, heroes.id))
+      .where(eq(userHeroes.id, uhId))
+      .limit(1);
+    if (!copy || copy.userId !== userId) throw new Error('NOT_OWNED');
+
+    const result = await rerollSkill(userId, uhId, slot);
+    const name = pickName(copy, locale);
+
+    // The replacement skill row — name (i18n key) + content emoji.
+    const [skill] = await db
+      .select()
+      .from(sanguoSkills)
+      .where(eq(sanguoSkills.code, result.newSkillCode))
+      .limit(1);
+    const skillDisplay = skill
+      ? `${skill.emoji ?? ''} ${t(skillNameKey(skill.code))}`.trim()
+      : result.newSkillCode;
+
+    await interaction.editReply({
+      embeds: [
+        buildSanguoProgressionResultEmbed({
+          state: 'success',
+          title: t('sanguo:reroll.title', {
+            hero_emoji: safeHeroEmoji(copy.heroHeroId) ?? '',
+            name,
+          }),
+          // The consequence copy states the replacement (old roll lost).
+          lines: [
+            t('sanguo:reroll.done', {
+              slot: t(slot === 'normal' ? 'sanguo:skills.normal_label' : 'sanguo:skills.special_label'),
+              name,
+              skill: skillDisplay,
+            }),
+          ],
+          shardId,
+        }),
+      ],
+      components: [],
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === 'NOT_OWNED') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:hero.error'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'INSUFFICIENT_HON_NGOC') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:reroll.insufficient', { cost: REROLL_COST }), shardId)],
+        components: [],
+      });
+      return;
+    }
+    logger.error('HeroRerollGo', 'Error re-rolling skill', err);
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:reroll.error'), shardId)],
       components: [],
     });
   }

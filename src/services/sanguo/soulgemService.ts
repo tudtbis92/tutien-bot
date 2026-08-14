@@ -7,7 +7,10 @@ import { userSanguoState } from '../../db/schema/userSanguoState.js';
 import { sanguoItems } from '../../db/schema/sanguoItems.js';
 import { userSanguoItems } from '../../db/schema/userSanguoItems.js';
 import { userLegionSlots } from '../../db/schema/userLegions.js';
-import { LEVEL_COST, MAX_LEVEL, EVOLUTION_COSTS } from '../../constants/sanguoProgression.js';
+import { sanguoSkills, type SanguoSkill } from '../../db/schema/sanguoSkills.js';
+import { heroes } from '../../db/schema/heroes.js';
+import { LEVEL_COST, MAX_LEVEL, EVOLUTION_COSTS, REROLL_COST } from '../../constants/sanguoProgression.js';
+import { cryptoUniform } from './encounterService.js';
 
 /**
  * Hồn ngọc progression service (Phase 11 — TQC-14/TQC-15, D-01..D-12, D-32).
@@ -65,6 +68,42 @@ export const TIER_VALUE: Readonly<Record<number, number>> = {
 
 /** The booster_x2 item code (D-11 catalog — seed). */
 export const BOOSTER_ITEM_CODE = 'booster_x2' as const;
+
+/**
+ * D-30 rarity weights per slot — the reroll pick's cumulative-walk weights
+ * (normal pool common 80 / rare 20; special pool common 60 / rare 30 / epic
+ * 10). HIDDEN MECHANICS (D-12): NEVER rendered — the skill line shows the
+ * rolled skill name + MP cost only.
+ */
+export const RARITY_WEIGHTS: Readonly<
+  Record<'normal' | 'special', Readonly<Record<string, number>>>
+> = {
+  normal: { common: 80, rare: 20, epic: 0 },
+  special: { common: 60, rare: 30, epic: 10 },
+};
+
+/**
+ * Weighted pick over a class-slot skill pool — the cumulative-walk shape at
+ * encounterService.ts:121-127. Zero-weight rarities are filtered so the walk
+ * can never select them (even at an exact roll of 0). The caller guarantees a
+ * non-empty pool (rerollSkill throws NO_SKILL_POOL first).
+ */
+function pickWeightedSkill(
+  pool: SanguoSkill[],
+  slot: 'normal' | 'special',
+  rng: () => number,
+): SanguoSkill {
+  const weights = RARITY_WEIGHTS[slot];
+  const entries = pool
+    .map((skill) => ({ skill, w: weights[skill.rarity] ?? 0 }))
+    .filter((e) => e.w > 0);
+  const total = entries.reduce((acc, e) => acc + e.w, 0);
+  let roll = rng() * total;
+  for (const e of entries) {
+    if ((roll -= e.w) <= 0) return e.skill;
+  }
+  return entries.at(-1)!.skill;
+}
 
 /**
  * WHERE-guarded per-hero pool deduction (mirrors the balance-deduction
@@ -360,5 +399,89 @@ export async function evolveHero(
     });
 
     return { newTier: targetTier, cost };
+  });
+}
+
+/**
+ * D-32: re-roll ONE skill slot (normal | special) on ONE copy — Pokémon Go
+ * TM-style, ONE slot at a time, for a per-slot hồn ngọc cost (REROLL_COST).
+ *
+ * ONE tx (single-writer): FOR UPDATE lock the copy + its heroes.class (the
+ * class is the pool selector) → deductHonNgoc (WHERE-guard — insufficient
+ * pool rolls back with NO skill change) → pick the replacement from the
+ * class's pool for THAT slot (sanguo_skills WHERE class = copy class AND
+ * slot = $slot — slot isolation, D-32) weighted by rarity (RARITY_WEIGHTS,
+ * RESEARCH Pattern 3) via the cumulative walk with the INJECTABLE rng →
+ * write the picked id into the slot's per-copy column → ledger row
+ * { type: 'reroll', amount: −REROLL_COST }.
+ *
+ * CRYPTO RNG ONLY (milestone mandate): the default rng is cryptoUniform —
+ * pure-rand NEVER appears here (it exists only inside the seeded battle
+ * replay, D-06). The rng parameter is injectable for deterministic tests.
+ *
+ * @throws Error('NOT_OWNED') — forged copy id.
+ * @throws Error('INSUFFICIENT_HON_NGOC') — pool < REROLL_COST (10).
+ * @throws Error('NO_SKILL_POOL') — the class has no seeded skills for the slot.
+ */
+export async function rerollSkill(
+  userId: number,
+  userHeroId: number,
+  slot: 'normal' | 'special',
+  rng: () => number = cryptoUniform,
+): Promise<{ newSkillCode: string }> {
+  return db.transaction(async (tx) => {
+    // 1. FOR UPDATE lock the copy + its catalog class (the pool selector) —
+    //    ownership re-gate inside the tx.
+    const [copy] = await tx
+      .select({
+        id: userHeroes.id,
+        heroId: userHeroes.heroId,
+        heroClass: heroes.class,
+      })
+      .from(userHeroes)
+      .innerJoin(heroes, eq(userHeroes.heroId, heroes.id))
+      .where(and(eq(userHeroes.id, userHeroId), eq(userHeroes.userId, userId)))
+      .for('update');
+    if (!copy) throw new Error('NOT_OWNED');
+
+    // 2. WHERE-guard deduction — the single anti-double-spend control; a
+    //    failed deduction throws INSUFFICIENT_HON_NGOC and rolls back the
+    //    whole tx, so the skill write can never run uncharged.
+    const balanceAfter = await deductHonNgoc(tx, userId, copy.heroId, REROLL_COST);
+
+    // 3. The class's pool for THIS slot ONLY (slot isolation — D-32 one slot
+    //    at a time; a normal reroll can never draw a special skill and vice
+    //    versa). Defensive: a class with no seeded skills for the slot
+    //    throws before the weighted walk can select from nothing.
+    const pool = await tx
+      .select()
+      .from(sanguoSkills)
+      .where(and(eq(sanguoSkills.class, copy.heroClass), eq(sanguoSkills.slot, slot)));
+    if (pool.length === 0) throw new Error('NO_SKILL_POOL');
+    const picked = pickWeightedSkill(pool, slot, rng);
+
+    // 4. Slot write — per-copy column, in the SAME tx as the charge.
+    if (slot === 'normal') {
+      await tx
+        .update(userHeroes)
+        .set({ skillNormalId: picked.id })
+        .where(eq(userHeroes.id, copy.id));
+    } else {
+      await tx
+        .update(userHeroes)
+        .set({ skillSpecialId: picked.id })
+        .where(eq(userHeroes.id, copy.id));
+    }
+
+    // 5. Audit ledger row (repudiation — Phase 12 TQC-19).
+    await tx.insert(soulgemTransactions).values({
+      userId,
+      heroId: copy.heroId,
+      type: 'reroll',
+      amount: -REROLL_COST,
+      balanceAfter,
+    });
+
+    return { newSkillCode: picked.code };
   });
 }

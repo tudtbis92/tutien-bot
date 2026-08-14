@@ -9,14 +9,16 @@ import {
 } from 'discord.js';
 import { db } from '../../../db/client.js';
 import { fetchCommandContext } from '../../../utils/commandContext.js';
-import { execute, handleCompanionPress, handleCopyPress, handleCopyPage, handleConvertPress, handleLevelPress, handleEvolvePress } from '../hero.js';
+import { execute, handleCompanionPress, handleCopyPress, handleCopyPage, handleConvertPress, handleLevelPress, handleEvolvePress, handleRerollPress, handleRerollSlot, handleRerollGo } from '../hero.js';
 import { COMPANION_PREFIX } from '../../../ui/components/sanguoHeroCompanionButton.js';
 import { COPY_MENU_ID } from '../../../ui/components/sanguoHeroCopyMenu.js';
 import { COPY_PAGE_PREFIX } from '../../../ui/components/sanguoHeroPageButtons.js';
 import { CONVERT_PREFIX } from '../../../ui/components/sanguoConvertButton.js';
 import { LEVEL_PREFIX } from '../../../ui/components/sanguoLevelButton.js';
 import { EVOLVE_PREFIX } from '../../../ui/components/sanguoEvolveButton.js';
-import { convertDuplicate, levelUp, evolveHero } from '../../../services/sanguo/soulgemService.js';
+import { REROLL_OPEN_PREFIX, REROLL_SLOT_PREFIX } from '../../../ui/components/sanguoRerollSlotMenu.js';
+import { REROLL_GO_PREFIX } from '../../../ui/components/sanguoRerollButton.js';
+import { convertDuplicate, levelUp, evolveHero, rerollSkill } from '../../../services/sanguo/soulgemService.js';
 
 vi.mock('../../../db/client.js', () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -30,6 +32,7 @@ vi.mock('../../../services/sanguo/soulgemService.js', () => ({
   convertDuplicate: vi.fn(),
   levelUp: vi.fn(),
   evolveHero: vi.fn(),
+  rerollSkill: vi.fn(),
   TIER_VALUE: { 0: 1, 1: 5, 2: 10, 3: 20 },
   BOOSTER_ITEM_CODE: 'booster_x2',
 }));
@@ -118,6 +121,22 @@ const { t } = vi.hoisted(() => {
         return `Không đủ hồn ngọc (cần ${opts.cost} 🧿).`;
       case 'sanguo:evolve.error':
         return 'Có lỗi khi tiến hóa. Hãy thử lại.';
+      case 'sanguo:hero.reroll_button':
+        return 'Đổi kỹ năng';
+      case 'sanguo:reroll.title':
+        return `🎲 Đổi kỹ năng ${opts.hero_emoji} ${opts.name}`;
+      case 'sanguo:reroll.select_slot':
+        return 'Chọn khe kỹ năng để đổi';
+      case 'sanguo:reroll.button':
+        return `Đổi lại (${opts.cost} 🧿)`;
+      case 'sanguo:reroll.done':
+        return `🎲 Kỹ năng ${opts.slot} của ${opts.name} → **${opts.skill}**!`;
+      case 'sanguo:reroll.insufficient':
+        return `Không đủ hồn ngọc (cần ${opts.cost} 🧿).`;
+      case 'sanguo:reroll.error':
+        return 'Có lỗi khi đổi kỹ năng. Hãy thử lại.';
+      case 'sanguo:skills.vanguard_special_rare':
+        return 'Tiên phong · Kỹ năng · Hiếm';
       case 'iv_grade.gold':
         return 'Hoàng Kim';
       case 'iv_grade.ruby':
@@ -373,15 +392,16 @@ describe('/sanguo hero command (10-07 + 11-03 copy selector)', () => {
     expect(selectJson.custom_id).toBe(COPY_MENU_ID);
     expect(selectJson.options).toHaveLength(2); // one option per copy
 
-    // The action row carries CONVERT + LEVEL + EVOLVE + COMPANION (the latter
-    // DISABLED when the copy is already the active companion).
+    // The action row carries CONVERT + LEVEL + EVOLVE + REROLL + COMPANION
+    // (the latter DISABLED when the copy is already the active companion).
     const actionRow = lastRow(reply);
     const ids = customIdsIn(actionRow);
     expect(ids[0]).toBe(`${CONVERT_PREFIX}:11`);
     expect(ids[1]).toBe(`${LEVEL_PREFIX}:11`);
     expect(ids[2]).toBe(`${EVOLVE_PREFIX}:11`);
-    expect(ids[3]).toBe(`${COMPANION_PREFIX}:11`);
-    const compBtn = (actionRow.components[3] as ButtonBuilder).toJSON() as {
+    expect(ids[3]).toBe(`${REROLL_OPEN_PREFIX}:11`);
+    expect(ids[4]).toBe(`${COMPANION_PREFIX}:11`);
+    const compBtn = (actionRow.components[4] as ButtonBuilder).toJSON() as {
       disabled: boolean;
     };
     expect(compBtn.disabled).toBe(true);
@@ -473,7 +493,7 @@ describe('/sanguo hero command (10-07 + 11-03 copy selector)', () => {
     const embed = reply.embeds?.[0]?.data ?? {};
     expect(embed.title).toBe('🗡️ Lưu Bị');
     const actionRow = lastRow(reply);
-    const compBtn = (actionRow.components[3] as ButtonBuilder).toJSON() as {
+    const compBtn = (actionRow.components[4] as ButtonBuilder).toJSON() as {
       custom_id: string;
       disabled: boolean;
     };
@@ -736,6 +756,76 @@ describe('/sanguo hero command (10-07 + 11-03 copy selector)', () => {
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     expect(reply.embeds?.[0]?.data?.color).toBe(0xef4444);
     expect(reply.embeds?.[0]?.data?.description).toContain('Tào Tháo cần đạt **Lv20** trước khi tiến hóa.');
+  });
+
+  // ── D-32 reroll flow (open → slot → confirm) ───────────────────────────
+  it('handleRerollPress replaces the action row with the SLOT select (3 rows max)', async () => {
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      ...copyDetailSpecs(UH_CAO_CAO, [UH_CAO_CAO, UH_CAO_CAO_DUP]), // renderCopyDetail(rerollOpen)
+    ]);
+
+    const interaction = mockButtonInteraction(`${REROLL_OPEN_PREFIX}:11`);
+    await handleRerollPress(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    // 2 rows: copy select + the reroll SLOT select (page row skipped — 2 copies).
+    expect(reply.components).toHaveLength(2);
+    const slotRow = lastRow(reply);
+    const slotJson = (slotRow.components[0] as any).toJSON();
+    expect(slotJson.custom_id).toBe(`${REROLL_SLOT_PREFIX}:11`);
+    expect(slotJson.options.map((o: any) => o.value)).toEqual(['normal', 'special']);
+  });
+
+  it('handleRerollSlot renders the CONFIRM button for the chosen slot (cost label)', async () => {
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      ...copyDetailSpecs(UH_CAO_CAO, [UH_CAO_CAO, UH_CAO_CAO_DUP]), // renderCopyDetail(rerollSlot)
+    ]);
+
+    const interaction = mockSelectInteraction(`${REROLL_SLOT_PREFIX}:11`, ['special']);
+    await handleRerollSlot(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    const confirmRow = lastRow(reply);
+    expect(customIdsIn(confirmRow)[0]).toBe(`${REROLL_GO_PREFIX}:11:special`);
+  });
+
+  it('handleRerollGo charges REROLL_COST and renders the reroll result with the replacement skill', async () => {
+    vi.mocked(rerollSkill).mockResolvedValue({ newSkillCode: 'vanguard_special_rare' });
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] }, // pre-read target
+      { steps: ['where', 'limit'], result: [{ id: 202, code: 'vanguard_special_rare', emoji: '🔥' }] }, // new skill row
+    ]);
+    mockTransaction(buildMockTx([]));
+
+    const interaction = mockButtonInteraction(`${REROLL_GO_PREFIX}:11:special`);
+    await handleRerollGo(interaction);
+
+    expect(rerollSkill).toHaveBeenCalledWith(42, 11, 'special');
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    const embed = reply.embeds?.[0]?.data ?? {};
+    expect(embed.color).toBe(0x10b981); // COLORS.SUCCESS
+    expect(embed.title).toBe('🎲 Đổi kỹ năng <a:mock:1> Tào Tháo');
+    expect(embed.description).toContain('Kỹ năng Kỹ năng đặc biệt của Tào Tháo → **🔥 Tiên phong · Kỹ năng · Hiếm**!');
+    expect(reply.components).toEqual([]);
+  });
+
+  it('handleRerollGo maps INSUFFICIENT_HON_NGOC → reroll.insufficient (DANGER)', async () => {
+    vi.mocked(rerollSkill).mockRejectedValue(new Error('INSUFFICIENT_HON_NGOC'));
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] },
+    ]);
+    mockTransaction(buildMockTx([]));
+
+    const interaction = mockButtonInteraction(`${REROLL_GO_PREFIX}:11:normal`);
+    await handleRerollGo(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.color).toBe(0xef4444);
+    expect(reply.embeds?.[0]?.data?.description).toContain('Không đủ hồn ngọc (cần 10 🧿).');
   });
 
   // ── Test 4: D-12 never-render on the detail surface ─────────────────────

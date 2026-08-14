@@ -39,6 +39,9 @@ export {
   handleConvertPress,
   handleLevelPress,
   handleEvolvePress,
+  handleRerollPress,
+  handleRerollSlot,
+  handleRerollGo,
 } from './hero.js';
 
 /* eslint-disable i18next/no-literal-string -- slash commands name/description are static Discord API strings */
