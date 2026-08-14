@@ -196,7 +196,7 @@ Plans:
   4. User can field a legion of 3 mains + 9 buff heroes in legion battle; chemistry buffs (bonus-only, no penalty) apply per system/faction via `battleEngine` extension.
   5. Full collection filters (faction/zone/IV) available in `/sanguo heroes` for team building.
 
-**Plans**: 2/8 plans executed planned (2026-08-14)
+**Plans**: 5/8 plans executed planned (2026-08-14)
 Plans:
 **Wave 1**
 
@@ -208,12 +208,12 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 11-03-PLAN.md — TRACER: hồn ngọc progression (deductHonNgoc + convert/level/evolve/reroll) + copy selector in /sanguo hero (TQC-14/15)
+- [x] 11-03-PLAN.md — TRACER: hồn ngọc progression (deductHonNgoc + convert/level/evolve/reroll) + copy selector in /sanguo hero (TQC-14/15)
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 11-04-PLAN.md — Shop + bag + drop services (wallet sinks, multi-currency tabs, guaranteed boss drops) (TQC-16)
-- [ ] 11-05-PLAN.md — battleEngine legion extension (runLegionBattle + MP/skills/support effects) + chemistryService (TQC-17)
+- [x] 11-04-PLAN.md — Shop + bag + drop services (wallet sinks, multi-currency tabs, guaranteed boss drops) (TQC-16)
+- [x] 11-05-PLAN.md — battleEngine legion extension (runLegionBattle + MP/skills/support effects) + chemistryService (TQC-17)
 
 **Wave 5** *(blocked on Wave 4)*
 
@@ -250,7 +250,7 @@ Plans:
 | 8. Foundation, Economy Budget & Content Infrastructure | 4/4 | In Progress|  |
 | 9. Travel & Encounters | 5/5 | Complete    | 2026-08-13 |
 | 10. Battle & Capture | 7/7 | Complete    | 2026-08-14 |
-| 11. Progression, Chemistry & Economy Depth | 2/8 | In Progress|  |
+| 11. Progression, Chemistry & Economy Depth | 5/8 | In Progress|  |
 | 12. Anti-Abuse, Monitoring & Marketplace Gating | 0/TBD | Not started | - |
 
 ---
