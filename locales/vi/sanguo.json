@@ -133,7 +133,9 @@
     "button": "Chuyển hóa → **{{amount}}** 🧿",
     "done": "💠 Đã chuyển hóa bản #{{i}} → +**{{amount}}** 🧿 của {{name}}.",
     "booster_hint": "✨ Bộ kích hoạt ×2 đang sẵn sàng — lần chuyển hóa tiếp theo nhận gấp đôi.",
-    "insufficient": "Không có bản trùng nào để chuyển hóa.",
+    "collection_empty": "Không thể chuyển hóa bản cuối cùng — bộ sưu tập không được rỗng.",
+    "active_companion": "Không thể chuyển hóa hero đồng hành đang hoạt động.",
+    "in_formation": "Không thể chuyển hóa bản đang nằm trong đội hình.",
     "error": "Có lỗi khi chuyển hóa. Hãy thử lại."
   },
   "skills": {

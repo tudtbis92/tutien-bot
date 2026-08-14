@@ -381,7 +381,9 @@ async function renderCopyDetail(
 
   const convertAmount = TIER_VALUE[target.tier] * (boosterOwned ? 2 : 1);
   const actionRow = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-    buildSanguoConvertButton(t, { userHeroId: target.id, amount: convertAmount }),
+    // User amendment: the ACTIVE companion is never convertible — disabled
+    // at render (the service enforces ACTIVE_COMPANION server-side too).
+    buildSanguoConvertButton(t, { userHeroId: target.id, amount: convertAmount, disabled: isActive }),
     buildCompanionButton(t, target.id, isActive),
   );
   rows.push(actionRow);
@@ -668,9 +670,24 @@ export async function handleConvertPress(interaction: ButtonInteraction): Promis
       components: [],
     });
   } catch (err) {
-    if (err instanceof Error && err.message === 'NOT_ENOUGH_COPIES') {
+    // User amendment error codes — each maps to its own friendly embed.
+    if (err instanceof Error && err.message === 'COLLECTION_EMPTY') {
       await interaction.editReply({
-        embeds: [buildErrorEmbed(t('sanguo:convert.insufficient'), shardId)],
+        embeds: [buildErrorEmbed(t('sanguo:convert.collection_empty'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'ACTIVE_COMPANION') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:convert.active_companion'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'IN_FORMATION') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:convert.in_formation'), shardId)],
         components: [],
       });
       return;

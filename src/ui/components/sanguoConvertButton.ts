@@ -13,15 +13,21 @@ import type { TFunction } from 'i18next';
  *
  * Secondary style = destructive-class (the copy is permanently consumed —
  * UI-SPEC copy rule); the result embed states the consequence.
+ *
+ * Disabled state (user amendment 2026-08-14): the ACTIVE companion is NEVER
+ * convertible — the button renders DISABLED on the companion copy (the same
+ * hard block the service enforces as ACTIVE_COMPANION), so a guaranteed-error
+ * press is not offered.
  */
 export const CONVERT_PREFIX = 'sanguo:convert:go';
 
 export function buildSanguoConvertButton(
   t: TFunction,
-  opts: { userHeroId: number; amount: number },
+  opts: { userHeroId: number; amount: number; disabled?: boolean },
 ): ButtonBuilder {
   return new ButtonBuilder()
     .setCustomId(`${CONVERT_PREFIX}:${opts.userHeroId}`)
     .setLabel(t('sanguo:convert.button', { amount: opts.amount }))
-    .setStyle(ButtonStyle.Secondary);
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(opts.disabled ?? false);
 }

@@ -1,4 +1,4 @@
-import { eq, and, asc, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { userHeroes } from '../../db/schema/userHeroes.js';
 import { userHeroSoulgems } from '../../db/schema/userHeroSoulgems.js';
@@ -6,6 +6,7 @@ import { soulgemTransactions } from '../../db/schema/soulgemTransactions.js';
 import { userSanguoState } from '../../db/schema/userSanguoState.js';
 import { sanguoItems } from '../../db/schema/sanguoItems.js';
 import { userSanguoItems } from '../../db/schema/userSanguoItems.js';
+import { userLegionSlots } from '../../db/schema/userLegions.js';
 
 /**
  * Hồn ngọc progression service (Phase 11 — TQC-14/TQC-15, D-01..D-12, D-32).
@@ -34,9 +35,13 @@ import { userSanguoItems } from '../../db/schema/userSanguoItems.js';
  * (decremented / deleted at 0) in the SAME tx as the conversion it doubles —
  * a concurrent press can never clone the 2x yield.
  *
- * CONVERSION GUARD (Pitfall 3): converting requires >= 2 owned copies of the
- * species, and converting the ACTIVE companion copy auto-switches the
- * companion to the earliest remaining copy inside the tx — a dangling
+ * CONVERSION GUARDS (user amendment 2026-08-14 — supersedes the plan's
+ * Pitfall 3 approach): there is NO >=-2-copies-of-the-species guard — ANY
+ * owned copy is convertible as long as the user keeps at least one hero of
+ * ANY kind (COLLECTION_EMPTY guard), the copy is NOT the active companion
+ * (ACTIVE_COMPANION — hard block; a companion change happens ONLY via the
+ * companion button, the old auto-switch is REMOVED), and the copy is NOT
+ * placed in a legion slot (IN_FORMATION — 11-07 surface). A dangling
  * activeHeroId (NO_ACTIVE_HERO on the next battle entry) can never be
  * created.
  *
@@ -86,16 +91,23 @@ export async function deductHonNgoc(
 }
 
 /**
- * TQC-14: convert ONE duplicate copy into per-(user, heroId) hồn ngọc.
+ * TQC-14: convert ONE copy into per-(user, heroId) hồn ngọc.
  *
- * ONE tx (single-writer): ownership re-gate on the pressed copy → >= 2
- * copies guard → active-companion auto-switch (Pitfall 3) → booster check
- * + atomic consumption (Pitfall 2) → DELETE the consumed copy → pool upsert
+ * ONE tx (single-writer): ownership re-gate on the pressed copy → total-
+ * collection non-empty guard (user amendment — any copy is convertible as
+ * long as at least one hero of ANY kind remains) → active-companion HARD
+ * block (no auto-switch — companion changes only via the companion button) →
+ * legion-slot guard (a placed copy is never convertible) → booster check +
+ * atomic consumption (Pitfall 2) → DELETE the consumed copy → pool upsert
  * (+= yield) → audit ledger row. NO daily cap (D-03 amendment — the
  * flat-by-tier rarity curve is the diminishing-returns mechanism).
  *
  * @throws Error('NOT_OWNED') — forged copy id (ownership re-gate).
- * @throws Error('NOT_ENOUGH_COPIES') — fewer than 2 owned copies.
+ * @throws Error('COLLECTION_EMPTY') — the user's total collection is <= 1
+ *   copy (converting this one would empty the collection).
+ * @throws Error('ACTIVE_COMPANION') — the copy is the active companion
+ *   (NEVER convertible; user amendment supersedes the auto-switch).
+ * @throws Error('IN_FORMATION') — the copy is referenced in user_legion_slots.
  */
 export async function convertDuplicate(
   userId: number,
@@ -111,34 +123,37 @@ export async function convertDuplicate(
       .for('update');
     if (!copy) throw new Error('NOT_OWNED');
 
-    // 2. Count the owned copies of the SAME species — conversion consumes a
-    //    TRUE duplicate (>= 2 owned copies, earliest-captured first).
-    const copies = await tx
-      .select({ id: userHeroes.id, capturedAt: userHeroes.capturedAt })
+    // 2. Total-collection non-empty guard (user amendment): converting this
+    //    copy must leave >= 1 hero of ANY kind — the >=-2-copies-of-the-same-
+    //    species guard is DELETED. Count ALL user_heroes rows for the user.
+    const collectionRows = await tx
+      .select({ id: userHeroes.id })
       .from(userHeroes)
-      .where(and(eq(userHeroes.userId, userId), eq(userHeroes.heroId, copy.heroId)))
-      .orderBy(asc(userHeroes.capturedAt), asc(userHeroes.id));
-    if (copies.length < 2) throw new Error('NOT_ENOUGH_COPIES');
+      .where(eq(userHeroes.userId, userId));
+    if (collectionRows.length <= 1) throw new Error('COLLECTION_EMPTY');
 
-    // 3. Lock user_sanguo_state; if the consumed copy IS the active
-    //    companion, auto-switch to the earliest remaining copy (Pitfall 3 —
-    //    never leave a dangling activeHeroId).
+    // 3. Lock user_sanguo_state; the ACTIVE companion is NEVER convertible
+    //    (user amendment — the old auto-switch-to-earliest-remaining-copy
+    //    behavior is REMOVED; a companion change happens ONLY via the
+    //    companion button).
     const [state] = await tx
       .select()
       .from(userSanguoState)
       .where(eq(userSanguoState.userId, userId))
       .for('update');
-    if (state && state.activeHeroId === copy.id) {
-      const nextActive = copies.find((c) => c.id !== copy.id);
-      if (nextActive) {
-        await tx
-          .update(userSanguoState)
-          .set({ activeHeroId: nextActive.id, updatedAt: new Date() })
-          .where(eq(userSanguoState.userId, userId));
-      }
-    }
+    if (state && state.activeHeroId === copy.id) throw new Error('ACTIVE_COMPANION');
 
-    // 4. Booster ownership — FOR UPDATE lock the inventory row + consumption
+    // 4. Legion-formation guard (user amendment): a copy placed in a
+    //    user_legion_slots row is never convertible while placed (the 11-07
+    //    surface must remove it from the legion first).
+    const [placedSlot] = await tx
+      .select({ id: userLegionSlots.id })
+      .from(userLegionSlots)
+      .where(and(eq(userLegionSlots.userId, userId), eq(userLegionSlots.userHeroId, copy.id)))
+      .limit(1);
+    if (placedSlot) throw new Error('IN_FORMATION');
+
+    // 5. Booster ownership — FOR UPDATE lock the inventory row + consumption
     //    in the SAME tx as the yield computation (Pitfall 2 anti-clone).
     let boosterUsed = false;
     const [boosterItem] = await tx
@@ -169,13 +184,13 @@ export async function convertDuplicate(
       }
     }
 
-    // 5. D-03 flat-by-tier yield (integer throughout — no float in the pool).
+    // 6. D-03 flat-by-tier yield (integer throughout — no float in the pool).
     const yieldAmount = TIER_VALUE[copy.tier] * (boosterUsed ? 2 : 1);
 
-    // 6. DELETE the consumed copy.
+    // 7. DELETE the consumed copy.
     await tx.delete(userHeroes).where(eq(userHeroes.id, copy.id));
 
-    // 7. Upsert the per-hero pool (amount += yield). The pool row is locked
+    // 8. Upsert the per-hero pool (amount += yield). The pool row is locked
     //    FOR UPDATE; a missing row falls back to the upsert (IN-06 first-row
     //    race — onConflictDoUpdate makes the loser add instead of crash).
     const [pool] = await tx
@@ -200,7 +215,7 @@ export async function convertDuplicate(
         });
     }
 
-    // 8. Audit ledger row (repudiation — Phase 12 TQC-19 + /profile future).
+    // 9. Audit ledger row (repudiation — Phase 12 TQC-19 + /profile future).
     await tx.insert(soulgemTransactions).values({
       userId,
       heroId: copy.heroId,

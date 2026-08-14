@@ -78,8 +78,12 @@ const { t } = vi.hoisted(() => {
         return `💠 Đã chuyển hóa bản #${opts.i} → +**${opts.amount}** 🧿 của ${opts.name}.`;
       case 'sanguo:convert.booster_hint':
         return '✨ Bộ kích hoạt ×2 đang sẵn sàng — lần chuyển hóa tiếp theo nhận gấp đôi.';
-      case 'sanguo:convert.insufficient':
-        return 'Không có bản trùng nào để chuyển hóa.';
+      case 'sanguo:convert.collection_empty':
+        return 'Không thể chuyển hóa bản cuối cùng — bộ sưu tập không được rỗng.';
+      case 'sanguo:convert.active_companion':
+        return 'Không thể chuyển hóa hero đồng hành đang hoạt động.';
+      case 'sanguo:convert.in_formation':
+        return 'Không thể chuyển hóa bản đang nằm trong đội hình.';
       case 'sanguo:convert.error':
         return 'Có lỗi khi chuyển hóa. Hãy thử lại.';
       case 'iv_grade.gold':
@@ -570,8 +574,8 @@ describe('/sanguo hero command (10-07 + 11-03 copy selector)', () => {
     expect(embed.description).toContain('✨ Bộ kích hoạt ×2');
   });
 
-  it('handleConvertPress maps NOT_ENOUGH_COPIES → convert.insufficient (DANGER)', async () => {
-    vi.mocked(convertDuplicate).mockRejectedValue(new Error('NOT_ENOUGH_COPIES'));
+  it('handleConvertPress maps COLLECTION_EMPTY → convert.collection_empty (DANGER) — the last-copy guard (user amendment)', async () => {
+    vi.mocked(convertDuplicate).mockRejectedValue(new Error('COLLECTION_EMPTY'));
     mockDbSelects([
       { steps: ['where', 'limit'], result: [USER_ROW] },
       { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] },
@@ -584,7 +588,40 @@ describe('/sanguo hero command (10-07 + 11-03 copy selector)', () => {
 
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     expect(reply.embeds?.[0]?.data?.color).toBe(0xef4444);
-    expect(reply.embeds?.[0]?.data?.description).toContain('Không có bản trùng nào để chuyển hóa.');
+    expect(reply.embeds?.[0]?.data?.description).toContain(
+      'Không thể chuyển hóa bản cuối cùng — bộ sưu tập không được rỗng.',
+    );
+  });
+
+  it('handleConvertPress maps ACTIVE_COMPANION / IN_FORMATION to their friendly embeds (user amendment)', async () => {
+    vi.mocked(convertDuplicate).mockRejectedValue(new Error('ACTIVE_COMPANION'));
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] },
+      { steps: ['where', 'orderBy'], result: [UH_CAO_CAO] },
+    ]);
+    mockTransaction(buildMockTx([]));
+
+    const interaction = mockButtonInteraction(`${CONVERT_PREFIX}:13`);
+    await handleConvertPress(interaction);
+    let reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.description).toContain(
+      'Không thể chuyển hóa hero đồng hành đang hoạt động.',
+    );
+
+    vi.mocked(convertDuplicate).mockRejectedValue(new Error('IN_FORMATION'));
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['innerJoin', 'where', 'limit'], result: [UH_CAO_CAO] },
+      { steps: ['where', 'orderBy'], result: [UH_CAO_CAO] },
+    ]);
+    mockTransaction(buildMockTx([]));
+    const interaction2 = mockButtonInteraction(`${CONVERT_PREFIX}:13`);
+    await handleConvertPress(interaction2);
+    reply = (interaction2.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.description).toContain(
+      'Không thể chuyển hóa bản đang nằm trong đội hình.',
+    );
   });
 
   // ── Test 4: D-12 never-render on the detail surface ─────────────────────

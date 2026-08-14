@@ -133,7 +133,9 @@
     "button": "Convert → **{{amount}}** 🧿",
     "done": "💠 Converted copy #{{i}} → +**{{amount}}** 🧿 of {{name}}.",
     "booster_hint": "✨ Booster ×2 ready — the next conversion yields double.",
-    "insufficient": "No duplicate copies to convert.",
+    "collection_empty": "Cannot convert the last copy — the collection must not become empty.",
+    "active_companion": "The active companion cannot be converted.",
+    "in_formation": "A copy placed in the legion formation cannot be converted.",
     "error": "Something went wrong while converting. Please try again."
   },
   "skills": {

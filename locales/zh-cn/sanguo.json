@@ -133,7 +133,9 @@
     "button": "转换 → **{{amount}}** 🧿",
     "done": "💠 已转换 #{{i}} 号 → +**{{amount}}** 🧿（{{name}}）。",
     "booster_hint": "✨ ×2 增幅器已就绪 — 下次转换收益翻倍。",
-    "insufficient": "没有可转换的重复英雄。",
+    "collection_empty": "无法转换最后一个英雄 — 收藏不能为空。",
+    "active_companion": "当前同伴英雄不可转换。",
+    "in_formation": "编入军阵的英雄不可转换。",
     "error": "转换时出错，请重试。"
   },
   "skills": {

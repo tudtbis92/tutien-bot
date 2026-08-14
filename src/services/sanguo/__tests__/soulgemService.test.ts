@@ -116,11 +116,12 @@ describe('convertDuplicate — dupe → per-hero hồn ngọc (D-03/D-04/D-12)',
     const { promise, tx, insert, insertValues } = runInTx(
       [
         [COPY_T0],                        // 1. copy lock
-        [COPY_T0, COPY_T1],               // 2. copies count (>= 2)
+        [COPY_T0, COPY_T1],               // 2. total collection count (2 > 1)
         [STATE],                          // 3. state (not the companion)
-        [BOOSTER_ITEM],                   // 4. booster catalog row
-        [],                               // 5. owned booster — NOT owned
-        [],                               // 6. pool row — missing → upsert
+        [],                               // 4. legion slots — NOT placed
+        [BOOSTER_ITEM],                   // 5. booster catalog row
+        [],                               // 6. owned booster — NOT owned
+        [],                               // 7. pool row — missing → upsert
       ],
       () => convertDuplicate(USER_ID, 11),
     );
@@ -154,8 +155,9 @@ describe('convertDuplicate — dupe → per-hero hồn ngọc (D-03/D-04/D-12)',
     const { promise, tx } = runInTx(
       [
         [COPY_T1],                        // t1 dupe (TIER_VALUE[1] = 5)
-        [COPY_T0, COPY_T1],
+        [COPY_T0, COPY_T1],               // total collection count (2 > 1)
         [STATE],
+        [],                               // legion slots — NOT placed
         [BOOSTER_ITEM],
         [{ id: 30, quantity: 1 }],        // owned booster — 1 charge
         [{ id: 9, amount: 0 }],           // existing pool row
@@ -174,8 +176,9 @@ describe('convertDuplicate — dupe → per-hero hồn ngọc (D-03/D-04/D-12)',
     const { promise, tx } = runInTx(
       [
         [COPY_T0],
-        [COPY_T0, COPY_T1],
+        [COPY_T0, COPY_T1],               // total collection count (2 > 1)
         [STATE],
+        [],                               // legion slots — NOT placed
         [BOOSTER_ITEM],
         [{ id: 30, quantity: 3 }],
         [{ id: 9, amount: 0 }],
@@ -188,16 +191,16 @@ describe('convertDuplicate — dupe → per-hero hồn ngọc (D-03/D-04/D-12)',
     expect(tx.update).toHaveBeenCalledWith(userSanguoItems);
   });
 
-  it('C4: only 1 owned copy → NOT_ENOUGH_COPIES, no mutation', async () => {
+  it('C4: a user with exactly 1 hero TOTAL → COLLECTION_EMPTY, no mutation (user amendment — converting must leave >= 1 hero of ANY kind)', async () => {
     const { promise, tx } = runInTx(
       [
         [COPY_T0],
-        [COPY_T0],                        // exactly 1 copy — not a true dupe
+        [COPY_T0],                        // total collection count = 1 (<= 1)
       ],
       () => convertDuplicate(USER_ID, 11),
     );
 
-    await expect(promise).rejects.toThrow('NOT_ENOUGH_COPIES');
+    await expect(promise).rejects.toThrow('COLLECTION_EMPTY');
     expect(tx.delete).not.toHaveBeenCalled();
     expect(tx.insert).not.toHaveBeenCalled();
   });
@@ -208,26 +211,36 @@ describe('convertDuplicate — dupe → per-hero hồn ngọc (D-03/D-04/D-12)',
     expect(tx.delete).not.toHaveBeenCalled();
   });
 
-  it('C6: converting the ACTIVE companion auto-switches to the earliest remaining copy in the SAME tx (Pitfall 3 — no dangling activeHeroId)', async () => {
-    const { promise, tx, updateSet } = runInTx(
+  it('C6: converting the ACTIVE companion → ACTIVE_COMPANION, no mutation (user amendment — hard block, NO auto-switch)', async () => {
+    const { promise, tx } = runInTx(
       [
         [COPY_T0],                        // the ACTIVE companion (id 11)
-        [COPY_T0, COPY_T1],               // 2 copies — earliest remaining = id 13
+        [COPY_T0, COPY_T1],               // total collection count (2 > 1)
         [{ ...STATE, activeHeroId: 11 }], // state locked; 11 IS the companion
-        [BOOSTER_ITEM],
-        [],
-        [{ id: 9, amount: 0 }],
       ],
       () => convertDuplicate(USER_ID, 11),
     );
 
-    await expect(promise).resolves.toEqual({ yield: 1, boosterUsed: false });
-    expect(tx.update).toHaveBeenCalledWith(userSanguoState);
-    // The companion update targets activeHeroId 13 (the earliest REMAINING
-    // copy) — never the consumed 11 (which would dangle).
-    const setArg = updateSet.mock.calls.find(
-      (c: any) => c[0]?.activeHeroId !== undefined,
-    )?.[0];
-    expect(setArg).toMatchObject({ activeHeroId: 13 });
+    await expect(promise).rejects.toThrow('ACTIVE_COMPANION');
+    expect(tx.delete).not.toHaveBeenCalled();
+    expect(tx.insert).not.toHaveBeenCalled();
+    // The old auto-switch behavior is REMOVED — no state write, ever.
+    expect(tx.update).not.toHaveBeenCalledWith(userSanguoState);
+  });
+
+  it('C7: a copy referenced in user_legion_slots → IN_FORMATION, no mutation (user amendment — placed copies are never convertible)', async () => {
+    const { promise, tx } = runInTx(
+      [
+        [COPY_T0],
+        [COPY_T0, COPY_T1],               // total collection count (2 > 1)
+        [STATE],                          // not the companion
+        [{ id: 99 }],                     // legion slot references copy 11
+      ],
+      () => convertDuplicate(USER_ID, 11),
+    );
+
+    await expect(promise).rejects.toThrow('IN_FORMATION');
+    expect(tx.delete).not.toHaveBeenCalled();
+    expect(tx.insert).not.toHaveBeenCalled();
   });
 });
