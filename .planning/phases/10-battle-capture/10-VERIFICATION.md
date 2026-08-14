@@ -1,47 +1,55 @@
 ---
 phase: 10-battle-capture
-verified: 2026-08-13T17:20:00Z
-status: gaps_found
-score: 10/12 must-haves verified
-behavior_unverified: 3 # Present + wired, no test exercises the 3s interaction-window latency backstops (battle log / capture view / heroes collection)
+verified: 2026-08-14T04:00:00Z
+status: passed
+score: 12/12 must-haves verified
+behavior_unverified: 0 # 3 latency backstops resolved via live UAT 2026-08-14 (all interactions within 3s, no latency errors in logs)
 overrides_applied: 0
 gaps:
+
   - truth: "Capture requires a completed player-won battle — the D-10 'won → capture window opens' precondition is enforced SERVER-SIDE, not just by the UI (anti-tamper: a crafted sanguo:capture:tier:{n} interaction on an unfought encounter must fail before any fee)"
-    status: failed
-    reason: "CR-01 (confirmed in code, unfixed): attemptCapture (captureService.ts:148-167) reads the latest sanguo_battles row for the encounter but NEVER verifies a completed battle exists or that result.winner === 'player'. With no battle row, input/result default to {} → hpMax=0/hpCurrent=0 → hpFactor(0,·)=0 → chance = pity×0.05 only; after 20 failed attempts pity clamps chance to 1.0 → GUARANTEED paid capture of any rarity (incl. rarity 5) for 21×5=105💎 without ever fighting. Violates D-10 and the server-authoritative/anti-tamper contract (T-10-05-02, T-10-05-04) on a wallet path. The code review (10-REVIEW.md) provides a concrete fix (won-battle SELECT + CAPTURE_NOT_AVAILABLE throw before the fee); the fix is NOT applied — the review commit 89f48d3 is the last commit in git log."
+    status: resolved
+    resolved_by: "bec0c0e + UAT test 6"
+    reason: "RESOLVED by fix commit bec0c0e (2026-08-14): attemptCapture now verifies a completed sanguo_battles row (result.winner === 'player') after the FOR UPDATE lock and throws CAPTURE_NOT_AVAILABLE before any fee (captureService.ts:166-167); pity term cap-bound per rarity (PITY_CAP_BY_RARITY 0.80/0.75/0.70/0.65/0.60) so grinding can never force chance to 1.0. +3 tests (CR-01a/b + drifted input). Live UAT 2026-08-14 test 6 PASS: crafted customId on an unfought encounter rejected before the fee."
     artifacts:
+
       - path: "src/services/sanguo/captureService.ts"
-        issue: "Lines 148-167: no won-battle precondition; hpMax/hpCurrent default to 0 when the snapshot is missing, silently collapsing the chance to pity-only while the fee is still charged"
-    missing:
-      - "In attemptCapture, after the FOR UPDATE encounter lock and before the fee: verify a completed sanguo_battles row (type='encounter', encounter_id) with result.winner==='player' exists; throw Error('CAPTURE_NOT_AVAILABLE') otherwise (mirror in renderCaptureView battle.ts:304-313)"
-      - "Test: attemptCapture with [PENDING] and no battle row rejects and never calls deductBalance"
+        issue: "Line 167: won-battle precondition + CAPTURE_NOT_AVAILABLE; NO_BATTLE_SNAPSHOT fail-loud on drifted input; PITY_CAP_BY_RARITY bounds the pity term"
+    missing: []
   - truth: "An encounter battle cannot be re-run against a pending encounter that already has a completed battle — the single-battle invariant that the D-20 economy model prices (one battle per capture window, wild IV/HP not freely re-rollable)"
-    status: failed
-    reason: "CR-02 (confirmed in code, unfixed): startEncounterBattle (battleCheckInService.ts:218-291) checks playerTravelState.encounterActive + the pending encounter but NEVER checks whether a completed sanguo_battles row already exists for it. After a win the encounter stays 'pending' and encounterActive stays true, while older encounter embeds with live fight buttons remain in chat — pressing a stale fight button re-runs the battle: (a) wild IV is re-rolled and enemy HP resets to full → free grinding of the wild to 0 HP (hpFactor→1.0) breaking the D-20 model (Pitfall 5); (b) a re-battle LOSS flips the encounter to 'escaped' (battleCheckInService.ts:271-279), destroying the won capture window and overwriting companion hpCurrent (possibly to 0 → HERO_FAINTED soft-lock with no heal). Fix proposed in 10-REVIEW.md (BATTLE_ALREADY_FOUGHT throw + capture-view routing); NOT applied."
+    status: resolved
+    resolved_by: "bec0c0e + UAT test 7"
+    reason: "RESOLVED by fix commit bec0c0e (2026-08-14): startEncounterBattle now SELECTs the latest sanguo_battles row after the F2 pending re-fetch and throws BATTLE_ALREADY_FOUGHT when a completed battle exists (battleCheckInService.ts:255-261); handleBattleStart routes to the capture view (F4 path). +1 test (CR-02). Live UAT 2026-08-14 test 7 PASS: stale fight button rejected, no re-roll, capture view shown."
     artifacts:
+
       - path: "src/services/sanguo/battleCheckInService.ts"
-        issue: "startEncounterBattle has no existing-battle check between the F2 pending re-fetch (line 239) and the battle execution (line 248)"
-    missing:
-      - "In startEncounterBattle after the pending re-fetch: SELECT the latest sanguo_battles row (type='encounter', encounter_id); if present throw Error('BATTLE_ALREADY_FOUGHT'); handleBattleStart (battle.ts) catches it and renders the capture view (reuse the F4 path)"
-      - "Test: second startEncounterBattle call for the same pending encounter rejects and writes no new battle row"
+        issue: "Lines 255-261: existing-battle check between the F2 pending re-fetch and the battle execution"
+    missing: []
+
 behavior_unverified_items:
+
   - truth: "Battle log + capture view + heroes collection reply within the 3s interaction window (deferReply → editReply) — the UI-SPEC latency backstops"
     test: "Run a live bot shard, start an encounter battle, press a tier button, and open /sanguo heroes; measure wall-clock reply latency"
     expected: "Each interaction completes its editReply within Discord's 3-second window (µs-synchronous battle engine, tx-based capture, async collection read)"
     why_human: "Presence checks prove the handlers deferReply→editReply without throwing; wall-clock latency on a real shard cannot be asserted from source or unit tests (flagged human_judgment: true in 10-06 D8 and 10-07 D10)"
 human_verification:
+
   - test: "Live-Discord pass of the battle → capture → collection loop: fight an encounter (win), see the battle log, press Bắt, pick tier 1, capture success → collection line + companion switch → map position"
     expected: "The full vertical loop renders correctly with all embeds/buttons; each interaction replies within the 3s window"
     why_human: "UI-SPEC backstops (battle log, capture view, heroes collection latency) are handler-tested only; no held-out live interaction test exists on Discord"
+
   - test: "Craft a sanguo:capture:tier:1 customId on a pending encounter with NO battle fought (or use a stale capture view from before a re-battle loss)"
     expected: "The attempt is rejected without charging a fee (CAPTURE_NOT_AVAILABLE) — this currently FAILS: the fee is charged for a pity-only 0% roll and after 20 attempts the capture is guaranteed (CR-01)"
     why_human: "Confirms the CR-01 exploit end-to-end on a live bot; automated tests never exercise the crafted-customId path"
+
   - test: "Press a stale fight button on an old encounter embed after already winning the battle"
     expected: "The second battle is rejected (BATTLE_ALREADY_FOUGHT) and the capture view is shown — this currently FAILS: the battle re-runs, re-rolling wild IV/HP (CR-02)"
     why_human: "Stale-button behavior requires a live bot with multiple check-in embeds; not reproducible in unit tests"
+
   - test: "Boss capture decision (D-13): winning a boss battle then pressing capture currently surfaces BOSS_CAPTURE_UNAVAILABLE (known stub — no heroes row for a captured boss)"
     expected: "Human decision on the boss→heroes mapping (future content/schema work, WINDOWS.md #5); documented in 10-05/10-06 Known Stubs"
     why_human: "Content/schema decision, not a code defect; deferred by design"
+
   - test: "Confirm the 10-03 F8 economy adjustment (fees halved 5/15/40/100/250 vs the user-approved A1 10/30/80/200/500) is acceptable as the signed D-20 contract"
     expected: "The deviation is acknowledged (it was the plan's own F8-mandated safety valve to hold the ~416/hr gross bound); human_judgment flagged in 10-03 D4"
     why_human: "One-way economy sign-off; the checkpoint approved A1, the re-sign adjusted the absolute scale"
@@ -70,10 +78,10 @@ human_verification:
 | 8 | Battle seed is generated by crypto.randomInt at battle start (D-06); capture/flee/IV rolls ride crypto, not Math.random | ✓ VERIFIED | `defaultSeed()` = crypto.randomInt(2**48) (battleCheckInService.ts:67-69); capture roll/fleeRoll via cryptoUniform, IV via crypto.randomInt(0,32); pure-rand imports = 2 in battleEngine.ts, **0 outside** (grep) — D-06 battle-only mandate holds |
 | 9 | Capture fee/tier is server-authoritative — tier customIds carry only the number; fee/multiplier resolve from CAPTURE_TIERS (anti-tamper, D-09/D-20) | ✓ VERIFIED | CAPTURE_TIERS 5 tiers (5/15/40/100/250💎 × 1.0/1.5/2.0/3.0/5.0, tiers 4-5 item-gated); customIds `sanguo:capture:tier:{n}` tier-only (grep: setCustomId uses tier only); server-side INVALID_TIER/TIER_LOCKED guards; fee via wallet.deductBalance with reason 'sanguo_capture_t{tier}' in the same tx |
 | 10 | D-20 economy re-sign: E[net] ≤ 0 with E[inflow]=0 and gross < ~416/hr under effective chances (D-19 hard constraint) | ✓ VERIFIED | docs/economy-budget.md RE-SIGN (2026-08-13, Phase 10 D-20) block: 5-tier table matching CAPTURE_TIERS, E[net/hour] recomputed with effective chances (base × hpFactor × tierMult), both cadences documented, RE-SIGNED sign-off line; node probe prints RE-SIGN VERIFIED |
-| 11 | Capture requires a completed player-won battle — the D-10 "won → capture window opens" precondition enforced SERVER-SIDE on a wallet path | ✗ FAILED | **CR-01 (confirmed in code, unfixed)** — see gaps |
-| 12 | An encounter cannot be re-battled after a win — the single-battle invariant the D-20 model prices | ✗ FAILED | **CR-02 (confirmed in code, unfixed)** — see gaps |
+| 11 | Capture requires a completed player-won battle — the D-10 "won → capture window opens" precondition enforced SERVER-SIDE on a wallet path | ✓ VERIFIED | **CR-01 FIXED** (bec0c0e, 2026-08-14): `attemptCapture` throws `CAPTURE_NOT_AVAILABLE` before the fee when no player-won battle exists (captureService.ts:166-167); pity cap-bound per rarity. Live UAT test 6 PASS + captureService.test.ts CR-01a/b |
+| 12 | An encounter cannot be re-battled after a win — the single-battle invariant the D-20 model prices | ✓ VERIFIED | **CR-02 FIXED** (bec0c0e, 2026-08-14): `startEncounterBattle` throws `BATTLE_ALREADY_FOUGHT` when a completed battle exists; UI routes to the capture view (battleCheckInService.ts:255-261). Live UAT test 7 PASS + battleCheckInService.test.ts CR-02 |
 
-**Score:** 10/12 truths verified (2 failed — both critical review findings, confirmed present in code and unfixed)
+**Score:** 12/12 truths verified (CR-01/CR-02 closed by fix commit bec0c0e + live UAT, 2026-08-14)
 
 ### Required Artifacts
 
@@ -136,8 +144,8 @@ human_verification:
 | pure-rand scope gate | grep "from 'pure-rand" across src | 2 in battleEngine.ts, 0 elsewhere | ✓ PASS |
 | Faucet gate | grep deductBalance in heroes.ts/hero.ts | 0 matches | ✓ PASS |
 | D-01 inversion gate | grep ACK_BTN_ID / buildAckButton | 0 matches in interactionCreate.ts / travel.ts | ✓ PASS |
-| CR-01 won-battle guard | grep winner/wonBattle/CAPTURE_NOT_AVAILABLE in captureService.ts | 0 matches — **guard ABSENT** | ✗ FAIL |
-| CR-02 existing-battle guard | grep BATTLE_ALREADY in battleCheckInService.ts | 0 matches — **guard ABSENT** | ✗ FAIL |
+| CR-01 won-battle guard | grep winner/wonBattle/CAPTURE_NOT_AVAILABLE in captureService.ts | 3 matches — **guard PRESENT** (captureService.ts:166-167) | ✓ PASS |
+| CR-02 existing-battle guard | grep BATTLE_ALREADY in battleCheckInService.ts | 1 match — **guard PRESENT** (battleCheckInService.ts:261) | ✓ PASS |
 
 ### Probe Execution
 
@@ -174,23 +182,21 @@ No `TBD`/`FIXME`/`XXX` debt markers found in any Phase-10 file (grep clean).
 
 ### Gaps Summary
 
-**Status: gaps_found — 2 critical server-side state preconditions are missing on money/state paths, both confirmed in code and unfixed.**
+**Status: passed — all 12 truths verified. CR-01 and CR-02 (the two initial verification gaps) were closed by fix commit bec0c0e (2026-08-14) and confirmed live in UAT (tests 6 & 7).**
 
-The phase goal — the first complete vertical loop (starter → travel → encounter → battle → capture → collection) — is **functionally achieved**: all four features (seeded battle engine, capture service, IV + starter, collection view) exist, are wired, flow real data, and are covered by a green 282-test suite with typecheck/lint/i18n clean. All 5 ROADMAP success criteria are demonstrable in code.
+The phase goal — the first complete vertical loop (starter → travel → encounter → battle → capture → collection) — is achieved and **deployed to production 2026-08-14**: live data confirms 2 sanguo_battles (both won), 2 capture_attempts (tier 1, fee 5💎, success), 3 user_heroes (starter + 2 captured), 1 user_sanguo_state, 2 encounter_runs 'captured', matching wallet deductions (reason 'sanguo_capture_t1'). The 3 UI-SPEC latency backstops (battle log, capture view, heroes collection) were signed off in live UAT — all interactions replied within the 3s window. UAT 43/43 pass, 0 issues.
 
-However, the code review (10-REVIEW.md) identified **two critical findings that are real, present in the code, and UNFIXED** (the review commit `89f48d3` is the last commit in git log — no fix commit follows):
+Both critical findings from the initial verification (2026-08-13) are RESOLVED:
 
-1. **CR-01 — Capture without a won battle.** `attemptCapture` never verifies a completed player-won battle exists before charging the fee. On an unfought encounter the chance silently collapses to pity-only (hpMax defaults to 0 → hpFactor=0); after 20 paid failures the pity clamps chance to 1.0 → **guaranteed capture of any hero, including rarity 5, without ever fighting** — a real-money exploit violating D-10 and the server-authoritative/anti-tamper contract (T-10-05-02, T-10-05-04). The UI gates capture buttons on a win, but the server does not — and this codebase's own threat model treats crafted customIds as a genuine threat.
+1. **CR-01 — Capture without a won battle.** `attemptCapture` now verifies a completed player-won battle before charging any fee — throws `CAPTURE_NOT_AVAILABLE` (captureService.ts:166-167) when the battle row is missing or `result.winner !== 'player'`; `NO_BATTLE_SNAPSHOT` fail-loud on drifted input; the pity term is cap-bound per rarity (`PITY_CAP_BY_RARITY` 0.80/0.75/0.70/0.65/0.60) so grinding can never force chance to 1.0. The real-money exploit is closed: a crafted customId on an unfought encounter is rejected before the fee (UAT test 6 live-verified; +3 automated tests).
 
-2. **CR-02 — Re-battling a won encounter.** `startEncounterBattle` never checks whether a completed battle already exists for the pending encounter. Stale fight buttons (older check-in embeds remain live in chat) re-run a won battle: the wild IV is re-rolled and enemy HP resets to full (free grinding to 0 HP → hpFactor 1.0, breaking the D-20 economy model), and a re-battle loss destroys the open capture window and can faint the companion (no heal exists).
+2. **CR-02 — Re-battling a won encounter.** `startEncounterBattle` now SELECTs the latest `sanguo_battles` row after the F2 pending re-fetch and throws `BATTLE_ALREADY_FOUGHT` (battleCheckInService.ts:255-261) when a completed battle exists; `handleBattleStart` catches it and routes to the capture view (F4 path). Stale fight buttons can no longer re-roll wild IV/HP, grind the wild, or destroy a won capture window via a re-battle loss (UAT test 7 live-verified; +1 automated test).
 
-These are **goal-completion blockers**, not post-deploy notes: they violate the phase's own D-10 contract and economy model on wallet paths, the review rates them CRITICAL with concrete fixes, and no fix exists in the tree. Both are `gaps_found` blockers for the phase gate.
+**Deferred (Step 9b):** None — Phase 11 (progression/chemistry/shop/legion) and Phase 12 (anti-abuse/monitoring/marketplace) roadmap criteria do not cover the CR-01/CR-02 invariants or the boss-capture mapping; the boss-capture stub (BOSS_CAPTURE_UNAVAILABLE) is documented in 10-05/10-06 Known Stubs and superseded by the 2026-08-14 boss REDESIGN decision (random zone general + 3v1 formation, Phase 11+, WINDOWS.md #5) which also provides a heroes row for capture.
 
-**Deferred (Step 9b):** None — Phase 11 (progression/chemistry/shop/legion) and Phase 12 (anti-abuse/monitoring/marketplace) roadmap criteria do not cover the CR-01/CR-02 invariants or the boss-capture mapping; the boss-capture stub (BOSS_CAPTURE_UNAVAILABLE) is documented in 10-05/10-06 Known Stubs as deferred to a future content decision (WINDOWS.md #5) and is not re-raised here as a new gap.
-
-**Warnings carried forward:** WR-01 (32-bit seed entropy — D-06 entropy overstatement, replay intact), WR-02 (unguarded heroEmoji in map.ts), WR-03 (silent chance collapse — the CR-01 mechanism).
+**Warnings carried forward:** WR-01 (32-bit seed entropy — FIXED by bec0c0e: seed now drawn in pure-rand's native 2^32 space), WR-02 (unguarded heroEmoji in map.ts — FIXED by bec0c0e: safeHeroEmoji label-only fallback), WR-03 (silent chance collapse — FIXED by bec0c0e: NO_BATTLE_SNAPSHOT fail-loud).
 
 ---
 
-_Verified: 2026-08-13T17:20:00Z_
+_Verified: 2026-08-14T04:00:00Z (re-verified after fix commit bec0c0e + live UAT 43/43)_
 _Verifier: the agent (gsd-verifier)_
