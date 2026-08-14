@@ -48,3 +48,9 @@ export * from './formations.js';
 export * from './mapZones.js';
 export * from './mapEdges.js';
 export * from './heroZoneRates.js';
+
+// Phase 11 schemas (migration 0020 — 11-01)
+export * from './sanguoSkills.js';
+export * from './userHeroSoulgems.js';
+export * from './userLegions.js';
+export * from './soulgemTransactions.js';

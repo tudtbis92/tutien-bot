@@ -141,6 +141,13 @@
       "when": 1786604954024,
       "tag": "0019_green_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786693266052,
+      "tag": "0020_ancient_northstar",
+      "breakpoints": true
     }
   ]
 }

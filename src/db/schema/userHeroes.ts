@@ -2,6 +2,7 @@ import { pgTable, serial, integer, smallint, varchar, timestamp, check, index } 
 import { sql } from 'drizzle-orm';
 import { users } from './users.js';
 import { heroes } from './heroes.js';
+import { sanguoSkills } from './sanguoSkills.js';
 
 /**
  * user_heroes — player-owned hero instances (TQC-02 -> Phase 10 TQC-12).
@@ -38,6 +39,15 @@ export const userHeroes = pgTable(
     // zone filter (TQC-13). NULL for starter grants (not zone-captured).
     capturedZone: varchar('captured_zone', { length: 50 }),
     capturedAt: timestamp('captured_at', { withTimezone: true }).notNull().defaultNow(),
+    // Phase 11 (D-10): player evolution tier 0-3 — single source of truth for
+    // BOTH the player evolution path (11-03) AND the captured boss tier
+    // (11-06 captureService writes it; battleEngine multipliers read it).
+    tier: smallint('tier').notNull().default(0),
+    // Phase 11 (D-31): per-copy skill slots — exactly 2 (normal/special),
+    // TM-swap semantics, zero joins (A8). Written at capture from the
+    // encounter_runs spawn roll; NULL until a skill is assigned.
+    skillNormalId: integer('skill_normal_id').references(() => sanguoSkills.id),
+    skillSpecialId: integer('skill_special_id').references(() => sanguoSkills.id),
   },
   (table) => [
     // IV range checks — each stat bounded 0-31 per TQC-02
@@ -47,6 +57,8 @@ export const userHeroes = pgTable(
     check('iv_mov_range', sql`${table.ivMov} >= 0 AND ${table.ivMov} <= 31`),
     check('iv_lea_range', sql`${table.ivLea} >= 0 AND ${table.ivLea} <= 31`),
     check('iv_cha_range', sql`${table.ivCha} >= 0 AND ${table.ivCha} <= 31`),
+    // Phase 11 (D-10): tier bounded t0-t3 (0-3) — mirrors the IV range checks
+    check('user_heroes_tier_range', sql`${table.tier} >= 0 AND ${table.tier} <= 3`),
     // For fast inventory queries by user
     index('user_heroes_user_idx').on(table.userId),
   ],
