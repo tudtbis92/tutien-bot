@@ -67,8 +67,15 @@ Phase 11 delivers the depth layer of the Tam Quốc Collection vertical loop: h�
 - **D-31:** **Skills roll AT ENCOUNTER SPAWN and CARRY TO CAPTURE** — the wild hero's rolled skills determine the battle, and on capture they persist to the `user_heroes` copy. Replayable battles must include the rolled skills in the `sanguo_battles.input` snapshot (D-06 replay contract). — **Reversibility:** costly — touches the encounter → battle → capture data flow + replay contract.
 - **D-32:** **Skills are re-rollable with hồn ngọc (Pokemon Go TM-style), ONE SLOT at a time** for a per-slot cost. Different copies of the same hero can carry different skill rolls — adds duplicate-collection value. — **Reversibility:** reversible.
 
+### Encounter Level (wild hero + boss)
+
+- **D-33:** **Wild heroes spawn at a RANDOM level** with distribution: L1-10 = 60%, L11-20 = 30%, L21-30 = 9.9%, L31-50 = 0.1% (the "30+" band caps at L50). The rolled level drives battle stats (`combatStat = base + IV + levelGain`) — a L22 wild hero is meaningfully stronger than a L6. — **Reversibility:** reversible — distribution is constant config; rebalancing is a config change (no economy re-sign needed, but it shifts capture difficulty).
+- **D-34:** **The captured hero KEEPS the encounter level.** A captured L22 hero starts at L22; hồn ngọc only adds further levels. Level is NOT reset on capture. — **Reversibility:** one-way — the D-04 copy-level identity; resetting later would retroactively change owned heroes.
+- **D-35:** **The boss (zone general) fights at a FIXED level: L50** (the t2 evolution threshold) — t2 base stats + IV100 + L50. Boss difficulty is a deliberate wall independent of the wild distribution; beating it proves L50+ legion strength. — **Reversibility:** reversible — boss level is a constant.
+- **D-36:** **Boss capture result is unaffected by the L50 fight** — the captured boss copy is still a random roll (D-28): random IV + random tier t0 95% / t1 4.98% / t2 0.02%, and the captured LEVEL is a fixed **L20** (not L50, not the wild distribution). Fight difficulty ≠ prize applies to level too.
+
 ### the agent's Discretion
-- Exact accelerating level-cost curve numbers; flat stat gain per level.
+- Exact accelerating level-cost curve numbers; flat stat gain per level; exact wild-level distribution roll mechanics (band roll then uniform-within-band).
 - Exact chemistry point values, tier thresholds, buff % per tier.
 - Exact skill pools, skill rarity weights, skill effect values; exact support-effect trigger chances from LEA/CHA.
 - Boss item drop rarity weighting; shop price values (must comply with D-19 net-sink/neutral + ~416/hr gross bound).
@@ -162,6 +169,7 @@ Phase 11 delivers the depth layer of the Tam Quốc Collection vertical loop: h�
 - **"sẽ có các bộ skill theo class, tướng khi encounter sẽ tự random skill từ các bộ skill phù hợp với class và skill rarity"** — class-based skill pools, rolled at encounter (D-30).
 - **"có thể dùng hồn ngọc để re-roll lại skill, tương tự pokemon go"** — skill re-roll sink (D-32).
 - **"sau khi đánh thắng boss và tới bước capture, tướng capture là random IV không phải 100 IV, bậc tướng cũng sẽ random t0: 95%, t1: 4.98%, t2: 0.02%"** — boss fight ≠ prize; capture result is a random roll (D-28).
+- **"level của hero khi encounter là random: 1-10: 60%, 11-20: 30%, 21-30: 9.9%, 30+: 0.1%"** — wild level distribution (D-33); "30+" capped at L50 (D-33); captured hero keeps the level (D-34); boss fights at fixed L50 (D-35); captured boss copy is L20 fixed (D-36).
 
 </specifics>
 

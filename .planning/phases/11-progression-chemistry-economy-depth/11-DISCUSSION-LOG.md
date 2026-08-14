@@ -5,7 +5,7 @@
 
 **Date:** 2026-08-14
 **Phase:** 11-progression-chemistry-economy-depth
-**Areas discussed:** Hồn ngọc & dupe conversion, Leveling & evolution model, Shop, items & boss drops, Legion chemistry & formations, Boss redesign details, Skills & MP
+**Areas discussed:** Hồn ngọc & dupe conversion, Leveling & evolution model, Shop, items & boss drops, Legion chemistry & formations, Boss redesign details, Skills & MP, Encounter Level
 
 ---
 
@@ -326,9 +326,43 @@
 
 ---
 
+## Encounter Level (wild hero + boss)
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Captured hero keeps level | L22 capture = L22 hero; hồn ngọc only adds more | ✓ |
+| Capture resets to L1 | Player re-levels every capture | |
+
+**User's choice:** Captured hero keeps the encounter level (D-34).
+**Notes:** Wild spawn level distribution: L1-10 = 60%, L11-20 = 30%, L21-30 = 9.9%, L31-50 = 0.1% (the "30+" band caps at L50) — D-33.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Fixed boss level | Boss = deliberate challenge | ✓ |
+| Same wild distribution | Boss could be L8 | |
+
+**User's choice:** Boss fights at a fixed L50 (t2 evolution threshold) — D-35.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Keeps L50 | Captured copy keeps fight level | |
+| Random wild level | Full random prize | |
+| Other (freeform) | 20 | ✓ |
+
+**User's choice:** Captured boss copy is a fixed **L20** (random IV + random tier, but L20 fixed) — D-36.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| 31-100 (full range) | Vanishingly rare high-level encounters | |
+| 31-50 cap | Rare but bounded | ✓ |
+
+**User's choice:** The "30+" band is capped at L50 — D-33.
+
+---
+
 ## the agent's Discretion
 
-- Exact accelerating level-cost curve numbers; flat stat gain per level; exact t3 level requirement.
+- Exact accelerating level-cost curve numbers; flat stat gain per level; exact t3 level requirement; exact wild-level distribution roll mechanics.
 - Exact chemistry point values, tier thresholds, buff % per tier.
 - Exact skill pools, skill rarity weights, skill effect values; exact support-effect trigger chances from LEA/CHA.
 - Boss item drop rarity weighting; shop price values (must comply with D-19 + ~416/hr gross bound).
