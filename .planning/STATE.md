@@ -5,15 +5,15 @@ milestone_name: Tam Quốc Collection
 current_phase: 11
 current_phase_name: progression-chemistry-economy-depth
 status: executing
-stopped_at: Phase 11 UI-SPEC approved
-last_updated: "2026-08-14T07:09:07.414Z"
+stopped_at: Completed 11-01-PLAN.md (economy amendment + migration 0020)
+last_updated: "2026-08-14T07:47:29.919Z"
 last_activity: 2026-08-14
 last_activity_desc: Phase 10 complete (deployed + UAT 43/43), transitioned to Phase 11
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 24
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # State: TuTien Bot
@@ -33,11 +33,11 @@ See: .planning/PROJECT.md (updated 2026-08-14)
 ## Current Position
 
 Phase: 11 (progression-chemistry-economy-depth) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 11
+Plan: 2 of 8
+Status: Ready to execute
 Last activity: 2026-08-14 — Phase 11 execution started
 
-Progress: [████████████████████] 9/9 plans ([██████████] 100%)
+Progress: [████████████████████] 9/9 plans ([███████░░░] 71%)
 
 ## Phase Registry (Milestone v3)
 
@@ -102,10 +102,10 @@ Progress: [████████████████████] 9/9 pla
 
 ## Session Continuity
 
-**Resume file:** E:\Saeth\tutien-bot\.planning\phases\11-progression-chemistry-economy-depth\11-UI-SPEC.md
+**Resume file:** None
 
-Last session: 2026-08-14T05:05:37.144Z
-Stopped at: Phase 11 UI-SPEC approved
+Last session: 2026-08-14T07:47:29.896Z
+Stopped at: Completed 11-01-PLAN.md (economy amendment + migration 0020)
 Resume: `/gsd-plan-phase 11` (next: Progression, Chemistry & Economy Depth)
 
 ---
@@ -127,6 +127,7 @@ Resume: `/gsd-plan-phase 11` (next: Progression, Chemistry & Economy Depth)
 | Phase 10-battle-capture P05 | 22min | 3 tasks | 5 files |
 | Phase 10-battle-capture P06 | 25min | 2 tasks | 13 files |
 | Phase 10-battle-capture P07 | 41min | 3 tasks | 15 files |
+| Phase 11-progression-chemistry-economy-depth P11-01 | 26min | 2 tasks | 13 files |
 
 ## Quick Tasks Completed
 
@@ -165,3 +166,4 @@ Resume: `/gsd-plan-phase 11` (next: Progression, Chemistry & Economy Depth)
 - [Phase 10-battle-capture]: The starter grant is FREE and the ONLY faucet (D-19): handleStarterPick contains no wallet import/call (grep == 0 + wallet-mock assertion); zero deductBalance across the collection/starter/hero surfaces — D-19 one-way gate; free faucet locked
 - [Phase 10-battle-capture]: Collection stars come from the PUBLIC heroes.tier and grade from iv_grade.* keys; embed data interfaces carry gradeKey + stars ONLY — D-12 never-render enforced structurally (no IV/rarity field can reach the render path) — D-12 hard rule held by construction, not convention
 - [Phase 10-battle-capture]: heroes.empty_filtered + hero.field_stars/field_grade/field_hp_mp added as i18n keys (all 3 locales, check-i18n parity): the flagged filtered-empty assumption needs an empty-hint line (never the starter picker) and the fixed-field detail embed needs field NAMES — neither was in the pinned UI-SPEC set — Additive keys required by the plan's own flagged assumptions
+- [Phase ?]: adopt-a5 (user checkpoint decision 2026-08-14): research prices/drop-weights adopted as-is — heal_pill 50, booster_x2 100, formations 200/300/500; boss drops 70/25/4.9/0.1; superseded 'Linh thach -> evolution' row replaced by 'Linh thach -> hon ngoc: only via booster (bounded, one-way)'
