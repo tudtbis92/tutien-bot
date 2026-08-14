@@ -7,17 +7,16 @@ import {
   type MessageActionRowComponentBuilder,
   type StringSelectMenuInteraction,
 } from 'discord.js';
-import { eq, and, asc, inArray } from 'drizzle-orm';
-import type { TFunction } from 'i18next';
+import { eq, and, asc, inArray, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { users } from '../../db/schema/users.js';
 import { heroes } from '../../db/schema/heroes.js';
 import { userHeroes } from '../../db/schema/userHeroes.js';
 import { userSanguoState } from '../../db/schema/userSanguoState.js';
 import { mapZones } from '../../db/schema/mapZones.js';
 import { heroEmoji } from '../../assets/sanguoEmojis.js';
-import { resolveLocale, getT, type SupportedLocale } from '../../i18n/index.js';
+import type { SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
+import { resolveComponentUser as resolveInteractionUser } from '../../utils/componentContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { logger } from '../../utils/logger.js';
 import { buildSanguoHeroesEmbed } from '../../ui/embeds/buildSanguoHeroesEmbed.js';
@@ -153,33 +152,8 @@ async function queryOwnedHeroes(
     .orderBy(asc(heroes.id));
 }
 
-interface InteractionUserCtx {
-  userId: number;
-  t: TFunction;
-  locale: SupportedLocale;
-  shardId: number | undefined;
-}
+/** Resolve the users.id row for a component press — shared util (IN-05). */
 
-/** Resolve the users.id row for a component press (users.discordId → users.id). */
-async function resolveInteractionUser(interaction: ButtonInteraction | StringSelectMenuInteraction): Promise<InteractionUserCtx | null> {
-  const [userRow] = await db
-    .select({ id: users.id, locale: users.locale })
-    .from(users)
-    .where(eq(users.discordId, interaction.user.id))
-    .limit(1);
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
-  const shardId = interaction.client.shard?.ids[0];
-
-  if (!userRow) {
-    await interaction.editReply({
-      embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
-      components: [],
-    });
-    return null;
-  }
-  return { userId: userRow.id, t, locale, shardId };
-}
 
 /**
  * D-14 rotation counter: every /sanguo heroes invocation while the collection
@@ -202,7 +176,16 @@ async function incrementStarterViews(userId: number): Promise<number> {
         .set({ starterViews: views + 1, updatedAt: new Date() })
         .where(eq(userSanguoState.userId, userId));
     } else {
-      await tx.insert(userSanguoState).values({ userId, starterViews: 1 });
+      // IN-06: first-time INSERT uses an upsert — FOR UPDATE locks nothing when
+      // no row exists, so a concurrent press could otherwise hit the unique
+      // violation on user_id; onConflictDoUpdate makes the loser increment.
+      await tx
+        .insert(userSanguoState)
+        .values({ userId, starterViews: 1 })
+        .onConflictDoUpdate({
+          target: userSanguoState.userId,
+          set: { starterViews: sql`${userSanguoState.starterViews} + 1`, updatedAt: new Date() },
+        });
     }
     return views;
   });

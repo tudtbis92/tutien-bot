@@ -202,7 +202,7 @@ describe('startEncounterBattle — encounter battle entry (D-01/D-03/D-04/D-06)'
   it('T1: pending encounter + active companion → battle result, replay-record sanguo_battles row, seed set', async () => {
     const runBattleFn = vi.fn().mockReturnValue(WIN_RESULT);
     const { promise, insert, insertValues } = runBattleInTx(
-      [[TRAVEL], [PENDING], [STATE], [activeJoin()], [WILD_HERO]],
+      [[TRAVEL], [PENDING], [], [STATE], [activeJoin()], [WILD_HERO]],
       runBattleFn,
       { seed: 12345, ivRoll: () => 1 },
     );
@@ -234,7 +234,7 @@ describe('startEncounterBattle — encounter battle entry (D-01/D-03/D-04/D-06)'
   it('T2: active companion HP = 0 → HERO_FAINTED, NO sanguo_battles row (D-04 gate)', async () => {
     const runBattleFn = vi.fn().mockReturnValue(WIN_RESULT);
     const { promise, insert } = runBattleInTx(
-      [[TRAVEL], [PENDING], [STATE], [activeJoin(0)]],
+      [[TRAVEL], [PENDING], [], [STATE], [activeJoin(0)]],
       runBattleFn,
       { seed: 1 },
     );
@@ -255,10 +255,24 @@ describe('startEncounterBattle — encounter battle entry (D-01/D-03/D-04/D-06)'
     expect(flagNoPending.insert).not.toHaveBeenCalled();
   });
 
+  it('CR-02: a pending encounter with an EXISTING completed battle → BATTLE_ALREADY_FOUGHT, no new battle row (stale fight-button guard)', async () => {
+    const runBattleFn = vi.fn().mockReturnValue(WIN_RESULT);
+    const existing = { id: 88, userId: 42, encounterId: 9, type: 'encounter', status: 'completed' };
+    const { promise, insert } = runBattleInTx(
+      [[TRAVEL], [PENDING], [existing], [STATE], [activeJoin()], [WILD_HERO]],
+      runBattleFn,
+      { seed: 1 },
+    );
+
+    await expect(promise).rejects.toThrow('BATTLE_ALREADY_FOUGHT');
+    expect(runBattleFn).not.toHaveBeenCalled(); // engine never runs
+    expect(insert).not.toHaveBeenCalled(); // no second battle record
+  });
+
   it('T4: player WIN → encounter stays pending (capture window open), hp_current written back (D-04)', async () => {
     const runBattleFn = vi.fn().mockReturnValue(WIN_RESULT);
     const { promise, update, updateSet } = runBattleInTx(
-      [[TRAVEL], [PENDING], [STATE], [activeJoin()], [WILD_HERO]],
+      [[TRAVEL], [PENDING], [], [STATE], [activeJoin()], [WILD_HERO]],
       runBattleFn,
       { seed: 1 },
     );
@@ -278,7 +292,7 @@ describe('startEncounterBattle — encounter battle entry (D-01/D-03/D-04/D-06)'
   it('T5: player LOSS → encounter "escaped", encounterActive false + updatedAt pinned (travel resumes)', async () => {
     const runBattleFn = vi.fn().mockReturnValue(LOSS_RESULT);
     const { promise, update, updateSet } = runBattleInTx(
-      [[TRAVEL], [PENDING], [STATE], [activeJoin()], [WILD_HERO]],
+      [[TRAVEL], [PENDING], [], [STATE], [activeJoin()], [WILD_HERO]],
       runBattleFn,
       { seed: 1 },
     );
@@ -290,7 +304,7 @@ describe('startEncounterBattle — encounter battle entry (D-01/D-03/D-04/D-06)'
     expect(update).toHaveBeenCalledWith(playerTravelState);
 
     const sets = updateSet.mock.calls.map((c: any) => c[0]);
-    expect(sets).toContainEqual({ status: 'escaped' });
+    expect(sets).toContainEqual({ status: 'escaped', pityCount: 0 }); // IN-04
     expect(sets).toContainEqual({ encounterActive: false, updatedAt: expect.any(Date) });
   });
 
@@ -298,7 +312,7 @@ describe('startEncounterBattle — encounter battle entry (D-01/D-03/D-04/D-06)'
     const randomIntSpy = vi.spyOn(crypto, 'randomInt').mockReturnValue(7 as never);
     const runBattleFn = vi.fn().mockReturnValue(WIN_RESULT);
     const { promise } = runBattleInTx(
-      [[TRAVEL], [PENDING], [STATE], [activeJoin()], [WILD_HERO]],
+      [[TRAVEL], [PENDING], [], [STATE], [activeJoin()], [WILD_HERO]],
       runBattleFn,
       { seed: 12345 },
     );
@@ -326,7 +340,7 @@ describe('startEncounterBattle — encounter battle entry (D-01/D-03/D-04/D-06)'
   it('T7: boss encounter builds the enemy from the zone boss template (A3), not a heroes row', async () => {
     const runBattleFn = vi.fn().mockReturnValue(WIN_RESULT);
     const { promise } = runBattleInTx(
-      [[TRAVEL], [PENDING_BOSS], [STATE], [activeJoin()]],
+      [[TRAVEL], [PENDING_BOSS], [], [STATE], [activeJoin()]],
       runBattleFn,
       { seed: 1 },
     );
@@ -429,7 +443,7 @@ describe('skipEncounter — retreat/skip resolution (D-18)', () => {
 
     expect(chain.for).toHaveBeenCalledWith('update');
     const sets = updateSet.mock.calls.map((c: any) => c[0]);
-    expect(sets).toContainEqual({ status: 'skipped' });
+    expect(sets).toContainEqual({ status: 'skipped', pityCount: 0 }); // IN-04
     expect(sets).toContainEqual({ encounterActive: false, updatedAt: expect.any(Date) });
     expect(update).toHaveBeenCalledWith(encounterRuns);
     expect(update).toHaveBeenCalledWith(playerTravelState);
@@ -455,7 +469,7 @@ describe('integration (SC1 / Pitfall 1 / Pitfall 7)', () => {
     // full snapshot; we then replay from the stored record — the SC1 proof the
     // seed+input contract is complete (Pitfall 1).
     const { promise, insertValues } = runBattleInTx(
-      [[TRAVEL], [PENDING], [STATE], [activeJoin()], [WILD_HERO]],
+      [[TRAVEL], [PENDING], [], [STATE], [activeJoin()], [WILD_HERO]],
       undefined,
       { seed: 424242 },
     );
@@ -476,7 +490,7 @@ describe('integration (SC1 / Pitfall 1 / Pitfall 7)', () => {
   it('T10: escape resolution — after a loss the next check-in resumes the journey from the pinned updatedAt', async () => {
     // Loss battle: encounterActive cleared + updatedAt pinned (asserted in T5).
     const runBattleFn = vi.fn().mockReturnValue(LOSS_RESULT);
-    const loss = runBattleInTx([[TRAVEL], [PENDING], [STATE], [activeJoin()], [WILD_HERO]], runBattleFn, { seed: 1 });
+    const loss = runBattleInTx([[TRAVEL], [PENDING], [], [STATE], [activeJoin()], [WILD_HERO]], runBattleFn, { seed: 1 });
     const outcome = await loss.promise;
     expect(outcome.resolution).toBe('lost');
     const lossSets = loss.updateSet.mock.calls.map((c: any) => c[0]);

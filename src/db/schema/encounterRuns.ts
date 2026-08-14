@@ -10,7 +10,10 @@ import { heroes } from './heroes.js';
  * Phase 10 (A7): status stays varchar(20) — vocabulary extends to
  * 'pending'|'captured'|'fled'|'skipped'|'escaped', enforced in service code
  * (no enum migration). pity_count (D-11) is the per-encounter bad-luck
- * counter: incremented per failed capture attempt, reset on success/flee.
+ * counter: incremented per failed capture attempt, reset to 0 on every
+ * terminal resolution (captured/fled/skipped/escaped — IN-04: the counter is
+ * per-row and terminal-only; service code writes the reset alongside the
+ * status transition).
  */
 export const encounterRuns = pgTable(
   'encounter_runs',
@@ -29,7 +32,8 @@ export const encounterRuns = pgTable(
     // — kept varchar (no enum migration), service-enforced
     status: varchar('status', { length: 20 }).notNull().default('pending'),
     // Phase 10 (D-11): per-encounter bad-luck counter — incremented per failed
-    // capture attempt, reset on success/flee/retreat. Read/written in the SAME
+    // capture attempt, reset to 0 on every terminal resolution
+    // (captured/fled/skipped/escaped, IN-04). Read/written in the SAME
     // capture tx as the fee + roll (Pitfall 2/3).
     pityCount: smallint('pity_count').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

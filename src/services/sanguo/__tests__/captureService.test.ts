@@ -47,7 +47,7 @@ const BATTLE_ROW = {
   status: 'completed',
   seed: 12345,
   input: { enemy: { base: { hp: 100 } } },
-  result: { enemyHpAfter: 50 },
+  result: { enemyHpAfter: 50, winner: 'player' },
   createdAt: new Date('2026-08-12T08:00:00Z'),
   updatedAt: new Date('2026-08-12T08:00:00Z'),
   resolvedAt: new Date('2026-08-12T08:00:00Z'),
@@ -141,6 +141,18 @@ describe('captureChance — clamped [0,1] formula (D-10/D-11)', () => {
     expect(captureChance({ rarity: 1, hpMax: 100, hpCurrent: 100, tierMultiplier: 1.0, pity: 20 })).toBe(1);
   });
 
+  it('T1d (CR-01): the pity term is CAP-BOUND per rarity — pity grinding can never force chance to 1.0', () => {
+    // hpFactor = 0 (no battle HP) → the whole chance is the pity term alone.
+    // R1 cap 0.80: pity 20 (would be +1.0 uncapped) → exactly 0.80, never 1.
+    expect(captureChance({ rarity: 1, hpMax: 0, hpCurrent: 0, tierMultiplier: 1.0, pity: 20 })).toBeCloseTo(0.8, 10);
+    // R5 cap 0.60: pity 20 → 0.60 (uncapped would be 1.0).
+    expect(captureChance({ rarity: 5, hpMax: 0, hpCurrent: 0, tierMultiplier: 1.0, pity: 20 })).toBeCloseTo(0.6, 10);
+    // Under the cap the linear +PITY_INCREMENT behavior is preserved (D-11).
+    const atCap0 = captureChance({ rarity: 2, hpMax: 0, hpCurrent: 0, tierMultiplier: 1.0, pity: 0 });
+    const atCap1 = captureChance({ rarity: 2, hpMax: 0, hpCurrent: 0, tierMultiplier: 1.0, pity: 1 });
+    expect(atCap1 - atCap0).toBeCloseTo(PITY_INCREMENT, 10);
+  });
+
   it('T1c: lower clamp — the result never leaves [0,1] across the input space', () => {
     // hpFactor(0, ·) = 0 → the exact lower bound is reachable
     expect(captureChance({ rarity: 1, hpMax: 0, hpCurrent: 0, tierMultiplier: 1.0, pity: 0 })).toBe(0);
@@ -222,9 +234,9 @@ describe('attemptCapture — single-writer capture tx (D-10/D-11, TQC-11)', () =
       }),
     );
 
-    // Status transitions.
+    // Status transitions (IN-04: pity resets alongside the terminal status).
     const sets = updateSet.mock.calls.map((c: any) => c[0]);
-    expect(sets).toContainEqual({ status: 'captured' });
+    expect(sets).toContainEqual({ status: 'captured', pityCount: 0 });
     expect(sets).toContainEqual({ encounterActive: false, updatedAt: expect.any(Date) });
 
     // Audit row (TQC-11): exact chance + exact roll stored.
@@ -283,7 +295,7 @@ describe('attemptCapture — single-writer capture tx (D-10/D-11, TQC-11)', () =
 
     expect(FLEE_RATE_BY_RARITY[1]).toBeGreaterThan(0.01); // fixture sanity
     const sets = updateSet.mock.calls.map((c: any) => c[0]);
-    expect(sets).toContainEqual({ status: 'fled' });
+    expect(sets).toContainEqual({ status: 'fled', pityCount: 0 });
     expect(sets).toContainEqual({ encounterActive: false, updatedAt: expect.any(Date) });
     expect(update).toHaveBeenCalledWith(playerTravelState);
 
@@ -331,6 +343,29 @@ describe('attemptCapture — single-writer capture tx (D-10/D-11, TQC-11)', () =
     const poor = attemptInTx(HERO_QUEUE, { roll: () => 0.01 });
     await expect(poor.promise).rejects.toThrow('INSUFFICIENT_BALANCE');
     expect(poor.insert).not.toHaveBeenCalled(); // whole tx rolled back — no audit row
+  });
+
+  it('CR-01a: NO battle row → CAPTURE_NOT_AVAILABLE — the fee is NEVER charged for an unfought encounter', async () => {
+    const attempt = attemptInTx([[PENDING], [], [WILD_HERO]], { roll: () => 0.01 });
+    await expect(attempt.promise).rejects.toThrow('CAPTURE_NOT_AVAILABLE');
+    expect(deductBalance).not.toHaveBeenCalled(); // guard fires BEFORE the fee
+    expect(attempt.insert).not.toHaveBeenCalled(); // no audit row either
+  });
+
+  it('CR-01b: a battle row whose winner is NOT the player → CAPTURE_NOT_AVAILABLE (win is the D-10 precondition)', async () => {
+    const LOST_BATTLE = { ...BATTLE_ROW, result: { enemyHpAfter: 50, winner: 'enemy' } };
+    const attempt = attemptInTx([[PENDING], [LOST_BATTLE], [WILD_HERO]], { roll: () => 0.01 });
+    await expect(attempt.promise).rejects.toThrow('CAPTURE_NOT_AVAILABLE');
+    expect(deductBalance).not.toHaveBeenCalled();
+    expect(attempt.insert).not.toHaveBeenCalled();
+  });
+
+  it('CR-01c: won battle but a drifted snapshot shape (no enemy HP) → NO_BATTLE_SNAPSHOT, no fee charged (WR-03 fail-loud)', async () => {
+    const DRIFTED = { ...BATTLE_ROW, input: { enemy: {} }, result: { winner: 'player' } };
+    const attempt = attemptInTx([[PENDING], [DRIFTED], [WILD_HERO]], { roll: () => 0.01 });
+    await expect(attempt.promise).rejects.toThrow('NO_BATTLE_SNAPSHOT');
+    expect(deductBalance).not.toHaveBeenCalled();
+    expect(attempt.insert).not.toHaveBeenCalled();
   });
 
   it('T9: fee + audit integrity — two failed attempts: pity_before 0 → 1, equal fees, tier reason, chance rises by PITY_INCREMENT (D-11)', async () => {

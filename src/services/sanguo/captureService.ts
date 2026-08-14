@@ -14,6 +14,7 @@ import {
   CAPTURE_BASE_BY_RARITY,
   FLEE_RATE_BY_RARITY,
   PITY_INCREMENT,
+  PITY_CAP_BY_RARITY,
   hpFactor,
 } from '../../constants/sanguoCapture.js';
 
@@ -49,11 +50,14 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
  * D-10/D-11 capture chance: `base(rarity) × hpFactor × tierMultiplier +
- * pity×PITY_INCREMENT`, clamped to [0,1] AFTER pity (strict bounds — the roll
- * compares against this exact value). `pity` is the per-encounter FAILURE
- * COUNT (encounter_runs.pity_count); each failed attempt adds PITY_INCREMENT
- * (5pp) to the NEXT attempt's chance (D-11 — the Task-3 test pins
- * chance2 − chance1 === PITY_INCREMENT for pity 0 → 1). hpFactor
+ * min(pity×PITY_INCREMENT, PITY_CAP_BY_RARITY[rarity])`, clamped to [0,1]
+ * AFTER pity (strict bounds — the roll compares against this exact value).
+ * `pity` is the per-encounter FAILURE COUNT (encounter_runs.pity_count);
+ * each failed attempt adds PITY_INCREMENT (5pp) to the NEXT attempt's chance
+ * (D-11 — the Task-3 test pins chance2 − chance1 === PITY_INCREMENT for pity
+ * 0 → 1). The pity term is CAP-BOUND per rarity (CR-01 amendment): pity
+ * grinding can never drive the chance to 1.0 for a rare hero
+ * (PITY_CAP_BY_RARITY — 0.80 / 0.75 / 0.70 / 0.65 / 0.60). hpFactor
  * (Pokemon-standard) is lower when the wild hero has more HP — battle
  * performance directly feeds capture odds (Pitfall 5).
  */
@@ -65,7 +69,9 @@ export function captureChance(params: {
   pity: number;
 }): number {
   const base = CAPTURE_BASE_BY_RARITY[params.rarity] ?? 0;
-  const raw = base * hpFactor(params.hpMax, params.hpCurrent) * params.tierMultiplier + params.pity * PITY_INCREMENT;
+  const pityCap = PITY_CAP_BY_RARITY[params.rarity] ?? 0.8;
+  const pityTerm = Math.min(params.pity * PITY_INCREMENT, pityCap);
+  const raw = base * hpFactor(params.hpMax, params.hpCurrent) * params.tierMultiplier + pityTerm;
   return Math.min(1, Math.max(0, raw));
 }
 
@@ -143,18 +149,33 @@ export async function attemptCapture(
     //     boss press never charges for an impossible insert.
     if (encounter.heroId == null) throw new Error('BOSS_CAPTURE_UNAVAILABLE');
 
-    // 3. Wild state from LOCKED rows — HP from the battle snapshot (Pitfall 2:
-    //    recompute from the locked row, never the interaction payload).
+    // 2c. CR-01 WON-BATTLE PRECONDITION (D-10): the capture window opens ONLY
+    //     on a player win. The UI gates capture behind the win row, but the
+    //     router dispatches ANY crafted `sanguo:capture:tier:{n}` customId to
+    //     this tx — so the server re-verifies a completed player-won encounter
+    //     battle exists BEFORE the fee is charged. Without a won battle there
+    //     is no capture; missing/defeat → CAPTURE_NOT_AVAILABLE, the whole tx
+    //     rolls back (no fee, no audit row). The SAME row is the HP snapshot
+    //     source below (one read).
     const [battle] = await tx
       .select()
       .from(sanguoBattles)
-      .where(eq(sanguoBattles.encounterId, encounter.id))
+      .where(and(eq(sanguoBattles.encounterId, encounter.id), eq(sanguoBattles.type, 'encounter')))
       .orderBy(desc(sanguoBattles.id))
       .limit(1);
-    const input = (battle?.input ?? {}) as StoredInputShape;
-    const result = (battle?.result ?? {}) as StoredResultShape;
-    const hpMax = input.enemy?.base?.hp ?? 0;
-    const hpCurrent = result.enemyHpAfter ?? 0;
+    const storedResult = (battle?.result ?? {}) as StoredResultShape & { winner?: string };
+    if (!battle || storedResult.winner !== 'player') throw new Error('CAPTURE_NOT_AVAILABLE');
+
+    // 3. Wild state from LOCKED rows — HP from the battle snapshot (Pitfall 2:
+    //    recompute from the locked row, never the interaction payload). The
+    //    snapshot is REQUIRED (WR-03 fail-loud): a missing/drifted row shape
+    //    must not silently collapse the chance to pity-only while still
+    //    charging the fee — NO_BATTLE_SNAPSHOT throws before the fee.
+    const input = (battle.input ?? {}) as StoredInputShape;
+    const result = (battle.result ?? {}) as StoredResultShape;
+    const hpMax = input.enemy?.base?.hp;
+    const hpCurrent = result.enemyHpAfter;
+    if (hpMax == null || hpCurrent == null) throw new Error('NO_BATTLE_SNAPSHOT');
     const { rarity, heroBaseHp } = await wildRarity(tx, encounter);
 
     // 4. Chance recomputed INSIDE the tx from locked state (clamped [0,1]).
@@ -212,7 +233,10 @@ export async function attemptCapture(
         .returning({ id: userHeroes.id });
       userHeroId = uh?.id;
 
-      await tx.update(encounterRuns).set({ status: 'captured' }).where(eq(encounterRuns.id, encounter.id));
+      await tx
+        .update(encounterRuns)
+        .set({ status: 'captured', pityCount: 0 }) // IN-04: pity resets on success
+        .where(eq(encounterRuns.id, encounter.id));
       await tx
         .update(playerTravelState)
         .set({ encounterActive: false, updatedAt: new Date() })
@@ -228,7 +252,10 @@ export async function attemptCapture(
       const fleeRoll = fleeFn();
       if (fleeRoll < FLEE_RATE_BY_RARITY[rarity]) {
         outcome = 'flee';
-        await tx.update(encounterRuns).set({ status: 'fled' }).where(eq(encounterRuns.id, encounter.id));
+        await tx
+          .update(encounterRuns)
+          .set({ status: 'fled', pityCount: 0 }) // IN-04: pity resets on flee
+          .where(eq(encounterRuns.id, encounter.id));
         await tx
           .update(playerTravelState)
           .set({ encounterActive: false, updatedAt: new Date() })

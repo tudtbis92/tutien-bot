@@ -10,7 +10,6 @@ import {
 import { eq, and, desc } from 'drizzle-orm';
 import type { TFunction } from 'i18next';
 import { db } from '../../db/client.js';
-import { users } from '../../db/schema/users.js';
 import { heroes } from '../../db/schema/heroes.js';
 import { mapNodes } from '../../db/schema/mapNodes.js';
 import { mapZones } from '../../db/schema/mapZones.js';
@@ -18,8 +17,9 @@ import { playerTravelState } from '../../db/schema/playerTravelState.js';
 import { encounterRuns } from '../../db/schema/encounterRuns.js';
 import { sanguoBattles } from '../../db/schema/sanguoBattles.js';
 import { heroEmoji } from '../../assets/sanguoEmojis.js';
-import { resolveLocale, getT, type SupportedLocale } from '../../i18n/index.js';
+import type { SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
+import { resolveComponentUser } from '../../utils/componentContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { logger } from '../../utils/logger.js';
 import { buildSanguoTravelReplyEmbed } from '../../ui/embeds/buildSanguoTravelReplyEmbed.js';
@@ -399,22 +399,9 @@ export async function handleDestinationSelect(
 ): Promise<void> {
   await interaction.deferUpdate();
 
-  const [userRow] = await db
-    .select({ id: users.id, locale: users.locale })
-    .from(users)
-    .where(eq(users.discordId, interaction.user.id))
-    .limit(1);
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
-  const shardId = interaction.client.shard?.ids[0];
-
-  if (!userRow) {
-    await interaction.editReply({
-      embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
-      components: [],
-    });
-    return;
-  }
+  const ctx = await resolveComponentUser(interaction);
+  if (!ctx) return;
+  const { userId, t, locale, shardId } = ctx;
 
   const selectedCode = interaction.values[0];
   if (!selectedCode) {
@@ -426,7 +413,7 @@ export async function handleDestinationSelect(
   }
 
   try {
-    const pos = await getCurrentPosition(userRow.id);
+    const pos = await getCurrentPosition(userId);
     const adjacent = await getAdjacentNodes(pos.nodeId);
     const selected = adjacent.find((n) => n.code === selectedCode);
 
@@ -474,22 +461,9 @@ export async function handleDestinationSelect(
 export async function handleStartPress(interaction: ButtonInteraction): Promise<void> {
   await interaction.deferUpdate();
 
-  const [userRow] = await db
-    .select({ id: users.id, locale: users.locale })
-    .from(users)
-    .where(eq(users.discordId, interaction.user.id))
-    .limit(1);
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
-  const shardId = interaction.client.shard?.ids[0];
-
-  if (!userRow) {
-    await interaction.editReply({
-      embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
-      components: [],
-    });
-    return;
-  }
+  const ctx = await resolveComponentUser(interaction);
+  if (!ctx) return;
+  const { userId, t, locale, shardId } = ctx;
 
   const selectedCode =
     interaction.customId === START_BTN_ID
@@ -504,8 +478,8 @@ export async function handleStartPress(interaction: ButtonInteraction): Promise<
   }
 
   try {
-    const { etaSeconds } = await startTravel(userRow.id, selectedCode);
-    const pos = await getCurrentPosition(userRow.id); // in-flight position = from node
+    const { etaSeconds } = await startTravel(userId, selectedCode);
+    const pos = await getCurrentPosition(userId); // in-flight position = from node
     const [fromNode, destNode] = await Promise.all([
       fetchNodeName(pos.nodeId),
       fetchNodeByCode(selectedCode),
@@ -530,7 +504,7 @@ export async function handleStartPress(interaction: ButtonInteraction): Promise<
     });
   } catch (err) {
     if (err instanceof Error && err.message === 'ALREADY_TRAVELING') {
-      await dispatchCheckIn(interaction, userRow.id, t, locale, shardId);
+      await dispatchCheckIn(interaction, userId, t, locale, shardId);
       return;
     }
     if (err instanceof Error && err.message === 'NO_ROUTE') {

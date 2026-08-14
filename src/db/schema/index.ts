@@ -41,7 +41,6 @@ export * from './captureAttempts.js';
 export * from './userSanguoState.js';
 
 // Phase 8 post-gate schemas
-export * from './heroFactions.js';
 export * from './formations.js';
 
 // Phase 9 schemas (mapEdges authored in 09-01 — re-exported here so drizzle-kit

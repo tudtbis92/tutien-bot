@@ -157,7 +157,7 @@ const BATTLE_SNAPSHOT = {
   encounterId: 7,
   type: 'encounter',
   input: { enemy: { base: { hp: 140 } } },
-  result: { enemyHpAfter: 40 },
+  result: { enemyHpAfter: 40, winner: 'player' },
 };
 const ROUND_LOGS = [
   { round: 1, attacker: 'cao_cao', defender: 'liu_bei', hit: true, crit: false, dmg: 12, defenderHpAfter: 128 },
@@ -234,6 +234,31 @@ describe('/sanguo battle command (10-06)', () => {
     expect(reply.components).toEqual([]); // CR-09-04: terminal state clears components
   });
 
+  it('handleBattleStart BATTLE_ALREADY_FOUGHT routes to the CAPTURE VIEW — no re-battle (CR-02)', async () => {
+    mockDbReads([[USER_ROW], [PENDING_ENC], [BATTLE_SNAPSHOT], [LIU_BEI]]);
+    vi.mocked(startEncounterBattle).mockRejectedValue(new Error('BATTLE_ALREADY_FOUGHT'));
+    vi.mocked(captureChance).mockReturnValue(0.42);
+
+    const interaction = mockButtonInteraction('sanguo:battle:start');
+    await handleBattleStart(interaction);
+
+    // Rendered the capture view, NOT an error embed and NOT a re-battle.
+    expect(startEncounterBattle).toHaveBeenCalledWith(42);
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    const embed = reply.embeds?.[0]?.data ?? {};
+    expect(embed.title).toBe('sanguo:capture.title');
+    expect(embed.description).toBe('sanguo:capture.chance');
+    const row = reply.components?.[0] as ActionRowBuilder<any>;
+    expect(row.components).toHaveLength(4); // 3 tiers + retreat — capture, not re-fight
+    const ids = row.components.map((c: any) => ((c as ButtonBuilder).toJSON() as { custom_id: string }).custom_id);
+    expect(ids).toEqual([
+      'sanguo:capture:tier:1',
+      'sanguo:capture:tier:2',
+      'sanguo:capture:tier:3',
+      'sanguo:capture:retreat',
+    ]);
+  });
+
   // ── Test 3: handleCaptureOpen (capture view) ──────────────────────────────
   it('handleCaptureOpen renders the capture view: % + 3 tier buttons + retreat in ONE row', async () => {
     mockDbReads([[USER_ROW], [PENDING_ENC], [BATTLE_SNAPSHOT], [LIU_BEI]]);
@@ -278,6 +303,19 @@ describe('/sanguo battle command (10-06)', () => {
     );
     const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
     expect(reply.embeds?.[0]?.data?.color).toBe(0xf59e0b); // COLORS.GOLD boss variant
+  });
+
+  it('handleCaptureOpen CAPTURE_NOT_AVAILABLE renders capture.not_available with components cleared (CR-01)', async () => {
+    // The pending encounter has NO won battle — the view fails closed.
+    mockDbReads([[USER_ROW], [PENDING_ENC], [], [LIU_BEI]]);
+    vi.mocked(captureChance).mockReturnValue(0.42);
+
+    const interaction = mockButtonInteraction('sanguo:capture:open');
+    await handleCaptureOpen(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.description).toContain('sanguo:capture.not_available');
+    expect(reply.components).toEqual([]);
   });
 
   // ── Test 4: handleCaptureTierPress ────────────────────────────────────────

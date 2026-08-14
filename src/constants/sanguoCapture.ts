@@ -77,6 +77,22 @@ export const FLEE_RATE_BY_RARITY: Readonly<Record<number, number>> = {
 export const PITY_INCREMENT = 0.05;
 
 /**
+ * Pity CAP per rarity (Phase 10 CR-01 amendment — D-20 re-sign note). The
+ * pity-driven bonus (pity × PITY_INCREMENT) is bounded per rarity so pity
+ * grinding can NEVER drive the capture chance to 1.0 for a rare hero: 0.80 for
+ * the lowest rarity (1), decreasing 0.05 per rarity tier (R2=0.75, R3=0.70,
+ * R4=0.65, R5=0.60). Applied in captureChance AFTER the base × hpFactor ×
+ * tier term; the total chance remains clamped [0,1].
+ */
+export const PITY_CAP_BY_RARITY: Readonly<Record<number, number>> = {
+  1: 0.8,
+  2: 0.75,
+  3: 0.7,
+  4: 0.65,
+  5: 0.6,
+};
+
+/**
  * Rarity distribution — percent weights per rarity (60/25/10/4/1). Consumed by
  * the 10-04 content seed distribution and the D-20 economy re-sign.
  */

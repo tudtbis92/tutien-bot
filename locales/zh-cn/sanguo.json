@@ -76,7 +76,9 @@
     "spar_hint": "练习 — 不损失真实HP，没有奖励。",
     "blocked_fainted": "同伴**{{name}}**已精疲力竭。战斗前请用 /sanguo hero 更换英雄。",
     "no_encounter": "没有等待中的奇遇。",
-    "error": "交战时出错，请重试。"
+    "error": "交战时出错，请重试。",
+    "already_fought": "这次奇遇已经处理过了。",
+    "rounds_line": "⏱️ {{n}} 回合"
   },
   "capture": {
     "title": "🪤 收服 {{hero_emoji}} {{hero}}",
@@ -91,7 +93,8 @@
     "flee_title": "🏃 {{hero}}逃跑了！",
     "retreat_body": "你跳过了{{hero}}。旅程继续。",
     "insufficient": "灵石不足（需要{{fee}} 💎）。请检查余额后重试。",
-    "error": "收服时出错，请重试。"
+    "error": "收服时出错，请重试。",
+    "not_available": "暂时无法收服。"
   },
   "heroes": {
     "empty_title": "🌱 选择初始英雄",

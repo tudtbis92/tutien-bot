@@ -22,8 +22,8 @@ export interface SanguoCaptureEmbedData {
   heroName: string;
   /** Pre-rendered hero emoji markup ('<a:name:id>') — hero encounters only. */
   heroEmoji?: string;
-  /** floor(chance×100) — THE single mechanic number. Rendered in 'view' only. */
-  percent: number;
+  /** floor(chance×100) — THE single mechanic number. Required in 'view' only. */
+  percent?: number;
   state: SanguoCaptureState;
   /** D-13: boss capture view renders GOLD (phase-10 capture guarded server-side). */
   boss: boolean;
@@ -60,7 +60,7 @@ export function buildSanguoCaptureEmbed(
     case 'view':
       embed
         .setTitle(t('sanguo:capture.title', { hero_emoji: heroEmoji, hero: data.heroName }))
-        .setDescription(t('sanguo:capture.chance', { percent: data.percent }));
+        .setDescription(t('sanguo:capture.chance', { percent: data.percent ?? 0 }));
       break;
     case 'success':
       embed.setTitle(

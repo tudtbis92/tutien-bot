@@ -167,8 +167,21 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     // Zone markers go in message CONTENT — Discord render emoji inside '# ' headers
     // larger than in embed fields, and markdown headings only work in content,
     // never in embed field/description values (verified 2026-08-12).
+    // WR-02: heroEmoji is guarded (EMOJI_NOT_FOUND → label-only marker) so a
+    // future zone/hero without an emoji mapping degrades gracefully instead of
+    // breaking the whole map command.
     const zonesContent = zones
-      .map((z) => `# ${z.heroId ? `${heroEmoji(z.heroId)} ${z.label}` : z.label}`)
+      .map((z) => {
+        let marker = z.label;
+        if (z.heroId) {
+          try {
+            marker = `${heroEmoji(z.heroId)} ${z.label}`;
+          } catch {
+            // EMOJI_NOT_FOUND → label-only zone marker (map.ts:98 pattern)
+          }
+        }
+        return `# ${marker}`;
+      })
       .join('\n');
 
     await interaction.editReply({

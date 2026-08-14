@@ -4,6 +4,7 @@ import {
   CAPTURE_BASE_BY_RARITY,
   FLEE_RATE_BY_RARITY,
   PITY_INCREMENT,
+  PITY_CAP_BY_RARITY,
   RARITY_DISTRIBUTION,
   hpFactor,
 } from '../sanguoCapture.js';
@@ -90,6 +91,23 @@ describe('PITY_INCREMENT + RARITY_DISTRIBUTION (D-11/A1)', () => {
   it('RARITY_DISTRIBUTION is a percent-weight map summing to 100', () => {
     const total = Object.values(RARITY_DISTRIBUTION).reduce((sum, w) => sum + w, 0);
     expect(total).toBe(100);
+  });
+});
+
+describe('PITY_CAP_BY_RARITY (CR-01 pity cap)', () => {
+  it('has exactly the 5 rarity keys 1-5', () => {
+    expect(Object.keys(PITY_CAP_BY_RARITY).sort()).toEqual(['1', '2', '3', '4', '5']);
+  });
+
+  it('starts at 0.80 for the lowest rarity and decreases 0.05 per tier (0.75/0.70/0.65/0.60)', () => {
+    expect(PITY_CAP_BY_RARITY[1]).toBe(0.8);
+    expect(PITY_CAP_BY_RARITY[2]).toBeCloseTo(0.75, 10);
+    expect(PITY_CAP_BY_RARITY[3]).toBeCloseTo(0.7, 10);
+    expect(PITY_CAP_BY_RARITY[4]).toBeCloseTo(0.65, 10);
+    expect(PITY_CAP_BY_RARITY[5]).toBeCloseTo(0.6, 10);
+    for (let rarity = 2; rarity <= 5; rarity++) {
+      expect(PITY_CAP_BY_RARITY[rarity]! < PITY_CAP_BY_RARITY[rarity - 1]!).toBe(true);
+    }
   });
 });
 

@@ -176,7 +176,9 @@ function resolveCap(
  * Run a deterministic battle from a fixed seed + both heroes' full stat
  * snapshots. Synchronous, I/O-free, entropy-free — replay contract D-06.
  *
- * @param seed   battle seed (crypto.randomInt at battle start, per D-06)
+ * @param seed   battle seed (crypto.randomInt(< 2^32) at battle start, per
+ *               D-06 — pure-rand's xoroshiro128plus consumes seeds via a
+ *               32-bit truncation, so the seed lives in its native 2^32 space)
  * @param player player-side CombatantInput (isPlayer: true)
  * @param enemy  enemy-side CombatantInput (isPlayer: false)
  */

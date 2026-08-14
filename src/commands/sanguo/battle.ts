@@ -8,15 +8,17 @@ import {
 import { eq, and, desc } from 'drizzle-orm';
 import type { TFunction } from 'i18next';
 import { db } from '../../db/client.js';
-import { users } from '../../db/schema/users.js';
 import { heroes } from '../../db/schema/heroes.js';
 import { userHeroes } from '../../db/schema/userHeroes.js';
 import { userSanguoState } from '../../db/schema/userSanguoState.js';
 import { encounterRuns } from '../../db/schema/encounterRuns.js';
 import { sanguoBattles } from '../../db/schema/sanguoBattles.js';
 import { mapZones } from '../../db/schema/mapZones.js';
-import { resolveLocale, getT, type SupportedLocale } from '../../i18n/index.js';
+import type { SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
+import {
+  resolveComponentUser as resolveInteractionUser,
+} from '../../utils/componentContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { logger } from '../../utils/logger.js';
 import { buildSanguoBattleLogEmbed } from '../../ui/embeds/buildSanguoBattleLogEmbed.js';
@@ -90,37 +92,6 @@ function safeHeroEmoji(heroId: string): string | undefined {
     // EMOJI_NOT_FOUND → name-only rendering (map.ts:98 pattern)
     return undefined;
   }
-}
-
-interface InteractionUserCtx {
-  userId: number;
-  t: TFunction;
-  locale: SupportedLocale;
-  shardId: number | undefined;
-}
-
-/**
- * Resolve the users.id row for a button press (users.discordId → users.id —
- * NEVER char.id) + locale/t. Not-registered → notRegistered embed, null.
- */
-async function resolveInteractionUser(interaction: ButtonInteraction): Promise<InteractionUserCtx | null> {
-  const [userRow] = await db
-    .select({ id: users.id, locale: users.locale })
-    .from(users)
-    .where(eq(users.discordId, interaction.user.id))
-    .limit(1);
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
-  const shardId = interaction.client.shard?.ids[0];
-
-  if (!userRow) {
-    await interaction.editReply({
-      embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
-      components: [],
-    });
-    return null;
-  }
-  return { userId: userRow.id, t, locale, shardId };
 }
 
 /** The active companion's per-locale name — for the HERO_FAINTED block copy. */
@@ -301,16 +272,22 @@ export async function renderCaptureView(
   // Chance from the LOCKED-Row-equivalent read path (Pitfall 2): HP from the
   // battle snapshot, rarity from the heroes row (boss = 5), pity from the
   // encounter row — same inputs captureService reads inside its tx.
+  // CR-01: the view ALSO fails closed when the won-battle precondition is
+  // missing (no battle / not a player win) — mirrors attemptCapture so a
+  // crafted capture:open press can never render a pay-to-roll 0% view.
   const [battle] = await db
     .select()
     .from(sanguoBattles)
-    .where(eq(sanguoBattles.encounterId, encounter.id))
+    .where(and(eq(sanguoBattles.encounterId, encounter.id), eq(sanguoBattles.type, 'encounter')))
     .orderBy(desc(sanguoBattles.id))
     .limit(1);
-  const input = (battle?.input ?? {}) as { enemy?: { base?: { hp?: number } } };
-  const result = (battle?.result ?? {}) as { enemyHpAfter?: number };
-  const hpMax = input.enemy?.base?.hp ?? 0;
-  const hpCurrent = result.enemyHpAfter ?? 0;
+  const storedResult = (battle?.result ?? {}) as { winner?: string };
+  if (!battle || storedResult.winner !== 'player') throw new Error('CAPTURE_NOT_AVAILABLE');
+  const input = (battle.input ?? {}) as { enemy?: { base?: { hp?: number } } };
+  const result = (battle.result ?? {}) as { enemyHpAfter?: number };
+  const hpMax = input.enemy?.base?.hp;
+  const hpCurrent = result.enemyHpAfter;
+  if (hpMax == null || hpCurrent == null) throw new Error('NO_BATTLE_SNAPSHOT');
 
   let rarity = 5; // boss rarity constant (A3 templates are rarity 5)
   let heroName = '?';
@@ -441,6 +418,23 @@ export async function handleBattleStart(interaction: ButtonInteraction): Promise
       });
       return;
     }
+    // CR-02: a stale fight button from an earlier check-in embed reached a
+    // pending encounter that ALREADY has a completed battle (usually a win —
+    // the capture window is open). Do NOT re-battle (free IV/HP re-roll +
+    // capture-window loss on a re-battle loss). Route to the capture view —
+    // same F4 pattern as travel.ts — so the player captures, not re-fights.
+    if (err instanceof Error && err.message === 'BATTLE_ALREADY_FOUGHT') {
+      try {
+        const view = await renderCaptureView(ctx.userId, ctx.t, ctx.locale, ctx.shardId);
+        await interaction.editReply({ embeds: [view.embed], components: [view.row] });
+      } catch {
+        await interaction.editReply({
+          embeds: [buildErrorEmbed(ctx.t('sanguo:battle.no_encounter'), ctx.shardId)],
+          components: [],
+        });
+      }
+      return;
+    }
     logger.error('BattleStart', 'Error in encounter battle start', err);
     await interaction.editReply({
       embeds: [buildErrorEmbed(ctx.t('sanguo:battle.error'), ctx.shardId)],
@@ -500,6 +494,13 @@ export async function handleCaptureOpen(interaction: ButtonInteraction): Promise
       });
       return;
     }
+    if (err instanceof Error && err.message === 'CAPTURE_NOT_AVAILABLE') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(ctx.t('sanguo:capture.not_available'), ctx.shardId)],
+        components: [],
+      });
+      return;
+    }
     logger.error('CaptureOpen', 'Error opening capture view', err);
     await interaction.editReply({
       embeds: [buildErrorEmbed(ctx.t('sanguo:capture.error'), ctx.shardId)],
@@ -534,13 +535,12 @@ export async function handleCaptureTierPress(interaction: ButtonInteraction): Pr
   try {
     const target = await resolveCaptureTarget(userId, locale);
     const result = await attemptCapture(userId, tier);
-    const percent = Math.floor(result.chance * 100);
 
     if (result.outcome === 'success') {
       await interaction.editReply({
         embeds: [
           buildSanguoCaptureEmbed(
-            { heroName: target.heroName, heroEmoji: target.heroEmoji, percent, state: 'success', boss: target.boss, shardId },
+            { heroName: target.heroName, heroEmoji: target.heroEmoji, state: 'success', boss: target.boss, shardId },
             t,
           ),
         ],
@@ -552,7 +552,7 @@ export async function handleCaptureTierPress(interaction: ButtonInteraction): Pr
       await interaction.editReply({
         embeds: [
           buildSanguoCaptureEmbed(
-            { heroName: target.heroName, heroEmoji: target.heroEmoji, percent, state: 'flee', boss: target.boss, shardId },
+            { heroName: target.heroName, heroEmoji: target.heroEmoji, state: 'flee', boss: target.boss, shardId },
             t,
           ),
         ],
@@ -568,7 +568,7 @@ export async function handleCaptureTierPress(interaction: ButtonInteraction): Pr
     await interaction.editReply({
       embeds: [
         buildSanguoCaptureEmbed(
-          { heroName: target.heroName, heroEmoji: target.heroEmoji, percent, state: 'fail', boss: target.boss, shardId },
+          { heroName: target.heroName, heroEmoji: target.heroEmoji, state: 'fail', boss: target.boss, shardId },
           t,
         ),
       ],
@@ -578,6 +578,20 @@ export async function handleCaptureTierPress(interaction: ButtonInteraction): Pr
     if (err instanceof Error && err.message === 'NO_PENDING_ENCOUNTER') {
       await interaction.editReply({
         embeds: [buildErrorEmbed(t('sanguo:battle.no_encounter'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'CAPTURE_NOT_AVAILABLE') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:capture.not_available'), shardId)],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'NO_BATTLE_SNAPSHOT') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(t('sanguo:capture.error'), shardId)],
         components: [],
       });
       return;
@@ -612,6 +626,13 @@ export async function handleCaptureRetryPress(interaction: ButtonInteraction): P
     if (err instanceof Error && err.message === 'NO_PENDING_ENCOUNTER') {
       await interaction.editReply({
         embeds: [buildErrorEmbed(ctx.t('sanguo:battle.no_encounter'), ctx.shardId)],
+        components: [],
+      });
+      return;
+    }
+    if (err instanceof Error && err.message === 'CAPTURE_NOT_AVAILABLE') {
+      await interaction.editReply({
+        embeds: [buildErrorEmbed(ctx.t('sanguo:capture.not_available'), ctx.shardId)],
         components: [],
       });
       return;

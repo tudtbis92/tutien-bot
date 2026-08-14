@@ -76,7 +76,9 @@
     "spar_hint": "Tập luyện — không mất HP thật, không có phần thưởng.",
     "blocked_fainted": "Hero đồng hành **{{name}}** đã kiệt sức. Đổi hero bằng /sanguo hero trước khi chiến đấu.",
     "no_encounter": "Không có kỳ ngộ nào đang chờ.",
-    "error": "Có lỗi khi giao chiến. Hãy thử lại."
+    "error": "Có lỗi khi giao chiến. Hãy thử lại.",
+    "already_fought": "Kỳ ngộ này đã được xử lý.",
+    "rounds_line": "⏱️ {{n}} lượt"
   },
   "capture": {
     "title": "🪤 Thu phục {{hero_emoji}} {{hero}}",
@@ -91,7 +93,8 @@
     "flee_title": "🏃 {{hero}} đã bỏ chạy!",
     "retreat_body": "Bạn bỏ qua {{hero}}. Hành trình tiếp tục.",
     "insufficient": "Không đủ Linh thạch (cần {{fee}} 💎). Hãy kiểm tra số dư và thử lại.",
-    "error": "Có lỗi khi thu phục. Hãy thử lại."
+    "error": "Có lỗi khi thu phục. Hãy thử lại.",
+    "not_available": "Không thể thu phục lúc này."
   },
   "heroes": {
     "empty_title": "🌱 Chọn hero khởi đầu",

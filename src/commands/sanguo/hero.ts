@@ -8,13 +8,13 @@ import {
 import { eq, asc } from 'drizzle-orm';
 import type { TFunction } from 'i18next';
 import { db } from '../../db/client.js';
-import { users } from '../../db/schema/users.js';
 import { heroes } from '../../db/schema/heroes.js';
 import { userHeroes } from '../../db/schema/userHeroes.js';
 import { userSanguoState } from '../../db/schema/userSanguoState.js';
 import { heroEmoji } from '../../assets/sanguoEmojis.js';
-import { resolveLocale, getT, type SupportedLocale } from '../../i18n/index.js';
+import type { SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
+import { resolveComponentUser as resolveInteractionUser } from '../../utils/componentContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { logger } from '../../utils/logger.js';
 import { buildSanguoHeroEmbed } from '../../ui/embeds/buildSanguoHeroEmbed.js';
@@ -132,39 +132,12 @@ const OWNED_COLUMNS = {
   mp: heroes.mp,
 } as const;
 
-interface InteractionUserCtx {
-  userId: number;
-  t: TFunction;
-  locale: SupportedLocale;
-  shardId: number | undefined;
-}
-
-/** Resolve the users.id row for a button press (users.discordId → users.id). */
-async function resolveInteractionUser(interaction: ButtonInteraction): Promise<InteractionUserCtx | null> {
-  const [userRow] = await db
-    .select({ id: users.id, locale: users.locale })
-    .from(users)
-    .where(eq(users.discordId, interaction.user.id))
-    .limit(1);
-  const locale = resolveLocale(userRow?.locale, interaction.locale);
-  const t = getT(locale);
-  const shardId = interaction.client.shard?.ids[0];
-
-  if (!userRow) {
-    await interaction.editReply({
-      embeds: [buildErrorEmbed(t('common:errors.notRegistered'), shardId)],
-      components: [],
-    });
-    return null;
-  }
-  return { userId: userRow.id, t, locale, shardId };
-}
-
 /**
- * Resolve the user's option input against their OWNED copies (join heroes) —
- * match by heroes.id (numeric) OR per-locale name (case-insensitive). F9
- * duplicate disambiguation: prefer the ACTIVE companion copy, else the
- * earliest captured (lowest userHeroes.id). Returns null when not owned.
+ * Resolve the owned hero row for option input against the user's OWNED copies
+ * (join heroes) — match by heroes.id (numeric) OR per-locale name
+ * (case-insensitive). F9 duplicate disambiguation: prefer the ACTIVE companion
+ * copy, else the earliest captured (lowest userHeroes.id). Returns null when
+ * not owned.
  */
 async function resolveOwnedHero(
   userId: number,
@@ -320,6 +293,10 @@ export async function handleCompanionPress(interaction: ButtonInteraction): Prom
       if (!owned || owned.userId !== userId) throw new Error('NOT_OWNED');
 
       // T-10-07-06: FOR UPDATE on the one-row state — serialized switches.
+      // IN-06: when NO state row exists the FOR UPDATE locks nothing, so two
+      // concurrent first-time presses could both INSERT and hit the unique
+      // violation on user_id — the create path uses an upsert
+      // (onConflictDoUpdate) so the loser updates-instead-of-inserts.
       const [state] = await tx
         .select()
         .from(userSanguoState)
@@ -337,7 +314,11 @@ export async function handleCompanionPress(interaction: ButtonInteraction): Prom
       } else {
         await tx
           .insert(userSanguoState)
-          .values({ userId, activeHeroId: heroId, starterViews: 0 });
+          .values({ userId, activeHeroId: heroId, starterViews: 0 })
+          .onConflictDoUpdate({
+            target: userSanguoState.userId,
+            set: { activeHeroId: heroId, updatedAt: new Date() },
+          });
       }
     });
 

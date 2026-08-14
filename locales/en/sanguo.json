@@ -76,7 +76,9 @@
     "spar_hint": "Practice — no real HP loss, no rewards.",
     "blocked_fainted": "Your companion **{{name}}** is exhausted. Switch heroes with /sanguo hero before fighting.",
     "no_encounter": "No encounter is waiting.",
-    "error": "There was an error in the fight. Please try again."
+    "error": "There was an error in the fight. Please try again.",
+    "already_fought": "This encounter was already handled.",
+    "rounds_line": "⏱️ {{n}} rounds"
   },
   "capture": {
     "title": "🪤 Capture {{hero_emoji}} {{hero}}",
@@ -91,7 +93,8 @@
     "flee_title": "🏃 {{hero}} has fled!",
     "retreat_body": "You skip {{hero}}. The journey continues.",
     "insufficient": "Not enough Spirit Stones (need {{fee}} 💎). Check your balance and try again.",
-    "error": "There was an error capturing. Please try again."
+    "error": "There was an error capturing. Please try again.",
+    "not_available": "Cannot capture right now."
   },
   "heroes": {
     "empty_title": "🌱 Choose a starter hero",

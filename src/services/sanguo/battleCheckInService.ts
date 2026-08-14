@@ -21,8 +21,10 @@ import { bossTemplateFor } from '../../constants/sanguoBoss.js';
  * on the row lock; the second press finds the already-resolved state.
  *
  * CRYPTO MANDATE (ASVS V6, Pitfall 4): every player-facing draw rides
- * crypto.randomInt — the battle seed via crypto.randomInt(< 2^48) (D-06,
- * P10-review F5: safe JS integer for the mode:'number' seed column), the wild
+ * crypto.randomInt — the battle seed via crypto.randomInt(< 2^32) (D-06,
+ * WR-01-corrected: pure-rand's xoroshiro128plus consumes seeds via `seed | 0`,
+ * a 32-bit truncation, so a 2^48 draw silently wasted 16 bits of entropy —
+ * the seed is now drawn in the RNG's native 2^32 space), the wild
  * IV via crypto.randomInt(0, 32) × 6 (D-03). pure-rand exists ONLY in
  * battleEngine.ts (the seeded in-battle PRNG); it never leaks into this file.
  *
@@ -47,7 +49,7 @@ export interface BattleOutcome {
 }
 
 export interface BattleDeps {
-  /** Deterministic battle seed — defaults to crypto.randomInt(2 ** 48) (D-06). */
+  /** Deterministic battle seed — defaults to crypto.randomInt(2 ** 32) (D-06). */
   seed?: number;
   /** Deterministic wild-IV draw — defaults to crypto.randomInt(0, 32) (D-03). */
   ivRoll?: () => number;
@@ -65,7 +67,11 @@ function defaultIvRoll(): number {
 }
 
 function defaultSeed(): number {
-  return crypto.randomInt(2 ** 48);
+  // WR-01: pure-rand's xoroshiro128plus consumes the seed via `seed | 0` — a
+  // 32-bit truncation. `crypto.randomInt(2 ** 32)` matches that consumption
+  // exactly (full 2^32 entropy), instead of the previous 2^48 draw of which
+  // only 32 bits ever reached the RNG state (D-06 contract corrected).
+  return crypto.randomInt(2 ** 32);
 }
 
 /** Build the player CombatantInput from the active companion + heroes base. */
@@ -238,6 +244,22 @@ export async function startEncounterBattle(userId: number, deps: BattleDeps = {}
       .limit(1);
     if (!encounter) throw new Error('NO_PENDING_ENCOUNTER');
 
+    // 2b. CR-02 ALREADY-FOUGHT GUARD (D-20 single-battle model): a completed
+    //     encounter battle for this pending encounter means the capture window
+    //     is already open (win) or the encounter already resolved (loss — but
+    //     then it would not be 'pending'). Stale fight buttons from earlier
+    //     check-in embeds legitimately remain live in chat; re-running the
+    //     battle would re-roll the wild IV for free, reset the enemy to full
+    //     HP (breaking the D-20 single-battle economy), and a re-battle loss
+    //     would destroy the open capture window / faint the companion.
+    //     → BATTLE_ALREADY_FOUGHT; the UI routes to the capture view.
+    const [existingBattle] = await tx
+      .select()
+      .from(sanguoBattles)
+      .where(and(eq(sanguoBattles.encounterId, encounter.id), eq(sanguoBattles.type, 'encounter')))
+      .limit(1);
+    if (existingBattle) throw new Error('BATTLE_ALREADY_FOUGHT');
+
     // 3. Active companion + HP gate (D-04).
     const active = await readActiveCompanion(tx, userId);
 
@@ -271,7 +293,7 @@ export async function startEncounterBattle(userId: number, deps: BattleDeps = {}
     if (result.winner === 'enemy') {
       await tx
         .update(encounterRuns)
-        .set({ status: 'escaped' })
+        .set({ status: 'escaped', pityCount: 0 }) // IN-04: pity resets on terminal resolution
         .where(eq(encounterRuns.id, encounter.id));
       await tx
         .update(playerTravelState)
@@ -382,7 +404,7 @@ export async function skipEncounter(userId: number): Promise<void> {
 
     await tx
       .update(encounterRuns)
-      .set({ status: 'skipped' })
+      .set({ status: 'skipped', pityCount: 0 }) // IN-04: pity resets on retreat
       .where(eq(encounterRuns.id, pending.id));
     await tx
       .update(playerTravelState)

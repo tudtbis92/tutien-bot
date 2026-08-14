@@ -22,7 +22,9 @@ export const sanguoBattles = pgTable('sanguo_battles', {
   encounterId: integer('encounter_id').references(() => encounterRuns.id),
   // 'encounter'|'spar' (D-17)
   type: varchar('type', { length: 20 }).notNull().default('encounter'),
-  // D-06 replay seed — crypto.randomInt(< 2^48), a safe JS integer.
+  // D-06 replay seed — crypto.randomInt(< 2^32), the seed space pure-rand's
+  // xoroshiro128plus actually consumes (WR-01: the constructor truncates via
+  // `seed | 0`, so a 2^48 draw contributed only 32 bits of entropy).
   // mode: 'number' is REQUIRED by drizzle (bigint without a mode fails
   // typecheck) and keeps the value a JS number so 10-05 can pass it
   // straight to runBattle(seed: number).

@@ -82,6 +82,8 @@ export function buildSanguoBattleLogEmbed(
   } else {
     resolution = t('sanguo:battle.loss', { enemy: data.enemyName });
   }
+  // IN-02: the rounds count is rendered (was computed but never shown).
+  resolution += '\n' + t('sanguo:battle.rounds_line', { n: data.rounds });
 
   return new EmbedBuilder()
     // theme.ts COLORS only — never hardcode hex (UI-SPEC color contract).
