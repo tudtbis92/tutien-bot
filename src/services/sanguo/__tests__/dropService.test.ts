@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { db } from '../../../db/client.js';
 import { rollBossDrop } from '../dropService.js';
@@ -8,8 +8,8 @@ vi.mock('../../../db/client.js', () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
 }));
 
-// ── fixtures — the seeded drop pool (11-02, adopt-a5) ───────────────────────
-// dropWeight arrives as a numeric STRING from drizzle (RESEARCH P2 / F8 —
+// â”€â”€ fixtures â€” the seeded drop pool (11-02, adopt-a5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// dropWeight arrives as a numeric STRING from drizzle (RESEARCH P2 / F8 â€”
 // Number() conversion is the service's job).
 
 const USER_ID = 42;
@@ -24,7 +24,7 @@ const DROP_ITEMS = [
 const DROP_CODES = DROP_ITEMS.map((i) => i.code);
 
 /**
- * Fake drizzle tx — mirrors the prior makeTx: select chains resolve the NEXT
+ * Fake drizzle tx â€” mirrors the prior makeTx: select chains resolve the NEXT
  * queued read result; insert().values() is a thenable carrying
  * .onConflictDoUpdate().
  */
@@ -64,9 +64,9 @@ function runInTx<T>(readResults: unknown[][], fn: (tx: any) => Promise<T>) {
   return { promise, tx, ...mocks };
 }
 
-// ── rollBossDrop (D-14 — guaranteed ≥1 item, crypto-weighted, half-open) ────
+// â”€â”€ rollBossDrop (D-14 â€” guaranteed â‰¥1 item, crypto-weighted, half-open) â”€â”€â”€â”€
 
-describe('rollBossDrop — guaranteed rarity-weighted item drop (D-14/D-19)', () => {
+describe('rollBossDrop â€” guaranteed rarity-weighted item drop (D-14/D-19)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -74,7 +74,7 @@ describe('rollBossDrop — guaranteed rarity-weighted item drop (D-14/D-19)', ()
     vi.restoreAllMocks();
   });
 
-  it('D1: boundary rolls land on the checkpoint-confirmed codes (half-open convention: 0.0→heal, 0.70→booster, 0.95→key4, 0.999→key5)', async () => {
+  it('D1: boundary rolls land on the checkpoint-confirmed codes (half-open convention: 0.0â†’heal, 0.70â†’booster, 0.95â†’key4, 0.999â†’key5)', async () => {
     const cases: [number, string][] = [
       [0.0, 'heal_pill'],
       [0.70, 'booster_x2'],
@@ -82,13 +82,12 @@ describe('rollBossDrop — guaranteed rarity-weighted item drop (D-14/D-19)', ()
       [0.999, 'capture_tier5_key'],
     ];
     for (const [rngValue, expectedCode] of cases) {
-      const { promise, tx, insert, insertValues } = runInTx(
-        [[DROP_ITEMS]],
+      const { promise, tx, insert, insertValues } = runInTx([DROP_ITEMS],
         () => rollBossDrop(USER_ID, () => rngValue),
       );
       await expect(promise).resolves.toEqual({ itemCode: expectedCode, quantity: 1 });
 
-      // The drop grants inventory — the ONLY payout surface (items, never money).
+      // The drop grants inventory â€” the ONLY payout surface (items, never money).
       expect(insert).toHaveBeenCalledWith(userSanguoItems);
       const inv = insertValues.mock.calls.find((c: any) => c[0]?.itemId === 1)?.[0]
         ?? insertValues.mock.calls.find((c: any) => c[0]?.itemId === 2)?.[0]
@@ -103,7 +102,7 @@ describe('rollBossDrop — guaranteed rarity-weighted item drop (D-14/D-19)', ()
     // Sweep the full [0,1) range in coarse steps + the exact boundaries.
     const rolls = [0.0, 0.1, 0.3, 0.5, 0.699999, 0.70, 0.8, 0.949999, 0.95, 0.98, 0.998999, 0.999, 0.999999];
     for (const rngValue of rolls) {
-      const { promise } = runInTx([[DROP_ITEMS]], () => rollBossDrop(USER_ID, () => rngValue));
+      const { promise } = runInTx([DROP_ITEMS], () => rollBossDrop(USER_ID, () => rngValue));
       const result = await promise;
       expect(result.itemCode).toBeDefined();
       expect(DROP_CODES).toContain(result.itemCode);
@@ -111,7 +110,7 @@ describe('rollBossDrop — guaranteed rarity-weighted item drop (D-14/D-19)', ()
     }
   });
 
-  it('D3: an empty drop pool (no rows with drop_weight > 0) → EMPTY_DROP_POOL, no inventory grant', async () => {
+  it('D3: an empty drop pool (no rows with drop_weight > 0) â†’ EMPTY_DROP_POOL, no inventory grant', async () => {
     const { promise, insert } = runInTx(
       [[]],
       () => rollBossDrop(USER_ID, () => 0.5),
