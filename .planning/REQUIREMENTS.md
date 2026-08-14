@@ -281,10 +281,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TQC-07 | Phase 9: Travel & Encounters | Pending |
 | TQC-08 | Phase 9: Travel & Encounters | Pending |
 | TQC-09 | Phase 9: Travel & Encounters | Pending |
-| TQC-10 | Phase 10: Battle & Capture | Pending |
-| TQC-11 | Phase 10: Battle & Capture | Pending |
-| TQC-12 | Phase 10: Battle & Capture | Pending |
-| TQC-13 | Phase 10: Battle & Capture | Pending |
+| TQC-10 | Phase 10: Battle & Capture | Complete |
+| TQC-11 | Phase 10: Battle & Capture | Complete |
+| TQC-12 | Phase 10: Battle & Capture | Complete |
+| TQC-13 | Phase 10: Battle & Capture | Complete |
 | TQC-14 | Phase 11: Progression, Chemistry & Economy Depth | Pending |
 | TQC-15 | Phase 11: Progression, Chemistry & Economy Depth | Pending |
 | TQC-16 | Phase 11: Progression, Chemistry & Economy Depth | Pending |
