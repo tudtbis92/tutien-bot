@@ -184,6 +184,14 @@ None - no external service configuration required.
 - The legacy half is fully built: `/sanguo legion` + the SC5 collection filters are ready.
 - **11-08 (balance pass)** reads the assembled legion across the seeded stat ranges and tunes the constants it now has a real assembly surface to test against.
 
+## Self-Check: PASSED
+
+- SUMMARY file exists on disk: `[ -f 11-07-SUMMARY.md ]` ✓
+- All task commits present in git: `5b71d36`, `f9880fd`, `221e791`, `7c1da01`, `d6f1957` ✓
+- Plan-level `<verification>` green: 3 test files (31 tests), `npm run typecheck`, `npm run check-i18n`, `npm run lint` ✓
+- Grep gates: `wallet` count in legionService = 0; embed data interfaces carry no chemistry points/buff% / raw IV ✓
+- Full repo suite green: 42 files / 431 tests ✓
+
 ---
 *Phase: 11-progression-chemistry-economy-depth*
 *Completed: 2026-08-18*
