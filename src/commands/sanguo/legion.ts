@@ -117,6 +117,9 @@ function ivGradeKey(ivStr: number, ivAgi: number, ivInt: number, ivMov: number, 
 
 /** A hero reference row with its chemistry identity (faction/role/family). */
 interface ChemHeroRow {
+  /** The COPY id (userHeroes.id) — legion slot assignment keys on this. */
+  copyId: number;
+  /** The catalog id (heroes.id) — spouse-pair chemistry keys on this. */
   id: number;
   heroId: string;
   nameVi: string;
@@ -136,6 +139,7 @@ interface ChemHeroRow {
 }
 
 const CHEM_COLUMNS = {
+  copyId: userHeroes.id,
   id: heroes.id,
   heroId: heroes.heroId,
   nameVi: heroes.nameVi,
@@ -258,9 +262,9 @@ async function fetchClassMatchedHeroes(
     .orderBy(asc(userHeroes.id));
   const seen = new Set<number>();
   return rows
-    .filter((h) => (seen.has(h.id) ? false : (seen.add(h.id), true)))
+    .filter((h) => (seen.has(h.copyId) ? false : (seen.add(h.copyId), true)))
     .map((h) => ({
-      userHeroId: h.id,
+      userHeroId: h.copyId, // CR-11-03: menu value = the COPY id (userHeroes.id)
       label: t('sanguo:legion.hero_option', {
         name: pickName(h, locale),
         stars: '★'.repeat(h.tier),
@@ -307,7 +311,7 @@ async function renderLegion(
 
   // 4. The current assignment per slot (from the active legion).
   const assigned = await fetchAssignedHeroes(userId);
-  const assignedById = new Map(assigned.map((h) => [h.id, h]));
+  const assignedById = new Map(assigned.map((h) => [h.copyId, h])); // CR-11-03: key on copy id
   const assignment: AssignmentMap = new Map();
   for (const slot of active?.slots ?? []) {
     if (slot.userHeroId != null) {
