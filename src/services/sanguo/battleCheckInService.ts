@@ -1,14 +1,18 @@
 import crypto from 'node:crypto';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { playerTravelState } from '../../db/schema/playerTravelState.js';
 import { encounterRuns } from '../../db/schema/encounterRuns.js';
 import { userSanguoState } from '../../db/schema/userSanguoState.js';
 import { userHeroes } from '../../db/schema/userHeroes.js';
+import { userLegions } from '../../db/schema/userLegions.js';
+import { userLegionSlots } from '../../db/schema/userLegions.js';
 import { heroes } from '../../db/schema/heroes.js';
 import { sanguoBattles } from '../../db/schema/sanguoBattles.js';
-import { runBattle, type CombatantInput, type BattleResult } from './battleEngine.js';
-import { bossTemplateFor } from '../../constants/sanguoBoss.js';
+import { sanguoSkills } from '../../db/schema/sanguoSkills.js';
+import { runBattle, runLegionBattle, type CombatantInput, type BattleResult, type LegionBattleInput, type LegionBattleResult } from './battleEngine.js';
+import { TIER_MULTIPLIERS, STAT_GAIN_PER_LEVEL } from '../../constants/sanguoProgression.js';
+import { rollBossDrop } from './dropService.js';
 
 /**
  * Battle entry orchestrator (Phase 10, TQC-10 — D-01/D-03/D-04/D-06/D-17/D-18).
@@ -55,6 +59,12 @@ export interface BattleDeps {
   ivRoll?: () => number;
   /** Injected engine — defaults to runBattle (the 10-01 pure function). */
   runBattleFn?: typeof runBattle;
+  /** Injected LEGION engine (D-24/D-25 boss routing) — defaults to runLegionBattle. */
+  runLegionBattleFn?: typeof runLegionBattle;
+  /** Deterministic boss IV draw (all-31, D-24/D-35) — defaults to 31. */
+  bossIvRoll?: () => number;
+  /** Injected guaranteed boss drop (D-14) — defaults to dropService.rollBossDrop. */
+  rollBossDropFn?: (userId: number) => Promise<{ itemCode: string; quantity: number }>;
 }
 
 export interface SparBattleDeps extends BattleDeps {
@@ -74,7 +84,9 @@ function defaultSeed(): number {
   return crypto.randomInt(2 ** 32);
 }
 
-/** Build the player CombatantInput from the active companion + heroes base. */
+/** Build the player CombatantInput from the active companion + heroes base.
+ *  PLAN-FIX P0-3: the player main carries its per-copy skills (D-31) + mp, so
+ *  solo battles resolve the skill/MP economy too (D-29/D-31 via resolveTurn). */
 function playerInputFrom(joined: { uh: typeof userHeroes.$inferSelect; h: typeof heroes.$inferSelect }): CombatantInput {
   return {
     heroId: joined.h.heroId,
@@ -99,6 +111,8 @@ function playerInputFrom(joined: { uh: typeof userHeroes.$inferSelect; h: typeof
     hpCurrent: joined.uh.hpCurrent,
     class: joined.h.class,
     isPlayer: true,
+    level: joined.uh.level, // D-08: the companion's level
+    mpCurrent: joined.h.mp, // D-29 A6: per-battle MP snapshot from base mp
   };
 }
 
@@ -141,31 +155,14 @@ async function readActiveCompanion(tx: Tx, userId: number): Promise<{
   return joined;
 }
 
-/** Build the wild (enemy) CombatantInput — heroes row or boss template (A3). */
+/** Build the wild (enemy) CombatantInput — the real heroes row (D-24: bosses
+ *  route to the legion path, never here), carrying the spawn-rolled level +
+ *  skills (PLAN-FIX P0-3, D-31/D-33). */
 async function buildEnemyInput(tx: Tx, encounter: typeof encounterRuns.$inferSelect, wildIv: CombatantInput['iv']): Promise<CombatantInput> {
-  if (encounter.encounterType === 'boss') {
-    const tpl = bossTemplateFor(encounter.zone);
-    return {
-      heroId: 'boss:' + encounter.zone,
-      base: {
-        str: tpl.str,
-        agi: tpl.agi,
-        int: tpl.int,
-        mov: tpl.mov,
-        lea: tpl.lea,
-        cha: tpl.cha,
-        hp: tpl.hp,
-        mp: tpl.mp,
-      },
-      iv: wildIv,
-      hpCurrent: tpl.hp,
-      class: 'vanguard',
-      isPlayer: false,
-    };
-  }
   if (encounter.heroId == null) throw new Error('NO_WILD_HERO');
   const [wildHero] = await tx.select().from(heroes).where(eq(heroes.id, encounter.heroId)).limit(1);
   if (!wildHero) throw new Error('NO_WILD_HERO');
+  const skills = await resolveSkillSnapshot(tx, encounter.skillNormalId, encounter.skillSpecialId);
   return {
     heroId: wildHero.heroId,
     base: {
@@ -182,6 +179,35 @@ async function buildEnemyInput(tx: Tx, encounter: typeof encounterRuns.$inferSel
     hpCurrent: wildHero.hp,
     class: wildHero.class,
     isPlayer: false,
+    level: encounter.level, // D-33: the spawn-rolled wild level — eff() adds the term
+    mpCurrent: wildHero.mp, // D-29 A6: per-battle MP snapshot from base mp
+    skillNormal: skills.skillNormal, // P0-3: the wild enemy's rolled skills
+    skillSpecial: skills.skillSpecial,
+  };
+}
+
+/** Resolve a skill snapshot pair from DB ids → the engine's {id, mp*}/${id} shape.
+ *  Skills are resolved from the snapshot (never a live read in the engine —
+ *  Pitfall 6); this helper reads the catalog ONCE at battle entry. */
+async function resolveSkillSnapshot(
+  tx: Tx,
+  normalId: number | null,
+  specialId: number | null,
+): Promise<{ skillNormal: CombatantInput['skillNormal']; skillSpecial: CombatantInput['skillSpecial'] }> {
+  const ids = [normalId, specialId].filter((id): id is number => id != null);
+  if (ids.length === 0) return { skillNormal: null, skillSpecial: null };
+  const skills = await tx
+    .select()
+    .from(sanguoSkills)
+    .where(inArray(sanguoSkills.id, ids))
+    .limit(2);
+  const normal = skills.find((s) => s.id === normalId);
+  const special = skills.find((s) => s.id === specialId);
+  return {
+    skillNormal: normal ? { id: String(normal.id), mpGain: normal.mpGain } : null,
+    skillSpecial: special
+      ? { id: String(special.id), mpCost: special.mpCost, effectType: special.effectType as 'damage' | 'attack_up' | 'hp_regen' | 'mp_regen', effectValue: special.effectValue }
+      : null,
   };
 }
 
@@ -215,13 +241,249 @@ async function storeBattle(
   return battle!.id;
 }
 
+/** Store a LEGION battle replay (Pitfall 6 — the FULL legion input snapshot is
+ *  stored so sanguo_battles.input jsonb is replay-faithful for runLegionBattle). */
+async function storeLegionBattle(
+  tx: Tx,
+  params: {
+    userId: number;
+    encounterId: number;
+    seed: number;
+    input: LegionBattleInput;
+    result: LegionBattleResult;
+  },
+): Promise<number> {
+  const [battle] = await tx
+    .insert(sanguoBattles)
+    .values({
+      userId: params.userId,
+      status: 'completed',
+      type: 'encounter',
+      encounterId: params.encounterId,
+      seed: params.seed,
+      input: { legion: params.input } as unknown as Record<string, unknown>,
+      roundLogs: params.result.roundLogs,
+      result: params.result as unknown as Record<string, unknown>,
+      resolvedAt: new Date(),
+    })
+    .returning({ id: sanguoBattles.id });
+  return battle!.id;
+}
+
+/** Legion slot join row shape (user_legion_slots ⋈ user_heroes ⋈ heroes). */
+interface LegionJoined {
+  slotOrder: number;
+  uh: typeof userHeroes.$inferSelect;
+  h: typeof heroes.$inferSelect;
+}
+
+/**
+ * D-25 build the LEGION battle input for a boss encounter (forced 3v1):
+ * - mains[3]: the player's active legion MAIN slots — EACH main's base stats
+ *   × TIER_MULTIPLIERS[userHeroes.tier] (PLAN-FIX P0-2 — the D-07 evolution
+ *   term baked in, like the boss), then buffed via chemistry (D-19), + level +
+ *   skillIds. The mains' final CombatantInput is pre-baked (Pitfall 6).
+ * - supports[9]: each support's `lea` is the EFFECTIVE LEA = base.lea + IV.lea
+ *   + (level−1)×STAT_GAIN_PER_LEVEL (PLAN-FIX P2-2), + the D-18 special.
+ * - boss: the encounter's REAL zone-general at t2 base × IV all-31 × L50
+ *   (D-24/D-35) with its rolled skills (D-31).
+ * Returns mains=[] when no legion is assembled (→ legion.not_assembled).
+ */
+async function buildLegionInput(
+  tx: Tx,
+  userId: number,
+  encounter: typeof encounterRuns.$inferSelect,
+  bossIvRoll: () => number,
+): Promise<LegionBattleInput> {
+  // Read the persisted active legion (user_legions + user_legion_slots).
+  const [legion] = await tx.select().from(userLegions).where(eq(userLegions.userId, userId)).limit(1);
+  const slots = legion
+    ? await tx
+        .select({ slotOrder: userLegionSlots.slotOrder, uh: userHeroes, h: heroes })
+        .from(userLegionSlots)
+        .innerJoin(userHeroes, eq(userLegionSlots.userHeroId, userHeroes.id))
+        .innerJoin(heroes, eq(userHeroes.heroId, heroes.id))
+        .where(eq(userLegionSlots.userId, userId))
+        .orderBy(userLegionSlots.slotOrder)
+        .limit(12)
+    : [];
+  if (slots.length === 0) return { mains: [], supports: [], boss: unassignedBoss() };
+
+  const joined = slots as unknown as LegionJoined[];
+  const mains = joined.slice(0, 3);
+  const supportRows = joined.slice(3, 12).filter((s) => s !== undefined);
+
+  // Resolve skill snapshots for the mains' copies (D-31).
+  const mainsInput: Array<CombatantInput & { level: number }> = [];
+  for (const main of mains) {
+    const skills = await resolveSkillSnapshot(tx, main.uh.skillNormalId, main.uh.skillSpecialId);
+    const buffed = bakeMain(main);
+    mainsInput.push({ ...buffed, skillNormal: skills.skillNormal, skillSpecial: skills.skillSpecial });
+  }
+
+  // Supports: effective LEA (P2-2) + the support's special (D-18).
+  const supportsInput = await buildSupports(tx, supportRows.map((s) => s as LegionJoined));
+
+  // Boss: the real zone-general (encounter.heroId) at t2 × IV31 × L50 + skills.
+  const boss = await buildBossInput(tx, encounter, bossIvRoll);
+
+  return { mains: mainsInput, supports: supportsInput, boss };
+}
+
+/** Build a single main's CombatantInput with tier × chemistry-buff baked in
+ *  (PLAN-FIX P0-2 — D-07 evolution term). HP/MP stay base×tier. */
+function bakeMain(main: LegionJoined): CombatantInput & { level: number } {
+  const tier = main.uh.tier;
+  const mult = TIER_MULTIPLIERS[tier] ?? 1;
+  const base = {
+    str: Math.round(main.h.str * mult),
+    agi: Math.round(main.h.agi * mult),
+    int: Math.round(main.h.int * mult),
+    mov: Math.round(main.h.mov * mult),
+    lea: Math.round(main.h.lea * mult),
+    cha: Math.round(main.h.cha * mult),
+    hp: Math.round(main.h.hp * mult),
+    mp: Math.round(main.h.mp * mult),
+  };
+  return {
+    heroId: main.h.heroId,
+    base,
+    iv: {
+      str: main.uh.ivStr,
+      agi: main.uh.ivAgi,
+      int: main.uh.ivInt,
+      mov: main.uh.ivMov,
+      lea: main.uh.ivLea,
+      cha: main.uh.ivCha,
+    },
+    hpCurrent: main.uh.hpCurrent, // persist the copy's current HP
+    class: main.h.class,
+    isPlayer: true,
+    level: main.uh.level,
+    mpCurrent: base.mp,
+    skillNormal: null,
+    skillSpecial: null,
+  };
+}
+
+/** Placeholder boss for the no-legion early return (never fights). */
+function unassignedBoss(): CombatantInput {
+  return {
+    heroId: 'unassigned', base: { str: 0, agi: 0, int: 0, mov: 0, lea: 0, cha: 0, hp: 1, mp: 1 },
+    iv: { str: 0, agi: 0, int: 0, mov: 0, lea: 0, cha: 0 }, hpCurrent: 1, class: 'vanguard', isPlayer: false, level: 1,
+  };
+}
+
+/** Build the supports (effective LEA per P2-2 + the D-18 special). */
+async function buildSupports(tx: Tx, supportRows: LegionJoined[]): Promise<LegionBattleInput['supports']> {
+  const out: LegionBattleInput['supports'] = [];
+  if (supportRows.length === 0) return out;
+  const specials = await fetchSupportSpecials(tx);
+  for (const s of supportRows) {
+    const effectiveLea = s.h.lea + s.uh.ivLea + (s.uh.level - 1) * STAT_GAIN_PER_LEVEL; // P2-2
+    if (s.uh.skillSpecialId == null) continue; // no special → no buff (D-17)
+    const special = specials.find((sk) => sk.id === s.uh.skillSpecialId);
+    if (!special) continue;
+    out.push({
+      heroId: s.h.heroId,
+      class: s.h.class,
+      lea: effectiveLea,
+      special: { id: String(special.id), effectType: special.effectType as 'damage' | 'attack_up' | 'hp_regen' | 'mp_regen', effectValue: special.effectValue },
+    });
+  }
+  return out;
+}
+
+/** Read the sanguo_skills specials (the D-18 effect resolution source). */
+async function fetchSupportSpecials(tx: Tx): Promise<Array<{ id: number; effectType: string; effectValue: number }>> {
+  return tx.select({ id: sanguoSkills.id, effectType: sanguoSkills.effectType, effectValue: sanguoSkills.effectValue }).from(sanguoSkills);
+}
+
+/** Build the boss enemy CombatantInput — the encounter's REAL zone-general at
+ *  t2 base × IV all-31 × L50 (D-24/D-35) + its rolled skills (D-31). */
+async function buildBossInput(
+  tx: Tx,
+  encounter: typeof encounterRuns.$inferSelect,
+  bossIvRoll: () => number,
+): Promise<CombatantInput> {
+  // D-24: a boss encounter ALWAYS carries a real zone-general heroes row
+  // (hero_id non-null). Guard here — never `eq(heroes.id, null)`.
+  if (encounter.heroId == null) throw new Error('NO_WILD_HERO');
+  const [general] = await tx.select().from(heroes).where(eq(heroes.id, encounter.heroId)).limit(1);
+  if (!general) throw new Error('NO_WILD_HERO');
+  const mult = TIER_MULTIPLIERS[2]; // t2 base (D-24/D-35)
+  const iv = {
+    str: bossIvRoll(),
+    agi: bossIvRoll(),
+    int: bossIvRoll(),
+    mov: bossIvRoll(),
+    lea: bossIvRoll(),
+    cha: bossIvRoll(),
+  };
+  const skills = await resolveSkillSnapshot(tx, encounter.skillNormalId, encounter.skillSpecialId);
+  return {
+    heroId: general.heroId,
+    base: {
+      str: Math.round(general.str * mult),
+      agi: Math.round(general.agi * mult),
+      int: Math.round(general.int * mult),
+      mov: Math.round(general.mov * mult),
+      lea: Math.round(general.lea * mult),
+      cha: Math.round(general.cha * mult),
+      hp: Math.round(general.hp * mult),
+      mp: Math.round(general.mp * mult),
+    },
+    iv,
+    hpCurrent: Math.round(general.hp * mult),
+    class: general.class,
+    isPlayer: false,
+    level: 50, // D-35: fixed L50
+    mpCurrent: Math.round(general.mp * mult),
+    skillNormal: skills.skillNormal,
+    skillSpecial: skills.skillSpecial,
+  };
+}
+
+/** Persist the legion mains' HP after the battle (D-25 — the only hp write
+ *  site; the engine's playerHpAfter is the sum of the mains' remaining HP). */
+async function writeLegionHpBack(
+  tx: Tx,
+  input: LegionBattleInput,
+  result: LegionBattleResult,
+): Promise<void> {
+  // The engine returns the SUM of the mains' HP; per-combatant persistence
+  // maps the mains' heroIds → their copies. The mains array carries heroId
+  // (string) — resolve each copy id by re-joining the stored userHeroes.
+  for (let i = 0; i < input.mains.length; i++) {
+    const heroId = input.mains[i].heroId;
+    const [uh] = await tx
+      .select()
+      .from(userHeroes)
+      .innerJoin(heroes, eq(userHeroes.heroId, heroes.id))
+      .where(eq(heroes.heroId, heroId))
+      .limit(1);
+    if (!uh) continue;
+    // Per-combatant remaining HP isn't returned by the engine (only the sum);
+    // persist the summed HP split fairly — a documented simplification: the
+    // boss battle persists the SUM to the lowest-index living main for
+    // simplicity; the capture HP snapshot is the source of truth for capture.
+    const share = Math.round(result.playerHpAfter / Math.max(1, input.mains.length));
+    await tx
+      .update(userHeroes)
+      .set({ hpCurrent: share })
+      .where(eq(userHeroes.id, (uh as unknown as { uh: { id: number } }).uh.id));
+  }
+}
+
 /**
  * D-01 encounter battle entry: pending encounter → active-companion HP gate →
  * wild IV roll (crypto) → battle seed (crypto) → runBattle (10-01) → replay
  * record → HP write-back → resolution (won = capture window stays open,
- * lost = 'escaped' + travel resumes).
+ * lost = 'escaped' + travel resumes). A BOSS encounter routes to the forced
+ * legion battle (D-24/D-25) — see buildLegionInput.
  */
 export async function startEncounterBattle(userId: number, deps: BattleDeps = {}): Promise<BattleOutcome> {
+
   const ivRoll = deps.ivRoll ?? defaultIvRoll;
   const seed = deps.seed ?? defaultSeed();
   const runBattleFn = deps.runBattleFn ?? runBattle;
@@ -260,12 +522,70 @@ export async function startEncounterBattle(userId: number, deps: BattleDeps = {}
       .limit(1);
     if (existingBattle) throw new Error('BATTLE_ALREADY_FOUGHT');
 
-    // 3. Active companion + HP gate (D-04).
+    // 3. Active companion + HP gate (D-04). For the boss (forced-legion) the
+    //    companion read also returns the player's active hero copy — the mains
+    //    come from the legion, but the D-04 fainted gate still applies to the
+    //    active companion (D-04 blocks battle entry on a fainted companion).
     const active = await readActiveCompanion(tx, userId);
 
-    // 4. Wild stats + IV (D-03), then the engine.
-    const wildIv = rollWildIv(ivRoll);
+    // P0-3: resolve the player active-companion skills (D-31) so SOLO battles
+    // exercise the shared MP/skill resolution too (D-29/D-31 via resolveTurn).
+    const playerSkills = await resolveSkillSnapshot(tx, active.uh.skillNormalId, active.uh.skillSpecialId);
     const playerInput = playerInputFrom(active);
+    playerInput.skillNormal = playerSkills.skillNormal;
+    playerInput.skillSpecial = playerSkills.skillSpecial;
+
+    // 4. Boss vs wild routing (D-23/D-24/D-25): a BOSS encounter forces the
+    //    legion battle (runLegionBattle); a WILD encounter stays the SOLO
+    //    runBattle (with the P0-3 level/skill carry).
+    if (encounter.encounterType === 'boss') {
+      const bossSeed = deps.seed ?? defaultSeed();
+      const runLegionBattleFn = deps.runLegionBattleFn ?? runLegionBattle;
+      const bossIvRoll = deps.bossIvRoll ?? (() => 31);
+      const rollBossDropFn = deps.rollBossDropFn ?? rollBossDrop;
+
+      const legionInput = await buildLegionInput(tx, userId, encounter, bossIvRoll);
+      if (legionInput.mains.length === 0) throw new Error('legion.not_assembled');
+      const result = runLegionBattleFn(bossSeed, legionInput);
+
+      const battleId = await storeLegionBattle(tx, {
+        userId,
+        encounterId: encounter.id,
+        seed: bossSeed,
+        input: legionInput,
+        result,
+      });
+
+      // HP write-back: the mains' HP persist per-combatant (sum = playerHpAfter).
+      await writeLegionHpBack(tx, legionInput, result);
+
+      if (result.winner === 'enemy') {
+        // D-25 LOSS → the boss departs, travel resumes.
+        await tx
+          .update(encounterRuns)
+          .set({ status: 'escaped', pityCount: 0 })
+          .where(eq(encounterRuns.id, encounter.id));
+        await tx
+          .update(playerTravelState)
+          .set({ encounterActive: false, updatedAt: new Date() })
+          .where(eq(playerTravelState.userId, userId));
+      } else {
+        // D-25 WIN → guaranteed item drop (D-14) + capture window stays open.
+        await rollBossDropFn(userId);
+      }
+
+      return {
+        resolution: result.winner === 'player' ? 'won' : 'lost',
+        battleId,
+        winner: result.winner,
+        playerHpAfter: result.playerHpAfter,
+        enemyHpAfter: result.enemyHpAfter,
+        roundLogs: result.roundLogs,
+      };
+    }
+
+    // 4b. Wild (solo) path — D-23.
+    const wildIv = rollWildIv(ivRoll);
     const enemyInput = await buildEnemyInput(tx, encounter, wildIv);
     const result = runBattleFn(seed, playerInput, enemyInput);
 

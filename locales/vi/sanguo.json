@@ -65,7 +65,9 @@
     "title": "⚔️ Kỳ ngộ",
     "body": "Trên đường đến **{{node}}**, bạn chạm trán **{{hero_emoji}} {{hero}}**.",
     "boss_title": "👑 Boss thường xuất hiện!",
-    "boss_body": "Một Boss thường trấn giữ **{{zone}}** đã xuất hiện trên đường của bạn. Hãy chuẩn bị!"
+    "boss_body": "Một Boss thường trấn giữ **{{zone}}** đã xuất hiện trên đường của bạn. Hãy chuẩn bị!",
+    "level": "**Lv{{level}}**",
+    "boss_line": "**{{hero_emoji}} {{hero}}** (Lv50) trấn giữ **{{zone}}**. Trận hình 3 chủ lực bắt buộc!"
   },
   "ack": {
     "title": "✅ Đã tiếp tục hành trình",
@@ -84,7 +86,8 @@
     "no_encounter": "Không có kỳ ngộ nào đang chờ.",
     "error": "Có lỗi khi giao chiến. Hãy thử lại.",
     "already_fought": "Kỳ ngộ này đã được xử lý.",
-    "rounds_line": "⏱️ {{n}} lượt"
+    "rounds_line": "⏱️ {{n}} lượt",
+    "legion_log_title": "⚔️ Trận hình: {{player}} (3 chủ lực) vs Boss {{enemy}}"
   },
   "capture": {
     "title": "🪤 Thu phục {{hero_emoji}} {{hero}}",
@@ -100,7 +103,9 @@
     "retreat_body": "Bạn bỏ qua {{hero}}. Hành trình tiếp tục.",
     "insufficient": "Không đủ Linh thạch (cần {{fee}} 💎). Hãy kiểm tra số dư và thử lại.",
     "error": "Có lỗi khi thu phục. Hãy thử lại.",
-    "not_available": "Không thể thu phục lúc này."
+    "not_available": "Không thể thu phục lúc này.",
+    "item_drop": "🎁 Nhận được: {{item_emoji}} {{name}} ×{{qty}}",
+    "captured_copy": "{{emoji}} {{name}} • ★{{stars}} • {{grade}} • **Lv{{level}}**"
   },
   "heroes": {
     "empty_title": "🌱 Chọn hero khởi đầu",
@@ -215,7 +220,14 @@
     "cong_binh_normal_rare": "Công binh · Đánh thường · Hiếm",
     "cong_binh_special_common": "Công binh · Kỹ năng · Thường",
     "cong_binh_special_rare": "Công binh · Kỹ năng · Hiếm",
-    "cong_binh_special_epic": "Công binh · Kỹ năng · Sử thi"
+    "cong_binh_special_epic": "Công binh · Kỹ năng · Sử thi",
+    "battle_mp_gain": "{{hero}} +**{{mp}}** MP",
+    "battle_special": "{{skill_emoji}} {{hero}} dùng **{{skill}}** ({{cost}} MP): **{{dmg}}** sát thương",
+    "battle_support": "{{support}} dùng **{{skill}}**: {{effect}}",
+    "support_attack_up": "tăng tấn công cho {{hero}}",
+    "support_hp_regen": "hồi **{{hp}}** HP cho {{hero}}",
+    "support_mp_regen": "hồi **{{mp}}** MP cho {{hero}}",
+    "no_mp": "Không đủ MP (cần {{cost}} MP) — dùng đánh thường."
   },
   "shop": {
     "title": "🛒 Cửa hàng ({{tab}})",

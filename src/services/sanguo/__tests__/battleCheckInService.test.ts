@@ -3,14 +3,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import crypto from 'node:crypto';
 import { db } from '../../../db/client.js';
 import { startEncounterBattle, startSparBattle, skipEncounter } from '../battleCheckInService.js';
-import { runBattle } from '../battleEngine.js';
+import { runBattle, runLegionBattle, type LegionBattleInput } from '../battleEngine.js';
 import { playerTravelState } from '../../../db/schema/playerTravelState.js';
 import { encounterRuns } from '../../../db/schema/encounterRuns.js';
 import { userHeroes } from '../../../db/schema/userHeroes.js';
 import { sanguoBattles } from '../../../db/schema/sanguoBattles.js';
-import { BOSS_TEMPLATES, bossTemplateFor } from '../../../constants/sanguoBoss.js';
 import { checkInTravel } from '../travelCheckInService.js';
 import { redis } from '../../../cache/redis.js';
+import { TIER_MULTIPLIERS, STAT_GAIN_PER_LEVEL } from '../../../constants/sanguoProgression.js';
 
 vi.mock('../../../db/client.js', () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -52,8 +52,6 @@ const PENDING = {
   createdAt: new Date('2026-08-12T08:00:00Z'),
 };
 
-const PENDING_BOSS = { ...PENDING, heroId: null, encounterType: 'boss' };
-
 const STATE = {
   id: 1,
   userId: 42,
@@ -80,6 +78,9 @@ function activeJoin(hpCurrent = 100): any {
       hpCurrent,
       capturedZone: null,
       capturedAt: new Date('2026-08-12T08:00:00Z'),
+      tier: 0,
+      skillNormalId: null,
+      skillSpecialId: null,
     },
     h: {
       id: 1,
@@ -337,40 +338,281 @@ describe('startEncounterBattle — encounter battle entry (D-01/D-03/D-04/D-06)'
     expect(player.isPlayer).toBe(true);
   });
 
-  it('T7: boss encounter builds the enemy from the zone boss template (A3), not a heroes row', async () => {
-    const runBattleFn = vi.fn().mockReturnValue(WIN_RESULT);
-    const { promise } = runBattleInTx(
-      [[TRAVEL], [PENDING_BOSS], [], [STATE], [activeJoin()]],
-      runBattleFn,
-      { seed: 1 },
+  it('T7-OLD-REMOVED: the boss template path is DELETED per adopt-d24 (D-24 one-way supersession)', async () => {
+    // The superseded code is gone — verify via the source text using fs.
+    // (ESM-safe: read the file relative to this test via import.meta.url.)
+    const srcFile = new URL('../battleCheckInService.ts', import.meta.url);
+    const { readFileSync } = await import('node:fs');
+    const source = readFileSync(srcFile, 'utf8');
+    expect(source).toContain('runLegionBattle');
+    // The deleted constants module must no longer be imported (D-24 supersession).
+    expect(source).not.toMatch(/sanguoBoss/);
+    expect(source).toContain('runLegionBattleFn');
+  });
+});
+
+// ── Task 3: boss → forced LEGION routing (D-24/D-25/D-35) + win/drop ────────
+
+const LEGION = { id: 1, userId: 42, formationId: 1, updatedAt: new Date() };
+
+/** 12 user_legion_slots ⋈ user_heroes ⋈ heroes joined rows (3 mains + 9 supports). */
+function legionJoin(mains = 3, supports = 9): any[] {
+  const rows: any[] = [];
+  const classes = ['vanguard', 'archer', 'spellcaster', 'cavalry', 'schemer', 'vu_co', 'thu_binh', 'cong_binh', 'vanguard', 'archer', 'spellcaster', 'schemer'];
+  for (let slot = 0; slot < mains + supports; slot++) {
+    const cls = classes[slot % classes.length];
+    rows.push({
+      slotOrder: slot,
+      uh: {
+        id: 100 + slot,
+        userId: 42,
+        heroId: 1 + slot,
+        level: 50,
+        ivStr: 10, ivAgi: 10, ivInt: 10, ivMov: 10, ivLea: 10, ivCha: 10,
+        hpCurrent: 100,
+        tier: 0, // default t0 main
+        skillNormalId: 1,
+        skillSpecialId: 3,
+      },
+      h: {
+        id: 1 + slot,
+        heroId: 'hero_' + slot,
+        nameVi: 'Hero ' + slot,
+        nameEn: 'Hero ' + slot,
+        nameZh: null,
+        factionId: 1,
+        role: 'general',
+        class: cls,
+        str: 50, agi: 40, int: 30, mov: 35, lea: 20, cha: 20, hp: 100, mp: 50,
+        rarity: 3,
+        tier: 3,
+      },
+    });
+  }
+  return rows;
+}
+
+/** The zone-general the boss fights (encounter.heroId). */
+const BOSS_ZONE_GENERAL = {
+  id: 99,
+  heroId: 'lu_bu',
+  nameVi: 'Lữ Bố',
+  nameEn: 'Lu Bu',
+  nameZh: null,
+  factionId: 1,
+  role: 'general',
+  class: 'vanguard',
+  str: 70, agi: 60, int: 40, mov: 55, lea: 50, cha: 45, hp: 150, mp: 60,
+  rarity: 5,
+  tier: 5,
+};
+
+/** Boss pending encounter — a REAL hero row (hero_id 99, NOT null) per D-24. */
+const PENDING_BOSS_NEW = {
+  id: 9, userId: 42, travelId: 1, zone: 'du_chau', heroId: 99,
+  encounterType: 'boss', status: 'pending', pityCount: 0,
+  level: 50, skillNormalId: 1, skillSpecialId: 3,
+  createdAt: new Date('2026-08-12T08:00:00Z'),
+};
+
+/** sanguo_skills rows the legion builder resolves (mains snapshot reads +
+ *  fetchSupportSpecials + the boss snapshot). Ids 1 (normal) and 3 (special). */
+const SKILLS = [
+  { id: 1, nameVi: 'Khiêu chiến', nameEn: 'Taunt', nameZh: null, class: 'vanguard', slot: 'normal', mpGain: 10, mpCost: null, effectType: null, effectValue: null },
+  { id: 3, nameVi: 'Hỏa cầu', nameEn: 'Fireball', nameZh: null, class: 'spellcaster', slot: 'special', mpGain: null, mpCost: 20, effectType: 'damage', effectValue: 30 },
+];
+const SPECIALS = [SKILLS[1]]; // fetchSupportSpecials returns the special rows
+
+const LEGION_WIN = {
+  roundLogs: [{ round: 1, attacker: 'hero_0', defender: 'lu_bu', hit: true, crit: true, dmg: 60, defenderHpAfter: 90 }],
+  winner: 'player',
+  rounds: 2,
+  totalDamagePlayer: 120,
+  totalDamageEnemy: 40,
+  playerHpAfter: 300,
+  enemyHpAfter: 90,
+};
+
+const LEGION_LOSS = {
+  roundLogs: [{ round: 1, attacker: 'lu_bu', defender: 'hero_0', hit: true, crit: false, dmg: 200, defenderHpAfter: 0 }],
+  winner: 'enemy',
+  rounds: 3,
+  totalDamagePlayer: 30,
+  totalDamageEnemy: 200,
+  playerHpAfter: 0,
+  enemyHpAfter: 50,
+};
+
+describe('startEncounterBattle — boss → FORCED legion routing (D-24/D-25/D-35)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function bossLegionInTx(
+    readResults: unknown[][],
+    runLegionBattleFn: any,
+    deps: Record<string, unknown> = {},
+  ) {
+    const { tx, chain, update, updateSet, insert, insertValues } = makeTx(readResults);
+    (db.transaction as any).mockImplementation(async (cb: any) => cb(tx));
+    const promise = startEncounterBattle(42, { runLegionBattleFn, ...deps });
+    return { promise, tx, chain, update, updateSet, insert, insertValues };
+  }
+
+  /**
+   * The full read-result queue for a boss fight with an assembled legion, in
+   * call order:
+   * 1 travel → 2 pending boss → 3 no prior battle → 4 companion state →
+   * 5 companion join → 6 userLegions → 7 the 12 slots →
+   * (P0-3 player skill snapshot: activeJoin has null skills → no read) →
+   * 8/9/10 the 3 mains' skill snapshots → 11 fetchSupportSpecials →
+   * 12 boss heroes row → 13 boss skill snapshot.
+   */
+  function bossQueue(): unknown[][] {
+    return [
+      [TRAVEL],
+      [PENDING_BOSS_NEW],
+      [], // no existing encounter battle (CR-02)
+      [STATE],
+      [activeJoin()], // active companion (not used for boss, but read)
+      [LEGION],
+      legionJoin(), // 12 slots
+      [], // main[0] skill snapshot
+      [], // main[1] skill snapshot
+      [], // main[2] skill snapshot
+      SPECIALS, // fetchSupportSpecials
+      [BOSS_ZONE_GENERAL], // boss enemy heroes row
+      SKILLS, // boss skill snapshot (normal id 1 + special id 3)
+    ];
+  }
+
+  it('B1: a BOSS encounter with an assembled legion routes to runLegionBattle with the full legion input (mains[3] tier-baked+buffed, supports[9] effective-LEA, boss t2×IV31×L50)', async () => {
+    const runLegionBattleFn = vi.fn().mockReturnValue(LEGION_WIN);
+    const { promise } = bossLegionInTx(
+      bossQueue(),
+      runLegionBattleFn,
+      { seed: 1, bossIvRoll: () => 31, rollBossDropFn: vi.fn().mockResolvedValue({ itemCode: 'heal_pill', quantity: 1 }) },
     );
 
-    await promise;
-    const [, , enemy] = runBattleFn.mock.calls[0] as [number, any, any];
-    const tpl = BOSS_TEMPLATES['du_chau'];
-    expect(tpl).toBeDefined();
-    expect(tpl.rarity).toBe(5);
-    // Elevated ~2× a rarity-5 hero template (A3).
-    expect(tpl.hp).toBeGreaterThan(300);
-    expect(tpl.str).toBeGreaterThan(80);
+    const result = await promise;
+    expect(result.winner).toBe('player');
+    expect(runLegionBattleFn).toHaveBeenCalledTimes(1);
+    const [seed, input] = runLegionBattleFn.mock.calls[0] as [number, LegionBattleInput];
+    expect(seed).toBe(1);
+    expect(input.mains).toHaveLength(3);
+    expect(input.supports).toHaveLength(9);
+    expect(input.boss.heroId).toBe('lu_bu');
+    // Boss: base × TIER_MULTIPLIERS[2] (t2 1.25) × IV31 × L50
+    expect(input.boss.base.str).toBe(Math.round(70 * TIER_MULTIPLIERS[2]));
+    expect(input.boss.iv.str).toBe(31);
+    expect(input.boss.level).toBe(50);
+    expect(input.boss.skillNormal).toMatchObject({ id: '1' });
+    // Mains: tier multiplier baked in (P0-2) — t0 main → TIER_MULTIPLIERS[0] = 1.0
+    expect(input.mains[0].base.str).toBe(50);
+    // Supports carry effective LEA = base.lea + IV.lea + (level−1)×STAT_GAIN_PER_LEVEL
+    const [support] = input.supports;
+    expect(support.lea).toBe(20 + 10 + (50 - 1) * STAT_GAIN_PER_LEVEL);
+  });
 
-    expect(enemy.heroId).toBe('boss:du_chau');
-    expect(enemy.base).toMatchObject({
-      str: tpl.str, agi: tpl.agi, int: tpl.int, mov: tpl.mov, lea: tpl.lea, cha: tpl.cha, hp: tpl.hp, mp: tpl.mp,
-    });
-    expect(enemy.hpCurrent).toBe(tpl.hp);
-    expect(enemy.isPlayer).toBe(false);
+  it('B2: a BOSS encounter with NO assembled legion → legion.not_assembled, no engine call', async () => {
+    const runLegionBattleFn = vi.fn();
+    const { promise, insert } = bossLegionInTx(
+      [
+        [TRAVEL],
+        [PENDING_BOSS_NEW],
+        [],
+        [STATE],
+        [activeJoin()],
+        [], // no legion row
+        [], // no slots
+        [],
+      ],
+      runLegionBattleFn,
+      { seed: 1 },
+    );
+    await expect(promise).rejects.toThrow('legion.not_assembled');
+    expect(runLegionBattleFn).not.toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
+  });
 
-    // Every seeded zone code carries a template; unknown zones throw (defensive).
-    const zoneCodes = [
-      'trung_nguyen', 'quan_trung', 'du_chau', 'duyen_chau', 'tu_chau', 'thanh_chau',
-      'ky_chau', 'u_chau', 'tinh_chau', 'luong_chau', 'kinh_chau', 'duong_chau',
-      'ich_chau', 'giao_chau', 'trieu_tien', 'o_hoan', 'tien_ti', 'hung_no',
-    ];
-    for (const code of zoneCodes) {
-      expect(BOSS_TEMPLATES[code]).toBeDefined();
-    }
-    expect(() => bossTemplateFor('unknown_zone')).toThrow('NO_BOSS_TEMPLATE');
+  it('B3: a WILD encounter still routes to SOLO runBattle (D-23 — the solo path is unchanged)', async () => {
+    const runBattleFn = vi.fn().mockReturnValue(WIN_RESULT);
+    // bossLegionInTx maps its 2nd positional arg to runLegionBattleFn; the WILD
+    // path needs runBattleFn injected via deps (the positional arg is an unused dummy).
+    const { promise } = bossLegionInTx(
+      [[TRAVEL], [PENDING], [], [STATE], [activeJoin()], [WILD_HERO]],
+      vi.fn(),
+      { seed: 1, runBattleFn, runLegionBattleFn: vi.fn() },
+    );
+    const result = await promise;
+    expect(result.resolution).toBe('won');
+    expect(runBattleFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('B4: a boss WIN → dropService.rollBossDrop (guaranteed item, D-14); a boss LOSS → boss departs (travel resumes), NO drop', async () => {
+    const rollBossDrop = vi.fn().mockResolvedValue({ itemCode: 'heal_pill', quantity: 1 });
+    const win = bossLegionInTx(
+      bossQueue(),
+      vi.fn().mockReturnValue(LEGION_WIN),
+      { seed: 1, rollBossDropFn: rollBossDrop },
+    );
+    await win.promise;
+    expect(rollBossDrop).toHaveBeenCalledWith(42); // guaranteed ≥1 item on win
+
+    const loss = bossLegionInTx(
+      bossQueue(),
+      vi.fn().mockReturnValue(LEGION_LOSS),
+      { seed: 1, rollBossDropFn: rollBossDrop },
+    );
+    await loss.promise;
+    expect(rollBossDrop).toHaveBeenCalledTimes(1); // only the win triggered a drop
+    // Loss → boss departs: the encounter resolves like a wild loss.
+    const sets = loss.updateSet.mock.calls.map((c: any) => c[0]);
+    expect(sets).toContainEqual({ status: 'escaped', pityCount: 0 });
+    expect(sets).toContainEqual({ encounterActive: false, updatedAt: expect.any(Date) });
+  });
+
+  it('P0-2 pin: a t2-evolved main (TIER_MULTIPLIERS[2] bake) deals strictly more damage than an identical t0 main at the same level, via the REAL runLegionBattle engine', () => {
+    // PLAN-FIX P0-2 (D-07): bakeMain multiplies EACH main's base stats by
+    // TIER_MULTIPLIERS[userHeroes.tier] BEFORE the chemistry buff. This pin
+    // builds two otherwise-identical legion inputs differing ONLY in the main's
+    // tier bake and asserts the t2 legion lands strictly more engine damage at
+    // the SAME level — proving an evolved main is combat-meaningful, not a
+    // cosmetic tier tag.
+    const mkMain = (tier: number): LegionBattleInput['mains'][number] => {
+      const mult = TIER_MULTIPLIERS[tier];
+      return {
+        heroId: 'main_0',
+        base: {
+          str: Math.round(60 * mult), agi: Math.round(40 * mult), int: Math.round(30 * mult),
+          mov: Math.round(35 * mult), lea: Math.round(20 * mult), cha: Math.round(20 * mult),
+          hp: Math.round(100 * mult), mp: Math.round(50 * mult),
+        },
+        iv: { str: 10, agi: 10, int: 10, mov: 10, lea: 10, cha: 10 },
+        hpCurrent: Math.round(100 * mult),
+        class: 'vanguard',
+        isPlayer: true,
+        level: 50, // the SAME level — only the tier bake differs
+        mpCurrent: Math.round(50 * mult),
+        skillNormal: null,
+        skillSpecial: null,
+      };
+    };
+    const boss: LegionBattleInput['boss'] = {
+      // Low base str/agi so the main hits reliably and the t0/t2 tier gap in
+      // atk produces STRICTLY more landed damage (eff() adds +98 level gain at
+      // L50 to both sides; the boss def must stay below the main's eff atk).
+      heroId: 'boss', base: { str: 20, agi: 5, int: 20, mov: 5, lea: 30, cha: 30, hp: 5000, mp: 100 },
+      iv: { str: 0, agi: 0, int: 0, mov: 0, lea: 0, cha: 0 },
+      hpCurrent: 5000, class: 'vanguard', isPlayer: false, level: 50, mpCurrent: 100,
+    };
+    const t0 = runLegionBattle(424242, { mains: [mkMain(0)], supports: [], boss });
+    const t2 = runLegionBattle(424242, { mains: [mkMain(2)], supports: [], boss });
+    expect(TIER_MULTIPLIERS[2]).toBeGreaterThan(TIER_MULTIPLIERS[0]); // fixture sanity
+    expect(t2.totalDamagePlayer).toBeGreaterThan(t0.totalDamagePlayer);
   });
 });
 

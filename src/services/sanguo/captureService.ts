@@ -94,18 +94,30 @@ export interface CaptureDeps {
   fleeRoll?: () => number;
   /** Capture IV draw in [0,31] — defaults to crypto.randomInt(0, 32). */
   ivRoll?: () => number;
+  /** Boss capture TIER roll in [0,1) — D-28 t0 95 / t1 4.98 / t2 0.02.
+   *  Defaults to cryptoUniform (crypto player-facing). Inject for deterministic
+   *  boundary tests; NEVER rendered (D-12). */
+  tierRoll?: () => number;
 }
 
 /** Shape of the stored D-06 input snapshot (battleCheckInService writes it). */
 type StoredInputShape = { enemy?: { base?: { hp?: number } } };
 type StoredResultShape = { enemyHpAfter?: number };
 
-/** Wild rarity — heroes row, or 5 for a boss (D-13 low rate, high rarity). */
+/** Wild rarity — heroes row, or 5 for a boss (D-13 low rate, high rarity).
+ *  PLAN-FIX P1-2: rarity stays keyed on `encounterType === 'boss'` — after the
+ *  D-24 redesign the boss carries a REAL heroId with a REAL rarity (1-5);
+ *  keying on heroId would silently move the boss base chance off the signed
+ *  rarity-5 10% (D-26 violation). The boss base is ALWAYS CAPTURE_BASE_BY_RARITY[5]. */
 async function wildRarity(tx: Tx, encounter: typeof encounterRuns.$inferSelect): Promise<{ rarity: number; heroBaseHp: number }> {
-  if (encounter.encounterType === 'boss' || encounter.heroId == null) {
-    // Boss rarity is a constant (A3 boss templates are rarity 5).
+  if (encounter.encounterType === 'boss') {
+    // Boss rarity is a constant — the capture-fee model is the signed rarity-5
+    // 10% base (D-26), independent of the zone general's real rarity (P1-2).
     return { rarity: 5, heroBaseHp: 0 };
   }
+  // Wild path — the wild encounter ALWAYS carries a real heroes row (D-33);
+  // guard the nullable hero_id before reading the heroes row.
+  if (encounter.heroId == null) throw new Error('NO_WILD_HERO');
   const [wildHero] = await tx.select().from(heroes).where(eq(heroes.id, encounter.heroId)).limit(1);
   if (!wildHero) throw new Error('NO_WILD_HERO');
   return { rarity: wildHero.rarity, heroBaseHp: wildHero.hp };
@@ -123,6 +135,7 @@ export async function attemptCapture(
   const rollFn = deps.roll ?? cryptoUniform;
   const fleeFn = deps.fleeRoll ?? cryptoUniform;
   const ivFn = deps.ivRoll ?? (() => crypto.randomInt(0, 32));
+  const tierFn = deps.tierRoll ?? cryptoUniform;
 
   return db.transaction(async (tx) => {
     // 1. F2 pending re-fetch with FOR UPDATE — the lock IS the double-spend
@@ -143,11 +156,10 @@ export async function attemptCapture(
     if (!cfg) throw new Error('INVALID_TIER');
     if (cfg.requiresItem != null) throw new Error('TIER_LOCKED');
 
-    // 2b. Boss capture is not implementable in Phase 10: encounter_runs bosses
-    //     have hero_id NULL (A3) and user_heroes.hero_id is NOT NULL, so a
-    //     boss capture has no heroes row to grant. Guard BEFORE the fee so a
-    //     boss press never charges for an impossible insert.
-    if (encounter.heroId == null) throw new Error('BOSS_CAPTURE_UNAVAILABLE');
+    // 2b. Boss-capture guard is GONE (adopt-d24 / D-24 one-way supersession):
+    //     a boss encounter now carries a REAL heroes row (hero_id non-null), so
+    //     the boss is capturable like any hero — the old unavailable-guard is removed.
+    const isBoss = encounter.encounterType === 'boss';
 
     // 2c. CR-01 WON-BATTLE PRECONDITION (D-10): the capture window opens ONLY
     //     on a player win. The UI gates capture behind the win row, but the
@@ -205,8 +217,13 @@ export async function attemptCapture(
 
     if (success) {
       outcome = 'success';
-      // 7a. Capture: 6× crypto IV roll → user_heroes insert (full base HP,
-      //     zone snapshot) → encounter 'captured' → travel resumes.
+      // 7a. Capture: 6× crypto IV roll → user_heroes insert. The copy is a
+      //     FRESH roll per D-28/D-36:
+      //       - wild: KEEPS the spawn-rolled encounter level (P1-1, D-34) + the
+      //         spawn skills (D-31) — NOT the hardcoded level 1.
+      //       - boss: RANDOM tier roll (t0 95 / t1 4.98 / t2 0.02, D-28) +
+      //         FIXED level 20 (D-36) + skills from encounter_runs (D-31).
+      //     tier/level/skills are written to user_heroes (single source, D-10).
       const iv = {
         str: ivFn(),
         agi: ivFn(),
@@ -215,12 +232,19 @@ export async function attemptCapture(
         lea: ivFn(),
         cha: ivFn(),
       };
+      const capturedLevel = isBoss ? 20 : encounter.level;
+      const capturedTier = isBoss ? (tierFn() < 0.95 ? 0 : tierFn() < 0.9998 ? 1 : 2) : 0;
+      // D-24/D-33: both the wild and boss capture paths carry a REAL heroes
+      // row (hero_id non-null) — guard the nullable column before the NOT NULL
+      // user_heroes insert (userHeroes.heroId).
+      if (encounter.heroId == null) throw new Error('NO_WILD_HERO');
+      const capturedHeroId = encounter.heroId;
       const [uh] = await tx
         .insert(userHeroes)
         .values({
           userId,
-          heroId: encounter.heroId,
-          level: 1,
+          heroId: capturedHeroId,
+          level: capturedLevel,
           ivStr: iv.str,
           ivAgi: iv.agi,
           ivInt: iv.int,
@@ -229,6 +253,9 @@ export async function attemptCapture(
           ivCha: iv.cha,
           hpCurrent: heroBaseHp,
           capturedZone: encounter.zone,
+          tier: capturedTier,
+          skillNormalId: encounter.skillNormalId,
+          skillSpecialId: encounter.skillSpecialId,
         })
         .returning({ id: userHeroes.id });
       userHeroId = uh?.id;

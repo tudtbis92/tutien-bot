@@ -65,7 +65,9 @@
     "title": "⚔️ 奇遇",
     "body": "在前往**{{node}}**的路上，你遭遇了**{{hero_emoji}} {{hero}}**。",
     "boss_title": "👑 首领出现了！",
-    "boss_body": "一位镇守**{{zone}}**的首领出现在你的路上。做好准备！"
+    "boss_body": "一位镇守**{{zone}}**的首领出现在你的路上。做好准备！",
+    "level": "**Lv{{level}}**",
+    "boss_line": "**{{hero_emoji}} {{hero}}**（Lv50）镇守 **{{zone}}**。必须使用三主力阵型！"
   },
   "ack": {
     "title": "✅ 已继续旅程",
@@ -84,7 +86,8 @@
     "no_encounter": "没有等待中的奇遇。",
     "error": "交战时出错，请重试。",
     "already_fought": "这次奇遇已经处理过了。",
-    "rounds_line": "⏱️ {{n}} 回合"
+    "rounds_line": "⏱️ {{n}} 回合",
+    "legion_log_title": "⚔️ 阵型：{{player}}（三主力）对抗首领 {{enemy}}"
   },
   "capture": {
     "title": "🪤 收服 {{hero_emoji}} {{hero}}",
@@ -100,7 +103,9 @@
     "retreat_body": "你跳过了{{hero}}。旅程继续。",
     "insufficient": "灵石不足（需要{{fee}} 💎）。请检查余额后重试。",
     "error": "收服时出错，请重试。",
-    "not_available": "暂时无法收服。"
+    "not_available": "暂时无法收服。",
+    "item_drop": "🎁 获得：{{item_emoji}} {{name}} ×{{qty}}",
+    "captured_copy": "{{emoji}} {{name}} • ★{{stars}} • {{grade}} • **Lv{{level}}**"
   },
   "heroes": {
     "empty_title": "🌱 选择初始英雄",
@@ -215,7 +220,14 @@
     "cong_binh_normal_rare": "工兵 · 普通 · 稀有",
     "cong_binh_special_common": "工兵 · 特殊 · 普通",
     "cong_binh_special_rare": "工兵 · 特殊 · 稀有",
-    "cong_binh_special_epic": "工兵 · 特殊 · 史诗"
+    "cong_binh_special_epic": "工兵 · 特殊 · 史诗",
+    "battle_mp_gain": "{{hero}} +**{{mp}}** 法力",
+    "battle_special": "{{skill_emoji}} {{hero}} 施放 **{{skill}}**（{{cost}} 法力）：**{{dmg}}** 伤害",
+    "battle_support": "{{support}} 施放 **{{skill}}**：{{effect}}",
+    "support_attack_up": "提升 {{hero}} 的攻击",
+    "support_hp_regen": "为 {{hero}} 恢复 **{{hp}}** 生命",
+    "support_mp_regen": "为 {{hero}} 恢复 **{{mp}}** 法力",
+    "no_mp": "法力不足（需 {{cost}} 法力）— 使用普通攻击。"
   },
   "shop": {
     "title": "🛒 商店 ({{tab}})",

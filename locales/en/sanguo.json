@@ -65,7 +65,9 @@
     "title": "⚔️ Encounter",
     "body": "On your way to **{{node}}**, you run into **{{hero_emoji}} {{hero}}**.",
     "boss_title": "👑 A Boss has appeared!",
-    "boss_body": "A Boss guarding **{{zone}}** has appeared on your path. Get ready!"
+    "boss_body": "A Boss guarding **{{zone}}** has appeared on your path. Get ready!",
+    "level": "**Lv{{level}}**",
+    "boss_line": "**{{hero_emoji}} {{hero}}** (Lv50) guards **{{zone}}**. A 3-main formation is required!"
   },
   "ack": {
     "title": "✅ Journey resumed",
@@ -84,7 +86,8 @@
     "no_encounter": "No encounter is waiting.",
     "error": "There was an error in the fight. Please try again.",
     "already_fought": "This encounter was already handled.",
-    "rounds_line": "⏱️ {{n}} rounds"
+    "rounds_line": "⏱️ {{n}} rounds",
+    "legion_log_title": "⚔️ Formation: {{player}} (3 mains) vs Boss {{enemy}}"
   },
   "capture": {
     "title": "🪤 Capture {{hero_emoji}} {{hero}}",
@@ -100,7 +103,9 @@
     "retreat_body": "You skip {{hero}}. The journey continues.",
     "insufficient": "Not enough Spirit Stones (need {{fee}} 💎). Check your balance and try again.",
     "error": "There was an error capturing. Please try again.",
-    "not_available": "Cannot capture right now."
+    "not_available": "Cannot capture right now.",
+    "item_drop": "🎁 Received: {{item_emoji}} {{name}} ×{{qty}}",
+    "captured_copy": "{{emoji}} {{name}} • ★{{stars}} • {{grade}} • **Lv{{level}}**"
   },
   "heroes": {
     "empty_title": "🌱 Choose a starter hero",
@@ -215,7 +220,14 @@
     "cong_binh_normal_rare": "Engineer · Normal · Rare",
     "cong_binh_special_common": "Engineer · Special · Common",
     "cong_binh_special_rare": "Engineer · Special · Rare",
-    "cong_binh_special_epic": "Engineer · Special · Epic"
+    "cong_binh_special_epic": "Engineer · Special · Epic",
+    "battle_mp_gain": "{{hero}} +**{{mp}}** MP",
+    "battle_special": "{{skill_emoji}} {{hero}} uses **{{skill}}** ({{cost}} MP): **{{dmg}}** damage",
+    "battle_support": "{{support}} uses **{{skill}}**: {{effect}}",
+    "support_attack_up": "raises the attack of {{hero}}",
+    "support_hp_regen": "restores **{{hp}}** HP to {{hero}}",
+    "support_mp_regen": "restores **{{mp}}** MP to {{hero}}",
+    "no_mp": "Not enough MP (need {{cost}} MP) — using a normal attack."
   },
   "shop": {
     "title": "🛒 Shop ({{tab}})",

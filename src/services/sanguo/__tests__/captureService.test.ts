@@ -35,6 +35,7 @@ const PENDING = {
   encounterType: 'hero',
   status: 'pending',
   pityCount: 0,
+  level: 1, // encounterRuns.level default (D-33) — written to capture (P1-1)
   createdAt: new Date('2026-08-12T08:00:00Z'),
 };
 
@@ -73,6 +74,66 @@ const WILD_HERO = {
   rarity: 1,
   tier: 1,
 };
+
+/** A BOSS pending encounter — a REAL heroes row (hero_id 99, rarity 3). */
+const PENDING_BOSS = {
+  id: 9,
+  userId: 42,
+  travelId: 1,
+  zone: 'du_chau',
+  heroId: 99,
+  encounterType: 'boss',
+  status: 'pending',
+  pityCount: 0,
+  level: 50, // the L50 fight level — the capture copy is FIXED L20 (D-36)
+  skillNormalId: 1,
+  skillSpecialId: 3,
+  createdAt: new Date('2026-08-12T08:00:00Z'),
+};
+
+/** The boss zone-general — real rarity 3 (NOT 5); boss base chance is rarity-5 10% (D-26/P1-2). */
+const BOSS_HERO = {
+  id: 99,
+  heroId: 'lu_bu',
+  nameVi: 'Lữ Bố',
+  nameEn: 'Lu Bu',
+  nameZh: null,
+  factionId: 1,
+  role: 'general',
+  class: 'vanguard',
+  str: 70,
+  agi: 60,
+  int: 40,
+  mov: 55,
+  lea: 50,
+  cha: 45,
+  hp: 300,
+  mp: 60,
+  rarity: 3, // deliberate: the boss base chance must NOT use this real rarity
+  tier: 5,
+};
+
+/** latest sanguo_battles row for a BOSS (input carries the t2×IV31×L50 enemy). */
+const BOSS_BATTLE_ROW = {
+  id: 56,
+  userId: 42,
+  encounterId: 9,
+  type: 'encounter',
+  status: 'completed',
+  seed: 12345,
+  input: { enemy: { base: { hp: 187 } } }, // 150 t2 × ... the capture HP snapshot source
+  result: { enemyHpAfter: 50, winner: 'player' },
+  createdAt: new Date('2026-08-12T08:00:00Z'),
+  updatedAt: new Date('2026-08-12T08:00:00Z'),
+  resolvedAt: new Date('2026-08-12T08:00:00Z'),
+};
+
+const BOSS_QUEUE = [[PENDING_BOSS], [BOSS_BATTLE_ROW], [BOSS_HERO]];
+
+/** The chance the boss rolls against — rarity-5 10% base (P1-2 lock). */
+function expectedBossChance(pity = 0): number {
+  return captureChance({ rarity: 5, hpMax: 187, hpCurrent: 50, tierMultiplier: 1.0, pity });
+}
 
 /** The chance the tests roll against — recomputed via the exported formula. */
 function expectedChance(pity = 0): number {
@@ -411,5 +472,93 @@ describe('attemptCapture — single-writer capture tx (D-10/D-11, TQC-11)', () =
     expect(second.chance - first.chance).toBeCloseTo(PITY_INCREMENT, 10);
     expect(first.pityBefore).toBe(0);
     expect(second.pityBefore).toBe(1);
+  });
+});
+
+// ── Task 3: wild level carry (P1-1) + boss capture branch (D-28/D-36) ───────
+
+describe('attemptCapture — wild level carry (PLAN-FIX P1-1) + boss capture (D-28/D-36)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockBalance(1000n);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Wild pending encounter carrying a spawn-rolled level + skills (D-33/D-31). */
+  const PENDING_WILD_LVL = {
+    ...PENDING,
+    level: 22, // the D-33 spawn-rolled level — kept on capture (D-34)
+    skillNormalId: 7,
+    skillSpecialId: 8,
+  };
+
+  it('P1-1: a WILD capture success writes encounter.level (not the hardcoded 1) + the encounter_runs skill ids', async () => {
+    const { promise, insertValues } = attemptInTx(
+      [[PENDING_WILD_LVL], [BATTLE_ROW], [WILD_HERO]],
+      { roll: () => 0.01, ivRoll: () => 5 },
+    );
+    await promise;
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 42,
+        heroId: 5,
+        level: 22, // D-34: the captured hero KEEPS the spawn-rolled level
+        skillNormalId: 7, // D-31: spawn skills carry to capture
+        skillSpecialId: 8,
+        ivStr: 5,
+        capturedZone: 'du_chau',
+      }),
+    );
+  });
+
+  it('B-CAP-1: a BOSS capture is enabled (the old unavailable guard is removed, D-24) and resolves on rarity-5 10% base (P1-2)', async () => {
+    const { promise, chain } = attemptInTx(
+      BOSS_QUEUE,
+      { roll: () => 0.01, ivRoll: () => 1, tierRoll: () => 0.9 }, // 0.9 → t0
+    );
+    const result = await promise;
+    expect(result.success).toBe(true);
+    // The guard is gone: chance resolves on the rarity-5 base even though the
+    // zone general's REAL rarity is 3 (P1-2 — keep type-driven 'boss').
+    const bossChance = expectedBossChance();
+    expect(result.chance).toBeCloseTo(bossChance, 10);
+    expect(result.chance).toBeLessThan(0.11); // 10% base → well under 11%
+    expect(chain.for).toHaveBeenCalledWith('update');
+  });
+
+  it('B-CAP-2: a BOSS capture success inserts user_heroes with RANDOM IV ×6, tier from the t0 95/t1 4.98/t2 0.02 roll (injected rng), FIXED level 20 (D-36), skills from encounter_runs', async () => {
+    // tier rng 0.9999 → t2 (the 0.02% tail); roll + flee use crypto default.
+    const { promise, insertValues } = attemptInTx(
+      BOSS_QUEUE,
+      { roll: () => 0.01, ivRoll: () => 17, tierRoll: () => 0.9999 },
+    );
+    await promise;
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 42,
+        heroId: 99,
+        level: 20, // D-36: FIXED L20 — never the L50 fight level
+        tier: 2, // t0 95 / t1 4.98 / t2 0.02 roll → 0.9999 → t2
+        skillNormalId: 1, // skills from encounter_runs (D-31)
+        skillSpecialId: 3,
+        ivStr: 17,
+        ivAgi: 17,
+        ivInt: 17,
+        ivMov: 17,
+        ivLea: 17,
+        ivCha: 17,
+        capturedZone: 'du_chau',
+      }),
+    );
+  });
+
+  it('P1-2 pin: boss base chance === CAPTURE_BASE_BY_RARITY[5] regardless of the zone general real rarity', () => {
+    // The chance is recomputed from the rarity-5 base; the general's real
+    // rarity (3) must NEVER feed the boss capture chance (D-26 lock).
+    const chanceNoPity = expectedBossChance(0);
+    const baseOnly = CAPTURE_BASE_BY_RARITY[5] * hpFactor(187, 50) * 1.0;
+    expect(chanceNoPity).toBeCloseTo(baseOnly, 10);
   });
 });
