@@ -10,7 +10,7 @@ import { userLegionSlots } from '../../db/schema/userLegions.js';
 import { heroes } from '../../db/schema/heroes.js';
 import { sanguoBattles } from '../../db/schema/sanguoBattles.js';
 import { sanguoSkills } from '../../db/schema/sanguoSkills.js';
-import { runBattle, runLegionBattle, type CombatantInput, type BattleResult, type LegionBattleInput, type LegionBattleResult } from './battleEngine.js';
+import { runBattle, runLegionBattle, type CombatantInput, type BattleResult, type LegionBattleInput, type LegionMainInput, type LegionBattleResult } from './battleEngine.js';
 import { TIER_MULTIPLIERS, STAT_GAIN_PER_LEVEL } from '../../constants/sanguoProgression.js';
 import { rollBossDrop } from './dropService.js';
 
@@ -314,7 +314,7 @@ async function buildLegionInput(
   const supportRows = joined.slice(3, 12).filter((s) => s !== undefined);
 
   // Resolve skill snapshots for the mains' copies (D-31).
-  const mainsInput: Array<CombatantInput & { level: number }> = [];
+  const mainsInput: LegionMainInput[] = [];
   for (const main of mains) {
     const skills = await resolveSkillSnapshot(tx, main.uh.skillNormalId, main.uh.skillSpecialId);
     const buffed = bakeMain(main);
@@ -331,8 +331,10 @@ async function buildLegionInput(
 }
 
 /** Build a single main's CombatantInput with tier × chemistry-buff baked in
- *  (PLAN-FIX P0-2 — D-07 evolution term). HP/MP stay base×tier. */
-function bakeMain(main: LegionJoined): CombatantInput & { level: number } {
+ *  (PLAN-FIX P0-2 — D-07 evolution term). HP/MP stay base×tier. WR-01: the
+ *  input carries `userHeroId` (the owning userHeroes copy id) so the caller
+ *  can write each main's HP back to its OWN copy after the battle. */
+function bakeMain(main: LegionJoined): LegionMainInput {
   const tier = main.uh.tier;
   const mult = TIER_MULTIPLIERS[tier] ?? 1;
   const base = {
@@ -347,6 +349,7 @@ function bakeMain(main: LegionJoined): CombatantInput & { level: number } {
   };
   return {
     heroId: main.h.heroId,
+    userHeroId: main.uh.id, // WR-01: the copy id — HP write-back keys on this
     base,
     iv: {
       str: main.uh.ivStr,
@@ -444,34 +447,33 @@ async function buildBossInput(
   };
 }
 
-/** Persist the legion mains' HP after the battle (D-25 — the only hp write
- *  site; the engine's playerHpAfter is the sum of the mains' remaining HP). */
+/** Persist each legion main's OWN remaining HP after the battle (D-25 — the
+ *  only hp write site; the engine's playerHpAfter is the sum of the mains'
+ *  remaining HP).
+ *
+ *  WR-01: the mains' HP is written back per copy id (`userHeroId` — the owning
+ *  userHeroes copy, carried through LegionMainInput), aligned to the engine's
+ *  `result.mainHpAfter[i]` — NEVER a per-survivor average. This preserves the
+ *  D-04 fainted state (a main that fell to 0 HP stays fainted instead of being
+ *  resurrected by a positive share) and does not clamp full-HP survivors down. */
 async function writeLegionHpBack(
   tx: Tx,
   input: LegionBattleInput,
   result: LegionBattleResult,
 ): Promise<void> {
-  // The engine returns the SUM of the mains' HP; per-combatant persistence
-  // maps the mains' heroIds → their copies. The mains array carries heroId
-  // (string) — resolve each copy id by re-joining the stored userHeroes.
   for (let i = 0; i < input.mains.length; i++) {
-    const heroId = input.mains[i].heroId;
-    const [uh] = await tx
-      .select()
-      .from(userHeroes)
-      .innerJoin(heroes, eq(userHeroes.heroId, heroes.id))
-      .where(eq(heroes.heroId, heroId))
-      .limit(1);
-    if (!uh) continue;
-    // Per-combatant remaining HP isn't returned by the engine (only the sum);
-    // persist the summed HP split fairly — a documented simplification: the
-    // boss battle persists the SUM to the lowest-index living main for
-    // simplicity; the capture HP snapshot is the source of truth for capture.
-    const share = Math.round(result.playerHpAfter / Math.max(1, input.mains.length));
+    const main = input.mains[i];
+    // WR-01: write keyed by the copy id carried on the input (never re-resolved
+    // by species heroId — duplicates make that ambiguous). Skip mains that lack
+    // a copy id (defensive; the built legion always carries one) or lack a
+    // per-main HP entry.
+    if (main.userHeroId == null) continue;
+    const hpAfter = result.mainHpAfter?.[i];
+    if (hpAfter === undefined) continue;
     await tx
       .update(userHeroes)
-      .set({ hpCurrent: share })
-      .where(eq(userHeroes.id, (uh as unknown as { uh: { id: number } }).uh.id));
+      .set({ hpCurrent: hpAfter })
+      .where(eq(userHeroes.id, main.userHeroId));
   }
 }
 

@@ -428,6 +428,19 @@ describe('legion battle (D-17) replay contract (D-06)', () => {
     expect(r.rounds).toBe(0);
     expect(r.winner).toBe('player');
   });
+
+  it('WR-01: mainHpAfter carries each main\'s OWN remaining HP (sum === playerHpAfter; never an average)', () => {
+    const result = runLegionBattle(LEGION_SEED, LEGION_INPUT);
+    expect(result.mainHpAfter).toHaveLength(LEGION_INPUT.mains.length);
+    const sum = result.mainHpAfter.reduce((a, b) => a + b, 0);
+    expect(sum).toBe(result.playerHpAfter);
+    // Each main's remaining HP is clamped to its own start HP — a fainted main
+    // is NEVER resurrected by an averaged positive share (WR-01 regression).
+    for (let i = 0; i < LEGION_INPUT.mains.length; i++) {
+      expect(result.mainHpAfter[i]).toBeGreaterThanOrEqual(0);
+      expect(result.mainHpAfter[i]).toBeLessThanOrEqual(LEGION_INPUT.mains[i].hpCurrent);
+    }
+  });
 });
 
 describe('legion round cap (D-05)', () => {

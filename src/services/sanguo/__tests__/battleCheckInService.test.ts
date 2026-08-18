@@ -575,6 +575,34 @@ describe('startEncounterBattle — boss → FORCED legion routing (D-24/D-25/D-3
     expect(sets).toContainEqual({ encounterActive: false, updatedAt: expect.any(Date) });
   });
 
+  it('WR-01: legion mains\' HP writes back PER-COPY (keyed by userHeroId) from the engine\'s per-main HP — never an averaged share / never resurrecting a fainted main', async () => {
+    // The engine now returns mainHpAfter (per-main remaining HP); the service
+    // writes EACH main's OWN HP back to ITS copy id (input.mains[i].userHeroId
+    // = 100/101/102 from legionJoin()). A fainted main keeps 0, a full main is
+    // not clamped down — no average.
+    const result = { ...LEGION_WIN, mainHpAfter: [0, 60, 100] }; // main0 fainted, main1 hurt, main2 full
+    const { promise, update, updateSet } = bossLegionInTx(
+      bossQueue(),
+      vi.fn().mockReturnValue(result),
+      { seed: 1, rollBossDropFn: vi.fn().mockResolvedValue({ itemCode: 'heal_pill', quantity: 1 }) },
+    );
+    await promise;
+    // Exactly one update per main, on userHeroes, with its OWN hp value.
+    const heroUpdates = update.mock.calls.filter((c: any) => c[0] === userHeroes);
+    expect(heroUpdates).toHaveLength(3);
+    const hpSets = updateSet.mock.calls
+      .map((c: any) => c[0])
+      .filter((s: any) => s && 'hpCurrent' in s)
+      .map((s: any) => s.hpCurrent);
+    expect(hpSets).toEqual(expect.arrayContaining([0, 60, 100]));
+    // WR-01: a fainted main (0) is written 0 — never resurrected by a positive
+    // averaged share (the pre-fix code spread playerHpAfter across all mains).
+    expect(hpSets).toContain(0);
+    // And a full-HP main (100) is kept at its own value, not clamped down to an
+    // average.
+    expect(hpSets).toContain(100);
+  });
+
   it('P0-2 pin: a t2-evolved main (TIER_MULTIPLIERS[2] bake) deals strictly more damage than an identical t0 main at the same level, via the REAL runLegionBattle engine', () => {
     // PLAN-FIX P0-2 (D-07): bakeMain multiplies EACH main's base stats by
     // TIER_MULTIPLIERS[userHeroes.tier] BEFORE the chemistry buff. This pin

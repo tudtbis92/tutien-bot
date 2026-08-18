@@ -156,8 +156,17 @@ export interface BattleResult {
  *  on a seeded LEA-driven chance (D-18). Accepts 1-3 mains — incomplete
  *  legions fight with what they have (the 11-06 forced-legion routing
  *  guarantees >= 1 assembled main, never 0). */
+export type LegionMainInput = CombatantInput & {
+  level: number;
+  /** WR-01 (Phase 11 review): the owning userHeroes copy id — lets the caller
+   *  write each main's HP back to its OWN copy (never the species heroId, which
+   *  is ambiguous when duplicates exist). The engine ignores it (no math
+   *  impact); it rides the stored replay snapshot for faithfulness. */
+  userHeroId?: number;
+};
+
 export interface LegionBattleInput {
-  mains: Array<CombatantInput & { level: number }>;
+  mains: Array<LegionMainInput>;
   supports: Array<{
     heroId: string;
     class: CombatantInput['class'];
@@ -169,7 +178,11 @@ export interface LegionBattleInput {
 
 /** Phase 11 (D-17): mirrors the runBattle result shape. playerHpAfter is the
  *  SUM of the mains' remaining HP; the round-cap tie-break HP% is
- *  (sum remaining / sum base HP) vs the boss's remaining fraction. */
+ *  (sum remaining / sum base HP) vs the boss's remaining fraction.
+ *  WR-01: `mainHpAfter` carries each main's OWN remaining HP, aligned to the
+ *  `mains` array order — the caller writes each copy's HP back by its copy id
+ *  (playerHpAfter remains the faithful sum, so the D-05 formula and Phase 10
+ *  replay contracts are untouched). */
 export interface LegionBattleResult {
   roundLogs: TurnLog[];
   winner: 'player' | 'enemy';
@@ -178,6 +191,9 @@ export interface LegionBattleResult {
   totalDamageEnemy: number;
   playerHpAfter: number;
   enemyHpAfter: number;
+  /** WR-01: per-main remaining HP, in `mains` array order (0 = that main
+   *  fainted). Sum === playerHpAfter. */
+  mainHpAfter: number[];
 }
 
 /** D-05 locked: every effective stat is base + IV (6 IV stats only). */
@@ -528,6 +544,15 @@ export function runBattle(seed: number, player: CombatantInput, enemy: Combatant
  * resolveTurn (its own rolled skills resolve if present on its CombatantInput).
  * Round cap 20 → winner by total damage, tie → remaining HP% (sum of the
  * mains' remaining / sum of their base HP vs the boss's remaining / base HP).
+ *
+ * IN-01 (documented behavior): `attack_up` is single-slot LAST-WINS within a
+ * round. `atkBuff` holds ONE {mainIdx, mult} and each triggering attack_up
+ * support OVERWRITES it, so if two supports both roll attack_up in the same
+ * round only the LAST one's buff applies (to the target it picked with its own
+ * rng draw; the earlier buff is silently discarded). Every attack_up trigger
+ * still consumes its rng roll (replay-faithful) — only the applied-effect
+ * count differs. This is deliberate: compounding multiple attack_up buffs in
+ * one round is not part of the signed D-18 contract.
  */
 export function runLegionBattle(seed: number, input: LegionBattleInput): LegionBattleResult {
   const rng = xoroshiro128plus(seed);
@@ -551,6 +576,7 @@ export function runLegionBattle(seed: number, input: LegionBattleInput): LegionB
       totalDamageEnemy,
       playerHpAfter: mainHp.reduce((a, b) => a + b, 0),
       enemyHpAfter: bossHp,
+      mainHpAfter: [...mainHp],
     };
   }
 
@@ -645,5 +671,6 @@ export function runLegionBattle(seed: number, input: LegionBattleInput): LegionB
     totalDamageEnemy,
     playerHpAfter,
     enemyHpAfter: bossHp,
+    mainHpAfter: [...mainHp],
   };
 }
