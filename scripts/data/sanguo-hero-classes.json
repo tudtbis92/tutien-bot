@@ -95,11 +95,13 @@
   ],
   "chu_tuan": [
     "vanguard",
-    "cavalry"
+    "cavalry",
+    "cong_binh"
   ],
   "lu_thuc": [
     "schemer",
-    "vanguard"
+    "vanguard",
+    "cong_binh"
   ],
   "pho_tiep": [
     "vanguard",
@@ -120,7 +122,9 @@
   "gongsun_zan": [
     "cavalry",
     "vanguard",
-    "archer"
+    "archer",
+    "vu_co",
+    "thu_binh"
   ],
   "truong_giac": [
     "spellcaster",
@@ -150,7 +154,8 @@
   ],
   "banh_thoat": [
     "cavalry",
-    "vanguard"
+    "vanguard",
+    "thu_binh"
   ],
   "trieu_hoang": [
     "vanguard",
@@ -159,7 +164,8 @@
   "han_trung": [
     "archer",
     "vanguard",
-    "cavalry"
+    "cavalry",
+    "vu_co"
   ],
   "ton_ha": [
     "archer",
@@ -188,7 +194,8 @@
   ],
   "han_toai": [
     "cavalry",
-    "vanguard"
+    "vanguard",
+    "thu_binh"
   ],
   "bac_cung_ba_ngoc": [
     "archer",
@@ -220,7 +227,8 @@
   ],
   "ma_dang": [
     "cavalry",
-    "vanguard"
+    "vanguard",
+    "thu_binh"
   ],
   "dinh_nguyen": [
     "vanguard",
@@ -251,7 +259,8 @@
   "xiahou_yuan": [
     "archer",
     "cavalry",
-    "vanguard"
+    "vanguard",
+    "vu_co"
   ],
   "huang_gai": [
     "vanguard",
@@ -306,7 +315,8 @@
     "cavalry"
   ],
   "chen_wen": [
-    "schemer"
+    "schemer",
+    "cong_binh"
   ],
   "liu_yao": [
     "schemer",
@@ -362,7 +372,8 @@
   ],
   "chen_deng": [
     "schemer",
-    "spellcaster"
+    "spellcaster",
+    "cong_binh"
   ],
   "ze_rong": [
     "spellcaster",
@@ -376,7 +387,8 @@
   ],
   "qiao_mao": [
     "cavalry",
-    "vanguard"
+    "vanguard",
+    "thu_binh"
   ],
   "kong_zhou": [
     "schemer"
@@ -396,12 +408,14 @@
   ],
   "zhang_wen": [
     "schemer",
-    "vanguard"
+    "vanguard",
+    "cong_binh"
   ],
   "tan_shihuai": [
     "archer",
     "cavalry",
-    "vanguard"
+    "vanguard",
+    "vu_co"
   ],
   "helian": [
     "vanguard",
