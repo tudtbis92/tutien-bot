@@ -46,7 +46,7 @@ export {
   handleRerollSlot,
   handleRerollGo,
 } from './hero.js';
-export { handleTabPress, handleBuyPress } from './shop.js';
+export { handleShopTabPress, handleShopBuyPress } from './shop.js';
 export { handleUsePress } from './bag.js';
 export {
   handleFormationPress,

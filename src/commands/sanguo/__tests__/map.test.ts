@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ChatInputCommandInteraction } from 'discord.js';
 import { execute } from '../map.js';
+import * as mapModule from '../map.js';
 import { db } from '../../../db/client.js';
 import { fetchCommandContext } from '../../../utils/commandContext.js';
 import { getCurrentPosition } from '../../../services/sanguo/travelService.js';
@@ -234,5 +235,28 @@ describe('/sanguo map command', () => {
       (f: { name: string }) => f.name === 'sanguo:map.current_position',
     );
     expect(currentField?.value).toBe('unknown_node');
+  });
+
+  it('re-exports component handlers under the exact names the interaction router calls (CR-11-01 routing mismatch guard)', () => {
+    // The interactionCreate router dispatches sanguo component presses via
+    // client.commands.get('sanguo') = the map.ts module, calling these names.
+    // A name mismatch silently skips the branch → the interaction times out
+    // with "interaction failed" (observed live 2026-08-18 on the shop tab).
+    const handlers: Record<string, unknown> = mapModule as unknown as Record<string, unknown>;
+    expect(typeof handlers.handleShopTabPress).toBe('function');
+    expect(typeof handlers.handleShopBuyPress).toBe('function');
+    expect(typeof handlers.handleUsePress).toBe('function'); // bag
+    expect(typeof handlers.handleFormationPress).toBe('function'); // legion
+    expect(typeof handlers.handleSlotPress).toBe('function');
+    expect(typeof handlers.handleHeroPress).toBe('function');
+    expect(typeof handlers.handleSavePress).toBe('function');
+    expect(typeof handlers.handleConvertPress).toBe('function'); // hero actions
+    expect(typeof handlers.handleLevelPress).toBe('function');
+    expect(typeof handlers.handleEvolvePress).toBe('function');
+    expect(typeof handlers.handleRerollPress).toBe('function');
+    expect(typeof handlers.handleRerollSlot).toBe('function');
+    expect(typeof handlers.handleRerollGo).toBe('function');
+    expect(typeof handlers.handleBattleStart).toBe('function'); // battle
+    expect(typeof handlers.handleCaptureTierPress).toBe('function');
   });
 });

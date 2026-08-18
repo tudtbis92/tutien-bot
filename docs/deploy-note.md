@@ -1,16 +1,16 @@
 # Deploy Note — TuTien Bot
 
 > Tài liệu tham khảo cho agent/bạn chạy deploy trên production server.
-> Cập nhật: 2026-08-14 — **ĐÃ DEPLOY** toàn bộ Phase 10 (battle & capture) lên production.
-> **Production hiện chạy `origin/main` = HEAD `fc2ee69` + 2 commits local (lockfile fix `093754f`).**
+> Cập nhật: 2026-08-18 — **ĐÃ DEPLOY** toàn bộ Phase 11 (progression, chemistry & economy depth) lên production.
+> **Production hiện chạy `origin/main` = HEAD `10a12f9` (Phase 11 + UAT session).**
 
 ---
 
 ## 1. QUYẾT ĐỊNH QUAN TRỌNG NHẤT
 
-**Deploy Phase 10 ĐÃ HOÀN TẤT an toàn (2026-08-14).**
-- Migration **0019** hoàn toàn **ADDITIVE** (tạo bảng capture_attempts/user_sanguo_state, thêm cột heroes stats/rarity/tier, user_heroes hp_current/captured_zone, sanguo_battles replay record, encounter_runs.pity_count; FK + CHECK + index) — **không có DROP/TRUNCATE/DELETE** → không cần rollback DB, chỉ rollback code nếu lỗi.
-- **npm ci lần đầu deploy Phase 10 BỊ LỖI**: lockfile thiếu esbuild optional deps (`Missing @esbuild/*@0.28.2 from lock file`). Đã sửa bằng `npm install` → 512 entries optional được bổ sung vào package-lock.json (commit `093754f`), verify `rm -rf node_modules && npm ci` chạy sạch. → **Các deploy sau đừng xóa commit này.**
+**Deploy Phase 11 ĐÃ HOÀN TẤT an toàn (2026-08-18).**
+- Migrations **0020/0021/0022** hoàn toàn **ADDITIVE** (5 bảng mới: sanguo_skills/user_hero_soulgems/user_legion_slots/user_legions/soulgem_transactions; ADD COLUMN trên user_heroes/sanguo_items/encounter_runs/formations; 0022 = UNIQUE index user_legion_slots) — **không DROP/TRUNCATE/DELETE** → không cần rollback DB, chỉ rollback code nếu lỗi.
+- **Lưu ý node IDs** (CR-10-01 fix ở Phase 10): seed giờ chỉ xóa node stale, giữ ID → travel không bị lỗi NODE_NOT_FOUND nữa. Đã verified ổn định từ Phase 10.
 
 ---
 
@@ -25,7 +25,7 @@
 
 ## 3. CẤU TRÚC CƠ SỞ DỮ LIỆU (sau Phase 8 + post-gate)
 
-### Migrations: 0000 → 0019
+### Migrations: 0000 → 0022
 
 | Migration | Nội dung | Đặc điểm |
 |---|---|---|
@@ -36,6 +36,9 @@
 | 0017 | hero_relations (spouse) | ADDITIVE |
 | 0018 | map_zones/map_edges/hero_zone_rates tables; player_travel_state +travel_seconds_remaining/encounter_active, −arrive_at/−cost; encounter_runs +encounter_type/user_status_idx | ADDITIVE + DROP 2 cột trên bảng RỖNG (an toàn 2026-08-13) |
 | 0019 | capture_attempts + user_sanguo_state tables; heroes +str/agi/int/mov/lea/cha/hp/mp/rarity/tier; user_heroes +hp_current/captured_zone; sanguo_battles +encounter_id/type/seed/input/result; encounter_runs +pity_count; FK + CHECK (rarity/tier 1–5) + indexes | ADDITIVE 100% (không DROP/TRUNCATE) — deploy 2026-08-14 |
+| 0020 | sanguo_skills/user_hero_soulgems/user_legion_slots/user_legions/soulgem_transactions tables; user_heroes +tier/skill_normal_id/skill_special_id; sanguo_items +price_linh/price_event/sale_state/drop_weight; encounter_runs +level/skill ids; formations +emoji; FK + indexes | ADDITIVE 100% — deploy 2026-08-18 |
+| 0021 | sanguo_items +emoji | ADDITIVE |
+| 0022 | UNIQUE index user_legion_slots (user_id, user_hero_id) — WR-05 | ADDITIVE |
 
 ### ⚠️ Điểm cần biết về migration
 
@@ -176,16 +179,16 @@ cd /path/to/tutien-bot
 
 ---
 
-## 8. TRẠNG THÁI HIỆN TẠI (2026-08-14 — ĐÃ DEPLOY PHASE 10)
+## 8. TRẠNG THÁI HIỆN TẠI (2026-08-18 — ĐÃ DEPLOY PHASE 11)
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Code quality gates (build/test/lint/typecheck/i18n) | ✅ xanh (291 tests / 31 files) |
-| Migrations trên production | ✅ (0014–0019 đã apply, journal 19 rows) |
-| Push lên origin/main | ✅ HEAD `fc2ee69` + local `093754f` (lockfile fix) — chưa push 2 commits |
+| Code quality gates (build/test/lint/typecheck/i18n) | ✅ xanh (449 tests / 43 files) |
+| Migrations trên production | ✅ (0014–0022 đã apply, journal 22 rows) |
+| Push lên origin/main | ✅ HEAD `10a12f9` (Phase 11) |
 | Production env (CLIENT_ID) | ✅ xác nhận = 1381818375633899562 |
-| Backup production DB | ✅ `/root/backups/tutien_20260814_0136.sql` (30M) |
-| Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo subcommands: map/travel/battle/heroes/hero registered, journal 19 rows, heroes=132 (đủ stats/rarity/tier) |
-| UAT (Phase 10) | ✅ COMPLETE 2026-08-14 — 43/43 pass (8 human + 35 automated). CR-10-01 (seed node-ID wipe) + CR-10-02 (lockfile) fixes deployed. Boss mechanics redesign (3v1, random zone general t2/IV100) recorded for Phase 11+ (WINDOWS.md #5) |
+| Backup production DB | ✅ `/root/backups/tutien_20260818_0436.sql` (33M) |
+| Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo subcommands: map/travel/battle/heroes/hero/shop/bag/legion registered, journal 22 rows, skills=41/items=2 purchasable/formations emoji=3 |
+| UAT (Phase 11) | 🔄 đang testing — 3 human tests pending (shop tabs, legion 4-row, boss drop+capture) |
 
-**Kết luận: ĐÃ DEPLOY + UAT COMPLETE Phase 10.** Nhớ push các commit local (lockfile `093754f`, seed fix `d45f9fb`, UAT docs) lên origin. Lần deploy kế tiếp lặp lại gate 4.4–4.6.
+**Kết luận: ĐÃ DEPLOY Phase 11 thành công.** Còn 3 UAT tests human (1–3) chờ live-Discord, sau đó commit UAT kết quả. Lần deploy kế tiếp lặp lại gate 4.4–4.6.

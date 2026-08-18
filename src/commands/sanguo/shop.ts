@@ -180,7 +180,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
  * chosen currency tab (D-16). The tab key is validated against the two known
  * values; anything else falls back to the Linh thạch tab (never a crash).
  */
-export async function handleTabPress(interaction: ButtonInteraction): Promise<void> {
+export async function handleShopTabPress(interaction: ButtonInteraction): Promise<void> {
   await interaction.deferUpdate();
   const ctx = await resolveInteractionUser(interaction);
   if (!ctx) return;
@@ -205,7 +205,7 @@ export async function handleTabPress(interaction: ButtonInteraction): Promise<vo
  * in the customId; the pre-read only feeds the error copy (the tx re-resolves
  * authoritatively).
  */
-export async function handleBuyPress(interaction: ButtonInteraction): Promise<void> {
+export async function handleShopBuyPress(interaction: ButtonInteraction): Promise<void> {
   await interaction.deferUpdate();
   const ctx = await resolveInteractionUser(interaction);
   if (!ctx) return;
