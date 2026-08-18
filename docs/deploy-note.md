@@ -190,6 +190,6 @@ cd /path/to/tutien-bot
 | Production env (CLIENT_ID) | ✅ xác nhận = 1381818375633899562 |
 | Backup production DB | ✅ `/root/backups/tutien_20260818_0436.sql` (33M) |
 | Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo subcommands: map/travel/battle/heroes/hero/shop/bag/legion registered, journal 22 rows, skills=41/items=2 purchasable/formations emoji=3 |
-| UAT (Phase 11) | 🔄 đang testing — test 1 PASS, tests 2-3 in progress. CR-11-01 (shop handler mismatch) + CR-11-02 (legion empty menu crash) + multi-class (hero_classes) fixes deployed |
+| UAT (Phase 11) | 🔄 test 1-2 PASS (shop + legion/chemistry, CR-11-01→10 fixes + position-based chemistry redesign), test 3 pending — boss encounter rate low (0.07/zone), waiting for a natural spawn |
 
-**Kết luận: ĐÃ DEPLOY Phase 11 + multi-class thành công.** Còn UAT test 2-3 chờ live-Discord, sau đó commit UAT kết quả. Lần deploy kế tiếp lặp lại gate 4.4–4.6.
+**Kết luận: ĐÃ DEPLOY Phase 11 + position-based chemistry thành công.** UAT test 3 (boss drop+capture) pending live boss trigger. Lần deploy kế tiếp lặp lại gate 4.4–4.6.
