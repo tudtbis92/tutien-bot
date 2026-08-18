@@ -175,8 +175,10 @@ describe('convertDuplicate — dupe → per-hero hồn ngọc (D-03/D-04/D-12)',
     await expect(promise).resolves.toEqual({ yield: 10, boosterUsed: true }); // 5 × 2
     // quantity == 1 → the booster row is DELETED at 0 (quantity_positive check).
     expect(tx.delete).toHaveBeenCalledWith(userSanguoItems);
-    // The pool was UPDATED (+= yield), not inserted.
-    expect(tx.update).toHaveBeenCalledWith(userHeroSoulgems);
+    // WR-04: the pool write is the ADDITIVE INSERT ... ON CONFLICT DO UPDATE
+    // upsert (not a standalone UPDATE) — a concurrent writer's yield is ADDED,
+    // never overwritten by an absolute value.
+    expect(tx.insert).toHaveBeenCalledWith(userHeroSoulgems);
   });
 
   it('C3: booster with quantity 3 decrements to 2 (never cloned, never zeroed early)', async () => {
@@ -249,6 +251,40 @@ describe('convertDuplicate — dupe → per-hero hồn ngọc (D-03/D-04/D-12)',
     await expect(promise).rejects.toThrow('IN_FORMATION');
     expect(tx.delete).not.toHaveBeenCalled();
     expect(tx.insert).not.toHaveBeenCalled();
+  });
+
+  it('WR-04: the pool write is a single ADDITIVE upsert (INSERT ... ON CONFLICT DO UPDATE) — never a pre-read + standalone absolute update that would lose a concurrent yield', async () => {
+    // Regression pin for the lost-update fix: the OLD code pre-read the pool
+    // FOR UPDATE and, on the first-conversion missing-row path, wrote the
+    // ABSOLUTE `balanceAfter` — two concurrent first-conversions of the same
+    // species both read 0 and one yield was lost (net 1 instead of 2). The fix
+    // is ONE atomic additive upsert, so we assert: (a) the pool is written via
+    // INSERT (not a standalone UPDATE), and (b) the insert values seed the
+    // raw yield.
+    const { promise, tx, insertValues } = runInTx(
+      [
+        [COPY_T0],                        // 1. copy lock
+        [COPY_T0, COPY_T1],               // 2. total collection count (2 > 1)
+        [STATE],                          // 3. state
+        [],                               // 4. legion slots — NOT placed
+        [BOOSTER_ITEM],                   // 5. booster catalog
+        [],                               // 6. owned booster — NOT owned
+        [{ amount: 0 }],                  // 7. RETURNING: pre-existing row at 0
+      ],
+      () => convertDuplicate(USER_ID, 11),
+    );
+    await expect(promise).resolves.toEqual({ yield: 1, boosterUsed: false });
+
+    // The pool is written via INSERT (the additive upsert), never a standalone
+    // UPDATE — a standalone absolute `set({ amount: balanceAfter })` UPDATE was
+    // the lost-update bug (WR-04).
+    expect(tx.insert).toHaveBeenCalledWith(userHeroSoulgems);
+    expect(tx.update).not.toHaveBeenCalledWith(userHeroSoulgems);
+
+    // The seed insert value carries the yield as the raw amount; on conflict
+    // the DB adds (`amount + yield`) rather than overwrites.
+    const values = insertValues.mock.calls.find((c: any) => c[0]?.heroId === 5)?.[0];
+    expect(values).toMatchObject({ userId: USER_ID, heroId: 5, amount: 1 });
   });
 });
 

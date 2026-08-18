@@ -232,30 +232,25 @@ export async function convertDuplicate(
     // 7. DELETE the consumed copy.
     await tx.delete(userHeroes).where(eq(userHeroes.id, copy.id));
 
-    // 8. Upsert the per-hero pool (amount += yield). The pool row is locked
-    //    FOR UPDATE; a missing row falls back to the upsert (IN-06 first-row
-    //    race — onConflictDoUpdate makes the loser add instead of crash).
-    const [pool] = await tx
-      .select()
-      .from(userHeroSoulgems)
-      .where(and(eq(userHeroSoulgems.userId, userId), eq(userHeroSoulgems.heroId, copy.heroId)))
-      .for('update');
-    const current = pool?.amount ?? 0;
-    const balanceAfter = current + yieldAmount;
-    if (pool) {
-      await tx
-        .update(userHeroSoulgems)
-        .set({ amount: balanceAfter, updatedAt: new Date() })
-        .where(eq(userHeroSoulgems.id, pool.id));
-    } else {
-      await tx
-        .insert(userHeroSoulgems)
-        .values({ userId, heroId: copy.heroId, amount: balanceAfter })
-        .onConflictDoUpdate({
-          target: [userHeroSoulgems.userId, userHeroSoulgems.heroId],
-          set: { amount: balanceAfter, updatedAt: new Date() },
-        });
-    }
+    // 8. Additive upsert of the per-hero pool (amount += yield) — a single
+    //    atomic `INSERT ... ON CONFLICT DO UPDATE SET amount = amount + yield`.
+    //    WR-04: the OLD path pre-read the pool FOR UPDATE and wrote the ABSOLUTE
+    //    `amount: balanceAfter`; on a missing (first-conversion) row FOR UPDATE
+    //    locked nothing, so two concurrent first-conversions of the same species
+    //    both read current=0, both computed balanceAfter=yield and the absolute
+    //    write lost one yield (net 1 instead of 2). The additive expression
+    //    serializes on the (userId, heroId) unique index — every concurrent
+    //    conversion's yield is preserved — and RETURNING returns the TRUE
+    //    post-update amount for the ledger (no stale pre-read "current").
+    const [upserted] = await tx
+      .insert(userHeroSoulgems)
+      .values({ userId, heroId: copy.heroId, amount: yieldAmount })
+      .onConflictDoUpdate({
+        target: [userHeroSoulgems.userId, userHeroSoulgems.heroId],
+        set: { amount: sql`${userHeroSoulgems.amount} + ${yieldAmount}`, updatedAt: new Date() },
+      })
+      .returning({ amount: userHeroSoulgems.amount });
+    const balanceAfter = upserted?.amount ?? yieldAmount;
 
     // 9. Audit ledger row (repudiation — Phase 12 TQC-19 + /profile future).
     await tx.insert(soulgemTransactions).values({
