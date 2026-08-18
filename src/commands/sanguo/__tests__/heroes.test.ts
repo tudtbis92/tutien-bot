@@ -14,6 +14,9 @@ import {
   execute,
   handleStarterPick,
   handleZoneFilterSelect,
+  handleFactionFilterSelect,
+  handleIvFilterSelect,
+  queryOwnedHeroes,
 } from '../heroes.js';
 import { STARTER_SET_1, STARTER_SET_2 } from '../../../ui/components/sanguoStarterButtons.js';
 import { ZONE_MENU_ID } from '../../../ui/components/sanguoHeroesZoneMenu.js';
@@ -279,6 +282,11 @@ const ZONES = [
   { code: 'du_chau', nameVi: 'Dự Châu', nameEn: 'Yuzhou', nameZh: null, sortOrder: 2 },
 ];
 
+const FACTIONS = [
+  { id: 1, code: 'han', nameVi: 'Nhà Hán', nameEn: 'Han', nameZh: null, sortOrder: 1 },
+  { id: 2, code: 'nguy', nameVi: 'Nhà Ngụy', nameEn: 'Wei', nameZh: null, sortOrder: 2 },
+];
+
 const CONTEXT = {
   locale: 'vi',
   t,
@@ -296,6 +304,8 @@ describe('/sanguo heroes command (10-07)', () => {
   it('empty collection renders the starter picker (exactly 3 set-1 buttons in ONE row) and increments starterViews', async () => {
     vi.mocked(fetchCommandContext).mockResolvedValue(CONTEXT as never);
     mockDbSelects([
+      { steps: ['orderBy'], result: ZONES }, // fetchZones
+      { steps: ['orderBy'], result: FACTIONS }, // fetchFactions
       { steps: ['innerJoin', 'where', 'orderBy'], result: [] }, // owned — empty
       { steps: ['where'], result: [CAO_CAO_CATALOG, LIU_BEI_CATALOG, SUN_JIAN_CATALOG] }, // pool heroes
     ]);
@@ -338,6 +348,8 @@ describe('/sanguo heroes command (10-07)', () => {
   it('4th empty invocation (starterViews >= 3) rotates the pool to set 2 — no 4th option ever exists in set 1', async () => {
     vi.mocked(fetchCommandContext).mockResolvedValue(CONTEXT as never);
     mockDbSelects([
+      { steps: ['orderBy'], result: ZONES }, // fetchZones
+      { steps: ['orderBy'], result: FACTIONS }, // fetchFactions
       { steps: ['innerJoin', 'where', 'orderBy'], result: [] }, // owned — empty
       { steps: ['where'], result: [TRUONG_GIAC_CATALOG, YUAN_SHAO_CATALOG, DONG_TRAC_CATALOG] }, // pool heroes
     ]);
@@ -420,9 +432,10 @@ describe('/sanguo heroes command (10-07)', () => {
   it('non-empty collection renders one line per owned hero with ★ stars + IV grade + ONE active badge; NO raw IV / rarity', async () => {
     vi.mocked(fetchCommandContext).mockResolvedValue(CONTEXT as never);
     mockDbSelects([
+      { steps: ['orderBy'], result: ZONES }, // fetchZones
+      { steps: ['orderBy'], result: FACTIONS }, // fetchFactions
       { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO, OWNED_LIU_BEI] },
       { steps: ['where', 'limit'], result: [STATE_ROW] }, // activeHeroId = 11 (cao_cao)
-      { steps: ['orderBy'], result: ZONES }, // zone filter menu options
     ]);
 
     const interaction = mockChatInputInteraction();
@@ -442,20 +455,21 @@ describe('/sanguo heroes command (10-07)', () => {
     // D-12 never-render: no raw IV number, no rarity number in the embed data
     expect(JSON.stringify(embed)).not.toMatch(/"iv_str|ivStr/);
     expect(JSON.stringify(embed)).not.toMatch(/rarity/);
-    // The zone filter select is in its OWN ActionRow (CR-09-01) — one row, select only.
-    expect(reply.components).toHaveLength(1);
-    const menuRow = reply.components?.[0] as ActionRowBuilder<any>;
-    expect(menuRow.components).toHaveLength(1);
-    const menu = (menuRow.components[0] as any).toJSON() as { custom_id: string };
-    expect(menu.custom_id).toBe(ZONE_MENU_ID);
+    // CR-09-01: the 3 filter selects each live in their OWN ActionRow (SC5).
+    expect(reply.components).toHaveLength(3);
+    const ids = reply.components.map((row: any) =>
+      ((row.components[0] as any).toJSON() as { custom_id: string }).custom_id,
+    );
+    expect(ids).toEqual([ZONE_MENU_ID, 'sanguo:heroes:faction', 'sanguo:heroes:iv']);
   });
 
   // ── Test 4: zone filter select (D-15) + filtered re-render
   it('selecting a zone re-renders the collection with only that zone + the filtered count', async () => {
     mockDbSelects([
       { steps: ['where', 'limit'], result: [USER_ROW] }, // resolveInteractionUser
-      { steps: ['orderBy'], result: ZONES }, // zone validation + menu options
-      { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO] }, // filtered du_chau? no — trung_nguyen
+      { steps: ['orderBy'], result: ZONES }, // reference set
+      { steps: ['orderBy'], result: FACTIONS }, // reference set
+      { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO] }, // filtered trung_nguyen
       { steps: ['where', 'limit'], result: [STATE_ROW] },
     ]);
 
@@ -470,15 +484,18 @@ describe('/sanguo heroes command (10-07)', () => {
     expect(field?.name).toBe('Trung Nguyên');
     expect(field?.value ?? '').toContain('Tào Tháo');
     expect(field?.value ?? '').not.toContain('Lưu Bị');
-    // menu row stays (same zone menu) — own ActionRow
-    const row = reply.components?.[0] as ActionRowBuilder<any>;
-    expect((row.components[0] as any).toJSON().custom_id).toBe(ZONE_MENU_ID);
+    // CR-09-01: 3 filter rows (zone/faction/iv) each in their own ActionRow.
+    const ids = reply.components.map((row: any) =>
+      ((row.components[0] as any).toJSON() as { custom_id: string }).custom_id,
+    );
+    expect(ids).toEqual([ZONE_MENU_ID, 'sanguo:heroes:faction', 'sanguo:heroes:iv']);
   });
 
   it('an unknown zone value falls back to the FULL collection — never a crash (T-10-07-05)', async () => {
     mockDbSelects([
       { steps: ['where', 'limit'], result: [USER_ROW] },
       { steps: ['orderBy'], result: ZONES },
+      { steps: ['orderBy'], result: FACTIONS },
       { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO, OWNED_LIU_BEI] }, // full collection
       { steps: ['where', 'limit'], result: [STATE_ROW] },
     ]);
@@ -494,9 +511,10 @@ describe('/sanguo heroes command (10-07)', () => {
   it('a collection with 1 hero renders the same line format with count 1', async () => {
     vi.mocked(fetchCommandContext).mockResolvedValue(CONTEXT as never);
     mockDbSelects([
+      { steps: ['orderBy'], result: ZONES },
+      { steps: ['orderBy'], result: FACTIONS },
       { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO] },
       { steps: ['where', 'limit'], result: [STATE_ROW] },
-      { steps: ['orderBy'], result: ZONES },
     ]);
 
     const interaction = mockChatInputInteraction();
@@ -520,11 +538,125 @@ describe('/sanguo heroes command (10-07)', () => {
     );
     const gateIdx = source.indexOf('if (!interaction.isChatInputCommand()) return;');
     expect(gateIdx).toBeGreaterThan(-1);
-    expect(source.indexOf('ZONE_MENU_ID')).toBeGreaterThan(-1);
-    expect(source.indexOf('STARTER_PICK_PREFIX')).toBeGreaterThan(-1);
-    expect(source.indexOf('COMPANION_PREFIX')).toBeGreaterThan(-1);
-    expect(source.indexOf('ZONE_MENU_ID')).toBeLessThan(gateIdx);
-    expect(source.indexOf('STARTER_PICK_PREFIX')).toBeLessThan(gateIdx);
-    expect(source.indexOf('COMPANION_PREFIX')).toBeLessThan(gateIdx);
+    for (const id of ['ZONE_MENU_ID', 'STARTER_PICK_PREFIX', 'COMPANION_PREFIX', 'HEROES_FACTION_MENU_ID', 'HEROES_IV_MENU_ID']) {
+      expect(source.indexOf(id)).toBeGreaterThan(-1);
+      expect(source.indexOf(id)).toBeLessThan(gateIdx);
+    }
+  });
+});
+
+describe('/sanguo heroes SC5 filters (11-07)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // ── Test 1: queryOwnedHeroes applies zone + faction + IV filters AND-combined
+  it('queryOwnedHeroes combines faction + IV filters (AND) — only the iv-matching rows of the SQL-filtered set', async () => {
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [{ id: 1 }] }, // faction 'han' → id 1
+      {
+        steps: ['innerJoin', 'where', 'orderBy'],
+        result: [OWNED_CAO_CAO, OWNED_LIU_BEI], // SQL returned the faction/zone-matched set
+      },
+    ]);
+
+    // ivGrade 'iv_grade.gold' → OWNED_CAO_CAO (31×6=186 → gold); LIU_BEI (10×6=60 → gray) dropped.
+    const rows = await queryOwnedHeroes(USER_ROW.id, { factionCode: 'han', ivGrade: 'iv_grade.gold' });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe(OWNED_CAO_CAO.id);
+    expect(rows[0]?.heroHeroId).toBe('cao_cao');
+  });
+
+  it('queryOwnedHeroes — each filter alone: faction alone returns its set; iv alone filters by grade', async () => {
+    // Faction alone: the SQL mock returns the faction's rows (no iv JS filter).
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [{ id: 1 }] },
+      { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO] },
+    ]);
+    const byFaction = await queryOwnedHeroes(USER_ROW.id, { factionCode: 'han' });
+    expect(byFaction).toHaveLength(1);
+
+    // IV alone (no faction resolve): the returned set is JS-filtered by grade.
+    vi.clearAllMocks();
+    mockDbSelects([
+      {
+        steps: ['innerJoin', 'where', 'orderBy'],
+        result: [OWNED_CAO_CAO, OWNED_LIU_BEI],
+      },
+    ]);
+    const byIv = await queryOwnedHeroes(USER_ROW.id, { ivGrade: 'iv_grade.gold' });
+    expect(byIv).toHaveLength(1);
+    expect(byIv[0]?.heroHeroId).toBe('cao_cao');
+  });
+
+  it('queryOwnedHeroes — an invalid faction code returns EMPTY (T-11-07-05), never a crash', async () => {
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [] }, // no faction 'bogus' → empty
+    ]);
+    const rows = await queryOwnedHeroes(USER_ROW.id, { factionCode: 'bogus' });
+    expect(rows).toHaveLength(0);
+  });
+
+  it('queryOwnedHeroes with no filters returns the whole collection', async () => {
+    mockDbSelects([
+      { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO, OWNED_LIU_BEI] },
+    ]);
+    const rows = await queryOwnedHeroes(USER_ROW.id);
+    expect(rows).toHaveLength(2);
+  });
+
+  // ── Test 2: handleIvFilterSelect routes the chosen GRADE KEY (never raw IV)
+  it('handleIvFilterSelect renders the collection filtered to the selected iv_grade KEY (D-12: grade only)', async () => {
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] }, // resolveInteractionUser
+      { steps: ['orderBy'], result: ZONES },
+      { steps: ['orderBy'], result: FACTIONS },
+      { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO] }, // gold only
+      { steps: ['where', 'limit'], result: [STATE_ROW] },
+    ]);
+
+    const interaction = mockSelectInteraction('sanguo:heroes:iv', ['iv_grade.gold']);
+    await handleIvFilterSelect(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.title).toBe('📜 Bộ sưu tập (1)');
+    // The field name reflects the active IV grade label (filter applied).
+    expect(reply.embeds?.[0]?.data?.fields?.[0]?.name).toContain('Hoàng Kim');
+  });
+
+  it("handleIvFilterSelect with 'filter_all' (Tất cả) clears the IV filter → the full collection renders", async () => {
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['orderBy'], result: ZONES },
+      { steps: ['orderBy'], result: FACTIONS },
+      { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO, OWNED_LIU_BEI] }, // full
+      { steps: ['where', 'limit'], result: [STATE_ROW] },
+    ]);
+
+    const interaction = mockSelectInteraction('sanguo:heroes:iv', ['filter_all']);
+    await handleIvFilterSelect(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.title).toBe('📜 Bộ sưu tập (2)');
+    // No IV label in the field name (filter cleared).
+    expect(reply.embeds?.[0]?.data?.fields?.[0]?.name).not.toContain('Hoàng Kim');
+  });
+
+  it('handleFactionFilterSelect routes the chosen faction code (SC5)', async () => {
+    mockDbSelects([
+      { steps: ['where', 'limit'], result: [USER_ROW] },
+      { steps: ['orderBy'], result: ZONES },
+      { steps: ['orderBy'], result: FACTIONS },
+      { steps: ['where', 'limit'], result: [{ id: 1 }] }, // faction lookup: 'han' → id 1
+      { steps: ['innerJoin', 'where', 'orderBy'], result: [OWNED_CAO_CAO] }, // han only
+      { steps: ['where', 'limit'], result: [STATE_ROW] },
+    ]);
+
+    const interaction = mockSelectInteraction('sanguo:heroes:faction', ['han']);
+    await handleFactionFilterSelect(interaction);
+
+    const reply = (interaction.editReply as any).mock.calls[0]?.[0] ?? {};
+    expect(reply.embeds?.[0]?.data?.title).toBe('📜 Bộ sưu tập (1)');
+    expect(reply.embeds?.[0]?.data?.fields?.[0]?.name).toContain('Nhà Hán');
   });
 });
