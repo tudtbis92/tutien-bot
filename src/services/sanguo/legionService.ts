@@ -263,11 +263,13 @@ export async function assignHero(
       .limit(1);
     if (!heroClassRow) throw new Error('legion.class_mismatch');
 
-    // 4b. CR-11-06: ONE COPY OF A HERO PER LEGION — even when the player owns
-    //     multiple copies of the same hero, only ONE may be placed in the
-    //     legion. Check whether ANY OTHER copy of this catalog hero already
-    //     occupies a slot (exclude the pressed copy itself, which is handled
-    //     by the move/no-op logic below).
+    // 4b. ONE COPY OF A HERO PER LEGION (CR-11-06): even when the player owns
+    //     multiple copies of the same hero, only ONE may sit in the legion.
+    //     CR-11-07 (user refinement): instead of BLOCKING, REPLACE — if another
+    //     copy of the same catalog hero already occupies a slot, remove it so
+    //     the newly picked copy takes over (the slot frees up; the player's
+    //     pressed copy is what stays). The pressed copy's own slot move/no-op
+    //     is handled below (step 5).
     const [sameHeroOtherSlot] = await tx
       .select({ id: userLegionSlots.id })
       .from(userLegionSlots)
@@ -280,7 +282,11 @@ export async function assignHero(
         ),
       )
       .limit(1);
-    if (sameHeroOtherSlot) throw new Error('legion.hero_in_legion');
+    if (sameHeroOtherSlot) {
+      await tx
+        .delete(userLegionSlots)
+        .where(eq(userLegionSlots.id, sameHeroOtherSlot.id));
+    }
 
     // 5. One-copy-one-slot (D-17): the copy cannot be in TWO slots. If it is
     //    already in ANOTHER slot, MOVE it (clear the old slot, assign here) —

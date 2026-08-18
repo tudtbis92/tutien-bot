@@ -240,10 +240,11 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
     expect(insert).toHaveBeenCalled(); // then re-inserted at the new slot
   });
 
-  it('CR-11-06: a DIFFERENT copy of the same hero already in the legion → legion.hero_in_legion, no write', async () => {
+  it('CR-11-06/07: a DIFFERENT copy of the same hero already in the legion → REPLACED (old copy slot removed, pressed copy inserted)', async () => {
     // The player owns TWO Cao Cao copies; copy 11 is pressed, but ANOTHER copy
-    // (e.g. id 21) already sits in the legion → only ONE copy per hero allowed.
-    const { promise, insert } = runInTx(
+    // (id 21) already sits in the legion. The old copy is evicted (deleted)
+    // and the pressed copy takes over — one copy per hero, flexible swap.
+    const { promise, insert, del } = runInTx(
       [
         [{ id: 1 }], // formation owned
         [USER_HERO_CAO_CAO], // user_heroes FOR UPDATE (owned — copy 11, heroId 5)
@@ -253,8 +254,9 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
       ],
       () => assignHero(USER_ID, 1, 1, 11),
     );
-    await expect(promise).rejects.toThrow('legion.hero_in_legion');
-    expect(insert).not.toHaveBeenCalled(); // no write before the throw
+    await expect(promise).resolves.toEqual({ slotOrder: 1, userHeroId: 11 });
+    expect(del).toHaveBeenCalled(); // the other copy's slot row is evicted
+    expect(insert).toHaveBeenCalled(); // pressed copy is inserted at the new slot
   });
 
   it('assigning to a non-owned formation → NOT_OWNED', async () => {

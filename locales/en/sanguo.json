@@ -292,7 +292,6 @@
     "incomplete": "Incomplete formation: **{{n}}/3** mains. You can still fight, but it will be very hard.",
     "not_assembled": "You have not assembled a formation. Use /sanguo legion before fighting a boss.",
     "class_mismatch": "{{hero}} does not fit slot {{slot}} (needs class {{class}}).",
-    "hero_in_legion": "Each hero can only be placed once in a formation. Choose a different hero.",
     "error": "There was an error assembling the formation. Please try again.",
     "copy_suffix": " • #{{n}}",
     "hero_option_multi": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}} • #{{copy}}"

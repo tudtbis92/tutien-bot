@@ -653,13 +653,6 @@ export async function handleHeroPress(interaction: StringSelectMenuInteraction):
       });
       return;
     }
-    if (err instanceof Error && err.message === 'legion.hero_in_legion') {
-      await interaction.editReply({
-        embeds: [buildErrorEmbed(t('sanguo:legion.hero_in_legion'), shardId)],
-        components: [],
-      });
-      return;
-    }
     if (err instanceof Error && err.message === 'NOT_OWNED') {
       await interaction.editReply({
         embeds: [buildErrorEmbed(t('sanguo:legion.error'), shardId)],

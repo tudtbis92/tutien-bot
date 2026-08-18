@@ -292,7 +292,6 @@
     "incomplete": "阵型不完整：**{{n}}/3**主力。仍可战斗，但会非常困难。",
     "not_assembled": "你尚未组建阵型。请在挑战首领前使用 /sanguo legion。",
     "class_mismatch": "{{hero}}不适合位置{{slot}}（需要{{class}}职业）。",
-    "hero_in_legion": "每个武将只能在阵型中出现一次，请选择其他武将。",
     "error": "组建阵型时出错，请重试。",
     "copy_suffix": " • #{{n}}",
     "hero_option_multi": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}} • #{{copy}}"
