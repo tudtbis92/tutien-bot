@@ -20,6 +20,9 @@
     },
     "bag": {
       "description": "查看并使用背包中的物品"
+    },
+    "legion": {
+      "description": "组建阵型：3主力 + 9支援"
     }
   },
   "map": {
@@ -117,7 +120,10 @@
     "zone_filter": "按区域筛选",
     "error": "加载收藏时出错，请重试。",
     "success": "🎉 你已选择**{{name}}**作为初始英雄！",
-    "empty_filtered": "该区域暂无英雄。"
+    "empty_filtered": "该区域暂无英雄。",
+    "faction_filter": "按势力筛选",
+    "iv_filter": "按资质等级筛选",
+    "filter_all": "全部"
   },
   "hero": {
     "title": "🗡️ {{name}}",
@@ -256,6 +262,46 @@
     "healed": "✅ {{hero_emoji}} {{hero}} 恢复了 **{{hp}}** 生命。",
     "no_target": "没有可以使用的英雄。",
     "error": "加载背包时出错。请重试。"
+  },
+  "legion": {
+    "title": "⚔️ 阵型 ({{formation}})",
+    "field_mains": "⚔️ 主力",
+    "field_supports": "🛡️ 支援",
+    "main_slot": "主力{{n}}",
+    "support_slot": "支援{{n}}",
+    "slot_empty": "空位",
+    "formation_select": "选择阵型",
+    "slot_pick": "选择位置",
+    "hero_pick": "为{{slot}}选择武将",
+    "hero_option": "{{name}} • ★{{stars}} • {{grade}}",
+    "save_button": "保存阵型",
+    "saved": "✅ 阵型{{formation}}已保存。",
+    "chemistry_line": "{{hero}}：**{{tier}}** • {{n}}条羁绊",
+    "link_line": "{{heroA}} ↔ {{heroB}}（{{type}}）",
+    "tier_s": "S级",
+    "tier_a": "A级",
+    "tier_b": "B级",
+    "tier_c": "C级",
+    "tier_d": "D级",
+    "tier_none": "暂无羁绊",
+    "link_type_family": "家族",
+    "link_type_spouse": "夫妻",
+    "link_type_faction": "势力",
+    "link_type_role": "角色",
+    "incomplete": "阵型不完整：**{{n}}/3**主力。仍可战斗，但会非常困难。",
+    "not_assembled": "你尚未组建阵型。请在挑战首领前使用 /sanguo legion。",
+    "class_mismatch": "{{hero}}不适合位置{{slot}}（需要{{class}}职业）。",
+    "error": "组建阵型时出错，请重试。"
+  },
+  "classes": {
+    "vanguard": "先锋",
+    "cavalry": "骑兵",
+    "archer": "弓手",
+    "spellcaster": "法师",
+    "schemer": "谋士",
+    "vu_co": "舞姬",
+    "thu_binh": "守卫",
+    "cong_binh": "工兵"
   },
   "iv_grade": {
     "gold": "金色",

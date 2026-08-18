@@ -20,6 +20,9 @@
     },
     "bag": {
       "description": "Xem và dùng vật phẩm trong túi"
+    },
+    "legion": {
+      "description": "Lập trận hình 3 chủ lực + 9 hỗ trợ"
     }
   },
   "map": {
@@ -117,7 +120,10 @@
     "zone_filter": "Lọc theo vùng",
     "error": "Có lỗi khi tải bộ sưu tập. Hãy thử lại.",
     "success": "🎉 Bạn đã chọn **{{name}}** làm hero khởi đầu!",
-    "empty_filtered": "Không có hero nào trong vùng này."
+    "empty_filtered": "Không có hero nào trong vùng này.",
+    "faction_filter": "Lọc theo thế lực",
+    "iv_filter": "Lọc theo hạng chỉ số",
+    "filter_all": "Tất cả"
   },
   "hero": {
     "title": "🗡️ {{name}}",
@@ -256,6 +262,46 @@
     "healed": "✅ {{hero_emoji}} {{hero}} hồi phục **{{hp}}** HP.",
     "no_target": "Không có hero nào để dùng vật phẩm này.",
     "error": "Có lỗi khi tải túi đồ. Hãy thử lại."
+  },
+  "legion": {
+    "title": "⚔️ Trận hình ({{formation}})",
+    "field_mains": "⚔️ Chủ lực",
+    "field_supports": "🛡️ Hỗ trợ",
+    "main_slot": "Chủ lực {{n}}",
+    "support_slot": "Hỗ trợ {{n}}",
+    "slot_empty": "Trống",
+    "formation_select": "Chọn trận hình",
+    "slot_pick": "Chọn vị trí",
+    "hero_pick": "Chọn tướng cho {{slot}}",
+    "hero_option": "{{name}} • ★{{stars}} • {{grade}}",
+    "save_button": "Lưu trận hình",
+    "saved": "✅ Đã lưu trận hình {{formation}}.",
+    "chemistry_line": "{{hero}}: **{{tier}}** • {{n}} liên kết",
+    "link_line": "{{heroA}} ↔ {{heroB}} ({{type}})",
+    "tier_s": "Bậc S",
+    "tier_a": "Bậc A",
+    "tier_b": "Bậc B",
+    "tier_c": "Bậc C",
+    "tier_d": "Bậc D",
+    "tier_none": "Chưa có liên kết",
+    "link_type_family": "gia tộc",
+    "link_type_spouse": "phu thê",
+    "link_type_faction": "thế lực",
+    "link_type_role": "vai trò",
+    "incomplete": "Trận hình chưa đủ: **{{n}}/3** chủ lực. Vẫn có thể chiến đấu nhưng sẽ rất khó.",
+    "not_assembled": "Bạn chưa lập trận hình. Hãy dùng /sanguo legion trước khi đánh boss.",
+    "class_mismatch": "{{hero}} không hợp vị trí {{slot}} (cần lớp {{class}}).",
+    "error": "Có lỗi khi lập trận hình. Hãy thử lại."
+  },
+  "classes": {
+    "vanguard": "Tiên phong",
+    "cavalry": "Kỵ binh",
+    "archer": "Cung thủ",
+    "spellcaster": "Pháp sư",
+    "schemer": "Mưu sĩ",
+    "vu_co": "Vũ cơ",
+    "thu_binh": "Thủ binh",
+    "cong_binh": "Công binh"
   },
   "iv_grade": {
     "gold": "Hoàng Kim",

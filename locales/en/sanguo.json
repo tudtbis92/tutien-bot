@@ -20,6 +20,9 @@
     },
     "bag": {
       "description": "View and use items in your bag"
+    },
+    "legion": {
+      "description": "Assemble a formation: 3 mains + 9 supports"
     }
   },
   "map": {
@@ -117,7 +120,10 @@
     "zone_filter": "Filter by zone",
     "error": "There was an error loading your collection. Please try again.",
     "success": "🎉 You chose **{{name}}** as your starter hero!",
-    "empty_filtered": "No heroes in this zone."
+    "empty_filtered": "No heroes in this zone.",
+    "faction_filter": "Filter by faction",
+    "iv_filter": "Filter by IV grade",
+    "filter_all": "All"
   },
   "hero": {
     "title": "🗡️ {{name}}",
@@ -256,6 +262,46 @@
     "healed": "✅ {{hero_emoji}} {{hero}} recovered **{{hp}}** HP.",
     "no_target": "There is no hero to use this item on.",
     "error": "There was an error loading the bag. Please try again."
+  },
+  "legion": {
+    "title": "⚔️ Formation ({{formation}})",
+    "field_mains": "⚔️ Mains",
+    "field_supports": "🛡️ Supports",
+    "main_slot": "Main {{n}}",
+    "support_slot": "Support {{n}}",
+    "slot_empty": "Empty",
+    "formation_select": "Choose a formation",
+    "slot_pick": "Choose a slot",
+    "hero_pick": "Choose a hero for {{slot}}",
+    "hero_option": "{{name}} • ★{{stars}} • {{grade}}",
+    "save_button": "Save formation",
+    "saved": "✅ Formation {{formation}} saved.",
+    "chemistry_line": "{{hero}}: **{{tier}}** • {{n}} links",
+    "link_line": "{{heroA}} ↔ {{heroB}} ({{type}})",
+    "tier_s": "Tier S",
+    "tier_a": "Tier A",
+    "tier_b": "Tier B",
+    "tier_c": "Tier C",
+    "tier_d": "Tier D",
+    "tier_none": "No links yet",
+    "link_type_family": "clan",
+    "link_type_spouse": "spouse",
+    "link_type_faction": "faction",
+    "link_type_role": "role",
+    "incomplete": "Incomplete formation: **{{n}}/3** mains. You can still fight, but it will be very hard.",
+    "not_assembled": "You have not assembled a formation. Use /sanguo legion before fighting a boss.",
+    "class_mismatch": "{{hero}} does not fit slot {{slot}} (needs class {{class}}).",
+    "error": "There was an error assembling the formation. Please try again."
+  },
+  "classes": {
+    "vanguard": "Vanguard",
+    "cavalry": "Cavalry",
+    "archer": "Archer",
+    "spellcaster": "Spellcaster",
+    "schemer": "Schemer",
+    "vu_co": "Dancer",
+    "thu_binh": "Defender",
+    "cong_binh": "Engineer"
   },
   "iv_grade": {
     "gold": "Gold",

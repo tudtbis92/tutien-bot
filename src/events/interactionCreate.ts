@@ -38,6 +38,10 @@ import { REROLL_GO_PREFIX } from '../ui/components/sanguoRerollButton.js';
 import { SHOP_TAB_PREFIX } from '../ui/components/sanguoShopTabs.js';
 import { SHOP_BUY_PREFIX } from '../ui/components/sanguoShopBuyButtons.js';
 import { BAG_USE_PREFIX } from '../ui/components/sanguoBagUseButtons.js';
+import { LEGION_FORMATION_MENU_ID } from '../ui/components/sanguoLegionFormationMenu.js';
+import { LEGION_SLOT_MENU_ID } from '../ui/components/sanguoLegionSlotMenu.js';
+import { LEGION_HERO_PREFIX } from '../ui/components/sanguoLegionHeroMenu.js';
+import { LEGION_SAVE_ID } from '../ui/components/sanguoLegionSaveButton.js';
 
 export const name = Events.InteractionCreate;
 
@@ -67,6 +71,10 @@ interface SanguoComponentHandlers {
   handleShopTabPress?: (interaction: ButtonInteraction) => Promise<void>;
   handleShopBuyPress?: (interaction: ButtonInteraction) => Promise<void>;
   handleBagUsePress?: (interaction: ButtonInteraction) => Promise<void>;
+  handleFormationPress?: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  handleSlotPress?: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  handleHeroPress?: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  handleSavePress?: (interaction: ButtonInteraction) => Promise<void>;
 }
 
 export async function execute(interaction: Interaction): Promise<void> {
@@ -145,6 +153,55 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo reroll slot select', err);
+      }
+      return;
+    }
+
+    // sanguo:legion:formation — D-22 formation select (static customId; the
+    // CHOSEN formation rides interaction.values[0], validated server-side).
+    if (customId === LEGION_FORMATION_MENU_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleFormationPress === 'function') {
+          await cmd.handleFormationPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo legion formation select', err);
+      }
+      return;
+    }
+
+    // sanguo:legion:slot — D-22 slot pick (static customId; the CHOSEN slot
+    // 0-11 rides interaction.values[0], bounds-validated server-side).
+    if (customId === LEGION_SLOT_MENU_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleSlotPress === 'function') {
+          await cmd.handleSlotPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo legion slot pick', err);
+      }
+      return;
+    }
+
+    // sanguo:legion:hero:{slotIndex} — D-22 hero pick (customId prefix carries
+    // the slot; the CHOSEN userHeroId rides interaction.values[0], re-validated
+    // server-side for ownership + class-match V4/D-20).
+    if (customId.startsWith(LEGION_HERO_PREFIX)) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleHeroPress === 'function') {
+          await cmd.handleHeroPress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo legion hero pick', err);
       }
       return;
     }
@@ -376,6 +433,22 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo bag use button', err);
+      }
+      return;
+    }
+
+    // sanguo:legion:save — D-22 save button (exact-id; carries no payload —
+    // the formation + slots resolve server-side from the persisted legion).
+    if (customId === LEGION_SAVE_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleSavePress === 'function') {
+          await cmd.handleSavePress(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo legion save button', err);
       }
       return;
     }
