@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { formations, formationSlots, userFormations } from '../../db/schema/formations.js';
 import { userLegions, userLegionSlots } from '../../db/schema/userLegions.js';
@@ -262,6 +262,25 @@ export async function assignHero(
       )
       .limit(1);
     if (!heroClassRow) throw new Error('legion.class_mismatch');
+
+    // 4b. CR-11-06: ONE COPY OF A HERO PER LEGION — even when the player owns
+    //     multiple copies of the same hero, only ONE may be placed in the
+    //     legion. Check whether ANY OTHER copy of this catalog hero already
+    //     occupies a slot (exclude the pressed copy itself, which is handled
+    //     by the move/no-op logic below).
+    const [sameHeroOtherSlot] = await tx
+      .select({ id: userLegionSlots.id })
+      .from(userLegionSlots)
+      .innerJoin(userHeroes, eq(userHeroes.id, userLegionSlots.userHeroId))
+      .where(
+        and(
+          eq(userLegionSlots.userId, userId),
+          eq(userHeroes.heroId, copy.heroId),
+          ne(userLegionSlots.userHeroId, userHeroId),
+        ),
+      )
+      .limit(1);
+    if (sameHeroOtherSlot) throw new Error('legion.hero_in_legion');
 
     // 5. One-copy-one-slot (D-17): the copy cannot be in TWO slots. If it is
     //    already in ANOTHER slot, MOVE it (clear the old slot, assign here) —

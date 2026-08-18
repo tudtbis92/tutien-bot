@@ -292,6 +292,7 @@
     "incomplete": "Trận hình chưa đủ: **{{n}}/3** chủ lực. Vẫn có thể chiến đấu nhưng sẽ rất khó.",
     "not_assembled": "Bạn chưa lập trận hình. Hãy dùng /sanguo legion trước khi đánh boss.",
     "class_mismatch": "{{hero}} không hợp vị trí {{slot}} (cần lớp {{class}}).",
+    "hero_in_legion": "Mỗi tướng chỉ được bố trí 1 lần trong trận hình. Hãy chọn tướng khác.",
     "error": "Có lỗi khi lập trận hình. Hãy thử lại.",
     "copy_suffix": " • #{{n}}",
     "hero_option_multi": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}} • #{{copy}}"

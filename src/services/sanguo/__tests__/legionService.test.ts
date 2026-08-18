@@ -183,6 +183,7 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
         [USER_HERO_CAO_CAO], // 2. user_heroes FOR UPDATE (owned — userId 42)
         [FORMATION_SLOT_VANGUARD_0], // 3. formation_slots class='vanguard'
         [{ id: 1, heroId: 5, class: 'vanguard' }], // 4. hero_classes membership (multi-class, Phase 11)
+        [], // 4b. CR-11-06: no OTHER copy of this hero in the legion
         [], // 5. dup check: no existing assignment
       ],
       () => assignHero(USER_ID, 1, 0, 11),
@@ -229,6 +230,7 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
         [USER_HERO_CAO_CAO], // user_heroes FOR UPDATE (owned)
         [FORMATION_SLOT_VANGUARD_1], // slot 1 class='vanguard'
         [{ id: 1, heroId: 5, class: 'vanguard' }], // hero_classes membership
+        [], // 4b. CR-11-06: no OTHER copy of this hero in the legion
         [SLOT_ROW], // dup check: already assigned to slot 0 (the OLD slot)
       ],
       () => assignHero(USER_ID, 1, 1, 11),
@@ -236,6 +238,23 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
     await expect(promise).resolves.toEqual({ slotOrder: 1, userHeroId: 11 });
     expect(del).toHaveBeenCalled(); // the old slot row is cleared (the move)
     expect(insert).toHaveBeenCalled(); // then re-inserted at the new slot
+  });
+
+  it('CR-11-06: a DIFFERENT copy of the same hero already in the legion → legion.hero_in_legion, no write', async () => {
+    // The player owns TWO Cao Cao copies; copy 11 is pressed, but ANOTHER copy
+    // (e.g. id 21) already sits in the legion → only ONE copy per hero allowed.
+    const { promise, insert } = runInTx(
+      [
+        [{ id: 1 }], // formation owned
+        [USER_HERO_CAO_CAO], // user_heroes FOR UPDATE (owned — copy 11, heroId 5)
+        [FORMATION_SLOT_VANGUARD_1], // slot 1 class='vanguard'
+        [{ id: 1, heroId: 5, class: 'vanguard' }], // hero_classes membership
+        [{ id: 99 }], // 4b. CR-11-06: ANOTHER copy (heroId 5) is in the legion
+      ],
+      () => assignHero(USER_ID, 1, 1, 11),
+    );
+    await expect(promise).rejects.toThrow('legion.hero_in_legion');
+    expect(insert).not.toHaveBeenCalled(); // no write before the throw
   });
 
   it('assigning to a non-owned formation → NOT_OWNED', async () => {
@@ -259,6 +278,7 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
       [USER_HERO_CAO_CAO], // 2. user_heroes FOR UPDATE (owned — userId 42)
       [FORMATION_SLOT_VANGUARD_1], // 3. formation_slots slot 1 class='vanguard'
       [{ id: 1, heroId: 5, class: 'vanguard' }], // 4. hero_classes membership
+      [], // 4b. CR-11-06: no OTHER copy of this hero in the legion
       [], // 5. dup pre-check: none — both concurrent presses passed it
     ]);
     mocks.tx.insert = vi.fn().mockReturnValue({
