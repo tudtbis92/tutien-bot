@@ -22,10 +22,10 @@ files_reviewed_list:
   - src/db/schema/userHeroSoulgems.ts
 findings:
   critical: 0
-  warning: 5
-  info: 1
-  total: 6
-status: issues_found
+  warning: 0
+  info: 0
+  total: 0
+status: clean
 ---
 
 # Phase 11: Code Review Report
@@ -33,7 +33,15 @@ status: issues_found
 **Reviewed:** 2026-08-18T10:32:13Z
 **Depth:** standard
 **Files Reviewed:** 16
-**Status:** issues_found
+**Status:** clean
+
+> **Fix status (2026-08-18):** All 5 WARNING findings (WR-01..WR-05) are
+> resolved and re-verified (typecheck + targeted tests + full suite + lint +
+> check-i18n green). IN-01 was resolved by documenting the single-slot
+> last-wins `attack_up` behavior in the battle engine header (no behavior
+> change). See `11-REVIEW-FIX.md`. The one outstanding operational item is
+> applying migration `0022_motionless_blade.sql` (`npm run migrate`) to
+> materialize the new `user_legion_slots_unique_user_hero` unique index.
 
 ## Summary
 
