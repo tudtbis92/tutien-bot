@@ -79,3 +79,32 @@ blocked: 0
 
 - Boss encounter (test 3) pending live trigger — low natural rate (zone boss_rate
   default 0.07). Will complete UAT test 3 when a boss spawns in play.
+
+## Design Decisions Made During Live UAT (2026-08-18)
+
+| ID | Decision | Detail |
+|----|----------|--------|
+| DD-11-01 | **Multi-class heroes** | Hero có thể thuộc NHIỀU class (bảng `hero_classes` join, migration 0023) — phản hồi việc Tào Tháo bị khóa vào Mưu Sĩ. `heroes.class` giữ làm PRIMARY class (battle attack type + skill pool); `hero_classes` = tập class hero lắp được vào legion. Legion strict-match theo membership. Content **Tavily-researched** (Wikipedia/TW3K wiki/Baidu/r-threekingdoms), provenance ghi trong seed header. |
+| DD-11-02 | **Position-based chemistry (EA FC style)** | Chemistry = 2 tầng: (1) gate vị trí — hero chỉ chemistry với hero ở slot CÓ LIÊN KẾT trong bảng `formation_chemistry_links` (migration 0024, mỗi trận hình topology riêng, mỗi slot 1-3 liên kết); (2) quan hệ — pair points family/spouse 3 > faction 2 > role 1 (giữ nguyên). Hero cộng điểm từ TẤT CẢ link active. |
+| DD-11-03 | **Chemistry level 0-3 + additive buff** | Threshold 1-2→L1, 3-4→L2, 5+→L3 (cap 3). Buff CỘNG DỒN additive trên 3 stat chính STR/AGI/INT: L1 +2, L2 +7, L3 +17 (user-signed). Thay hệ cũ multiplicative S/A/B/C/D. |
+| DD-11-04 | **Fix chemistry display-only bug** | `bakeMain` trước đây chỉ áp TIER_MULTIPLIERS, KHÔNG áp chemistry buff → chemistry chỉ hiển thị, không ảnh hưởng battle. Giờ `buildLegionInput` tính level từ link graph + assignment, bakeMain áp buff thực. |
+| DD-11-05 | **vu_co/thu_binh/cong_binh để TRỐNG** | Research Tavily xác nhận không hero nào trong roster 132 phù hợp 3 class hybrid này (game-archtype tự định nghĩa, `max(STR,INT)`). Revert gán heuristic (CR-11-10). Chấp nhận slot chuyên biệt không lấp được, chờ bổ sung ở hero version sau. |
+| DD-11-06 | **Boss encounter redesign (Phase 11+)** | Boss hiện là template zone (hero_id NULL, `boss:zone`, rarity-5 ~2× hero). User vision: boss = **random tướng vùng** (như encounter) với **t2 + IV 100**, battle **3v1** (3 chủ lực + 9 hỗ trợ). Ghi WINDOWS.md #5, Phase 11+ content/schema work. |
+| DD-11-07 | **Boss capture defer** | `BOSS_CAPTURE_UNAVAILABLE` là known stub (no heroes row cho boss) — defer, superseded bởi DD-11-06 (boss trở thành tướng thật → capture được). |
+| DD-11-08 | **booster_x2 rename** | 'Linh Đan Tăng Tu Vi' (sai chủ đề Tam Quốc, gây confuse) → **'Song Hồn Ngọc Đan'** / 'Double Soul-Jade Pill' — vì item này nhân đôi hồn ngọc khi convert dupe. |
+| DD-11-09 | **Test data** | Cấp user 3 legion test Ngụy (Đôn/Uyên/Lỗ chủ lực + support fills). Xác nhận công thức: Đôn+Uyên cùng family xiahou → L3, Lỗ (family null, chỉ faction) → L2. |
+| DD-11-10 | **Female heroes hiện tại** | Chỉ 3 nữ tướng trong roster (Hà Thái Hậu/Đổng Thái Hậu/Vương Mỹ nhân), tất cả class `schemer`, role `royal`, faction `han`. Không nữ tướng chiến đấu trong roster Hán mạt hiện tại. |
+
+## CR Fixes Log (Live UAT, 2026-08-18)
+
+| ID | Bug | Root cause | Fix |
+|----|-----|-----------|-----|
+| CR-11-01 | Shop tab/buy button "interaction failed" | Router gọi `handleShopTabPress`/`handleShopBuyPress` nhưng shop.ts/map.ts export `handleTabPress`/`handleBuyPress` — name mismatch → branch skipped, interaction không được trả lời | Rename handler đúng tên router; thêm regression guard (map.test.ts) assert các handler names |
+| CR-11-02 | `/sanguo legion` crash (50035 BASE_TYPE_BAD_LENGTH) | Hero-pick menu render 0 options khi slot class không có hero sở hữu | Inject 1 disabled placeholder option (hero_none) — disabled 0-option vẫn fail validation |
+| CR-11-03 | Chọn tướng → NOT_OWNED | Menu trả CATALOG id (heroes.id) nhưng assignHero cần COPY id (userHeroes.id) | Thêm `copyId` riêng (userHeroes.id) cho menu value + assignment map; chemistry giữ catalog id |
+| CR-11-04 | Re-pick tướng đã đặt → lỗi | `HERO_ALREADY_ASSIGNED` throw khi copy đã ở slot khác | Re-pick MOVES (xóa slot cũ + gán slot mới); same-slot = no-op |
+| CR-11-05 | Nhiều copy không phân biệt được | Label chỉ name+stars+grade — 2 copy cùng IV render giống hệt | Thêm Lv{level} + copy ordinal #n (hero_option_multi); 4 label variants |
+| CR-11-06/07 | 1 hero nhiều copy chiếm nhiều slot | Chỉ chặn 1-copy-1-slot, không chặn 1-hero-nhiều-copy | Thêm guard: 1 hero chỉ 1 copy trong legion; different-copy pick REPLACES (evict) thay vì block (user refinement) |
+| CR-11-08 | Menu hiện stars + không biết copy đã đặt đâu | Label có ★stars; copy đã assign không hiện vị trí | Bỏ stars (D-12); copy đã assign hiện slot (Chủ lực/Hỗ trợ + số) |
+| CR-11-09 | Chemistry position-based redesign | (DD-11-02/03/04) — bảng formation_chemistry_links + level 0-3 + additive buff + fix display-only | Xem Design Decisions |
+| CR-11-10 | vu_co/thu_binh/cong_binh 0 hero | Gán heuristic 14 hero — research Tavily xác nhận không phù hợp | REVERT (DD-11-05) — 3 class trống, chờ hero version sau |

@@ -25,7 +25,7 @@
 
 ## 3. CẤU TRÚC CƠ SỞ DỮ LIỆU (sau Phase 8 + post-gate)
 
-### Migrations: 0000 → 0023
+### Migrations: 0000 → 0024
 
 | Migration | Nội dung | Đặc điểm |
 |---|---|---|
@@ -40,6 +40,7 @@
 | 0021 | sanguo_items +emoji | ADDITIVE |
 | 0022 | UNIQUE index user_legion_slots (user_id, user_hero_id) — WR-05 | ADDITIVE |
 | 0023 | hero_classes join table (hero_id FK, hero_class, unique hero_id+class) — Phase 11 multi-class | ADDITIVE — deploy 2026-08-18 |
+| 0024 | formation_chemistry_links (formation_id FK, slot_a, slot_b, unique pair) — position-based chemistry link graphs | ADDITIVE — deploy 2026-08-18 |
 
 ### ⚠️ Điểm cần biết về migration
 
@@ -190,6 +191,6 @@ cd /path/to/tutien-bot
 | Production env (CLIENT_ID) | ✅ xác nhận = 1381818375633899562 |
 | Backup production DB | ✅ `/root/backups/tutien_20260818_0436.sql` (33M) |
 | Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo subcommands: map/travel/battle/heroes/hero/shop/bag/legion registered, journal 22 rows, skills=41/items=2 purchasable/formations emoji=3 |
-| UAT (Phase 11) | 🔄 test 1-2 PASS (shop + legion/chemistry, CR-11-01→10 fixes + position-based chemistry redesign), test 3 pending — boss encounter rate low (0.07/zone), waiting for a natural spawn |
+| UAT (Phase 11) | 🔄 test 1-2 PASS (shop + legion/chemistry), test 3 pending (boss rate low 0.07/zone). DD-11-01→10 design decisions + CR-11-01→10 fixes (multi-class, position-based chemistry, class-empty, boss redesign) — ghi đầy đủ trong 11-UAT.md |
 
 **Kết luận: ĐÃ DEPLOY Phase 11 + position-based chemistry thành công.** UAT test 3 (boss drop+capture) pending live boss trigger. Lần deploy kế tiếp lặp lại gate 4.4–4.6.
