@@ -40,20 +40,6 @@ const THIEN_CO_FORMATION = {
 const FORMATION_SLOT_VANGUARD_0 = { id: 1, formationId: 1, slotOrder: 0, class: 'vanguard', position: 'main', quantity: 1 };
 const FORMATION_SLOT_VANGUARD_1 = { id: 2, formationId: 1, slotOrder: 1, class: 'vanguard', position: 'main', quantity: 1 };
 
-const CAO_CAO = {
-  id: 5,
-  heroId: 'cao_cao',
-  nameVi: 'Tào Tháo',
-  nameEn: 'Cao Cao',
-  nameZh: null,
-  factionId: 1,
-  role: 'ruler',
-  class: 'vanguard', // vanguard → matches slot 0 (vanguard)
-  familyId: 1,
-  tier: 3,
-  hp: 120,
-};
-
 const USER_HERO_CAO_CAO = {
   id: 11,
   userId: USER_ID,
@@ -111,7 +97,7 @@ function makeTx(readResults: unknown[][]) {
   const insert = vi.fn((_t: any) => ({ values: insertValues }));
   const delWhere = vi.fn(() => Promise.resolve(undefined));
   const del = vi.fn((_t: any) => ({ where: delWhere }));
-  return { tx: { select, update, insert, delete: del }, chain, update, insert, insertValues, select };
+  return { tx: { select, update, insert, delete: del }, chain, update, insert, insertValues, select, del };
 }
 
 function runInTx<T>(readResults: unknown[][], fn: (tx: any) => Promise<T>) {
@@ -234,19 +220,22 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
     expect(insert).not.toHaveBeenCalled();
   });
 
-  it('T4: the same copy in another slot of the legion → HERO_ALREADY_ASSIGNED (one copy = one slot)', async () => {
-    const { promise, insert } = runInTx(
+  it('T4: the same copy already in ANOTHER slot → the hero is MOVED to the new slot (delete old + insert new, one copy = one slot)', async () => {
+    // CR-11-04 (2026-08-18): picking an already-placed hero for a different
+    // position auto-repositions it instead of erroring.
+    const { promise, insert, del } = runInTx(
       [
         [{ id: 1 }], // formation owned
         [USER_HERO_CAO_CAO], // user_heroes FOR UPDATE (owned)
         [FORMATION_SLOT_VANGUARD_1], // slot 1 class='vanguard'
-        [CAO_CAO], // catalog class='vanguard' (matches)
-        [SLOT_ROW], // dup check: already assigned to slot 0
+        [{ id: 1, heroId: 5, class: 'vanguard' }], // hero_classes membership
+        [SLOT_ROW], // dup check: already assigned to slot 0 (the OLD slot)
       ],
       () => assignHero(USER_ID, 1, 1, 11),
     );
-    await expect(promise).rejects.toThrow('HERO_ALREADY_ASSIGNED');
-    expect(insert).not.toHaveBeenCalled();
+    await expect(promise).resolves.toEqual({ slotOrder: 1, userHeroId: 11 });
+    expect(del).toHaveBeenCalled(); // the old slot row is cleared (the move)
+    expect(insert).toHaveBeenCalled(); // then re-inserted at the new slot
   });
 
   it('assigning to a non-owned formation → NOT_OWNED', async () => {
@@ -269,7 +258,7 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
       [{ id: 1 }], // 1. user_formations owned → formationId 1
       [USER_HERO_CAO_CAO], // 2. user_heroes FOR UPDATE (owned — userId 42)
       [FORMATION_SLOT_VANGUARD_1], // 3. formation_slots slot 1 class='vanguard'
-      [CAO_CAO], // 4. heroes catalog class='vanguard' (matches)
+      [{ id: 1, heroId: 5, class: 'vanguard' }], // 4. hero_classes membership
       [], // 5. dup pre-check: none — both concurrent presses passed it
     ]);
     mocks.tx.insert = vi.fn().mockReturnValue({

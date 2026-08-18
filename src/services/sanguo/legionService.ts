@@ -263,15 +263,21 @@ export async function assignHero(
       .limit(1);
     if (!heroClassRow) throw new Error('legion.class_mismatch');
 
-    // 5. One-copy-one-slot (D-17): the copy cannot be in another slot of this
-    //    legion. This pre-SELECT is the fast path for the common (serialized)
-    //    case.
+    // 5. One-copy-one-slot (D-17): the copy cannot be in TWO slots. If it is
+    //    already in ANOTHER slot, MOVE it (clear the old slot, assign here) —
+    //    the user-requested UX (2026-08-18): picking an already-placed hero for
+    //    a different position auto-repositions it. Same-slot re-pick is a no-op.
     const [dup] = await tx
-      .select({ id: userLegionSlots.id })
+      .select({ id: userLegionSlots.id, slotOrder: userLegionSlots.slotOrder })
       .from(userLegionSlots)
       .where(and(eq(userLegionSlots.userId, userId), eq(userLegionSlots.userHeroId, userHeroId)))
       .limit(1);
-    if (dup) throw new Error('HERO_ALREADY_ASSIGNED');
+    if (dup) {
+      if (dup.slotOrder === slotOrder) return { slotOrder, userHeroId }; // same slot — no-op
+      await tx
+        .delete(userLegionSlots)
+        .where(and(eq(userLegionSlots.userId, userId), eq(userLegionSlots.userHeroId, userHeroId)));
+    }
 
     // 6. Upsert the slot row — unique(userId, slotOrder). WR-05: the DB unique
     //    index on (userId, userHeroId) (migration 0022) is the STRUCTURAL
