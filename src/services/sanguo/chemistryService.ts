@@ -1,96 +1,105 @@
-import { CHEMISTRY_POINTS, CHEMISTRY_TIERS } from '../../constants/sanguoChemistry.js';
-
 /**
- * Sanguo chemistry service — the PURE link -> points -> tier -> buff
- * computation (D-19, EA FC-grounded). Pure module (D-06 discipline, analog:
- * encounterService.ts): NO db/redis/discord imports, NO Math.random, NO Date —
- * chemistry is a deterministic function of the legion slots + hero reference
- * data (faction/family/role/spouse), never a roll.
+ * Sanguo chemistry service — the PURE link -> points -> level -> buff
+ * computation (CR-11-09, 2026-08-18 — the POSITION-BASED redesign).
  *
- * PRECOMPUTE CONTRACT (Pitfall 6, T-11-05-03): chemistry is computed BEFORE
- * the battle engine — the buffed mains are PRE-BAKED into their CombatantInput
- * so the sanguo_battles.input snapshot stays replay-faithful. runLegionBattle
- * never recomputes chemistry (structure, not convention).
+ * The chemistry mechanic is now TWO-STAGE (EA FC-style, user-specified):
+ *   1. POSITION GATE: two heroes only form a chemistry pair if they sit in two
+ *      slots connected by the formation's chemistry link edge
+ *      (formation_chemistry_links). A hero aggregates chemistry from ALL its
+ *      linked neighbors that are filled (each slot links to 1-3 others).
+ *   2. RELATIONSHIP (unchanged from Phase 11): the PAIR's chemistry points =
+ *      the strongest single relationship — family/spouse 3, faction 2, role 1.
  *
- * HIDDEN MECHANICS (D-12): chemistry points and buff % NEVER render. Only the
- * tier LABEL and the link COUNT render (11-07 UI-SPEC).
+ * A hero's total points = the SUM over its active linked neighbors. Points map
+ * to a chemistry LEVEL (bậc) 0-3, capped at 3:
+ *   0 points -> level 0 (+0)
+ *   1-2      -> level 1 (+2 stat)
+ *   3-4      -> level 2 (+7 stat, cumulative)
+ *   5+       -> level 3 (+17 stat, cumulative +2+5+10)
+ * The buff is ADDITIVE on the three PRIMARY combat stats (STR/AGI/INT) only
+ * (user decision, 2026-08-18).
  *
- * FIRST-MATCH scoring (PLAN-FIX P1-3, locked — 2026-08-14): a single support
- * contributes the strongest SINGLE link it shares with the main — spouse/family
- * 3 > faction 2 > role 1, else 0 — never a sum of multiple link types (a
- * same-family AND same-faction support scores 3, not 5). The S/A/B/C/D
- * thresholds in sanguoChemistry.ts are calibrated on this (max per main = 9
- * supports x 3 = 27).
- *
- * STRICT CLASS-MATCH (D-20): enforced at assembly time (legionService, 11-07)
- * — a wrong-class hero contributes zero chemistry and zero support effect;
- * this module is class-agnostic (it receives the already-validated slots).
+ * Pure module (D-06 discipline): NO db/redis/discord imports, NO Math.random,
+ * NO Date — chemistry is a deterministic function of the formation link graph +
+ * the assigned heroes' relationship data. HIDDEN MECHANICS (D-12): points and
+ * buff % NEVER render — only the LEVEL label + the active link COUNT render.
  */
+import { CHEMISTRY_POINTS, CHEMISTRY_LEVEL_THRESHOLDS, CHEMISTRY_STAT_BUFF } from '../../constants/sanguoChemistry.js';
 
-/** A hero's chemistry-relevant identity — the columns mainChemistryPoints
- *  reads from the hero's reference data (heroes.faction_id / role /
- *  family_id). */
+/** A hero's chemistry-relevant identity (heroes.faction_id / role / family_id). */
 export interface ChemistryLinkInput {
   factionId: number;
   role: string;
   familyId: number | null;
 }
 
-/** A support hero's link identity + the spouse flag (hero_relations
- *  type='spouse', tier-1 equal to family). */
-export interface SupportLinkInput extends ChemistryLinkInput {
-  /** True when this support is the main's DIRECT spouse — the undirected
-   *  spouse bond from hero_relations (tier-1, equal to family bloodline). */
-  spouseOfMain: boolean;
+/** The neighbor's link identity + the spouse flag (hero_relations spouse). */
+export interface NeighborLinkInput extends ChemistryLinkInput {
+  /** True when this neighbor is the hero's DIRECT spouse (tier-1, family-equal). */
+  spouseOfHero: boolean;
 }
 
-/** D-19: per-main chemistry points = the sum over the (<= 9) supports, each
- *  contributing the strongest SINGLE link it shares with the main — FIRST-MATCH
- *  (PLAN-FIX P1-3): spouseOfMain OR exact family_id -> family (3) and STOP;
- *  else exact faction_id -> faction (2) and STOP; else exact role -> role (1)
- *  and STOP; else 0. A single support NEVER contributes a sum of multiple link
- *  types. Main<->support pairs ONLY (D-17 — supports never link to each
- *  other). The point values come from CHEMISTRY_POINTS (single source, never
- *  literal 3/2/1). */
-export function mainChemistryPoints(main: ChemistryLinkInput, supports: SupportLinkInput[]): number {
-  return supports.reduce((sum, support) => {
-    if (support.spouseOfMain || (main.familyId !== null && support.familyId === main.familyId)) {
-      return sum + CHEMISTRY_POINTS.family;
-    }
-    if (support.factionId === main.factionId) {
-      return sum + CHEMISTRY_POINTS.faction;
-    }
-    if (support.role === main.role) {
-      return sum + CHEMISTRY_POINTS.role;
-    }
-    return sum;
-  }, 0);
-}
+/** CR-11-09: the points thresholds for each chemistry level (bậc) 0-3
+ *  (re-export of the single-source constant). */
+export const CHEMISTRY_LEVELS = CHEMISTRY_LEVEL_THRESHOLDS;
 
-/** D-19: map a main's point sum to its chemistry tier via CHEMISTRY_TIERS
- *  (walking the strictly-descending min thresholds — S first, 0 last).
- *  Bonus-only floor: 0 points -> { label: null, buff: 0 } (EA FC 0-chemistry,
- *  no penalty). The tier LABEL renders (11-07); points/buff never (D-12). */
-export function chemistryTier(points: number): { label: string | null; buff: number } {
-  for (const tier of CHEMISTRY_TIERS) {
-    if (points >= tier.min) return { label: tier.label, buff: tier.buff };
+/** CR-11-09: the CUMULATIVE additive stat buff per level (re-export). */
+export const CHEMISTRY_STAT_BUFF_TABLE = CHEMISTRY_STAT_BUFF;
+
+/**
+ * Per-PAIR chemistry points between a hero and ONE linked neighbor — the
+ * strongest SINGLE relationship (FIRST-MATCH, PLAN-FIX P1-3): spouseOfHero OR
+ * exact family_id -> family (3) and STOP; else exact faction_id -> faction (2)
+ * and STOP; else exact role -> role (1) and STOP; else 0. A single pair NEVER
+ * contributes a sum of multiple link types. Values from CHEMISTRY_POINTS.
+ */
+export function pairChemistryPoints(hero: ChemistryLinkInput, neighbor: NeighborLinkInput): number {
+  if (
+    neighbor.spouseOfHero ||
+    (hero.familyId !== null && neighbor.familyId === hero.familyId)
+  ) {
+    return CHEMISTRY_POINTS.family;
   }
-  return { label: null, buff: 0 }; // unreachable — the min-0 row is last
+  if (neighbor.factionId === hero.factionId) {
+    return CHEMISTRY_POINTS.faction;
+  }
+  if (neighbor.role === hero.role) {
+    return CHEMISTRY_POINTS.role;
+  }
+  return 0;
 }
 
-/** D-19: apply the multiplicative chemistry buff to a main's FINAL combatStat
- *  (base + IV + levelGain) — chemistry scales with level (RESEARCH Pattern 2).
- *  Math.round keeps combat stats integers. Pre-baked into the mains' input
- *  BEFORE runLegionBattle (Pitfall 6). */
-export function applyChemistryBuff(stat: number, buff: number): number {
-  return Math.round(stat * (1 + buff));
+/**
+ * Map a hero's TOTAL chemistry points (summed over its active linked
+ * neighbors) to its chemistry LEVEL 0-3 (capped — max 3 bậc regardless of how
+ * many points accumulate, CR-11-09).
+ */
+export function chemistryLevel(points: number): 0 | 1 | 2 | 3 {
+  for (const row of CHEMISTRY_LEVELS) {
+    if (points >= row.min) return row.level;
+  }
+  return 0;
+}
+
+/**
+ * CR-11-09: apply the ADDITIVE chemistry stat buff to one of the three primary
+ * combat stats (STR/AGI/INT). buff = CHEMISTRY_STAT_BUFF[level] (0/2/7/17).
+ * The additive value rides on the FINAL combatStat (base×tier + IV + levelGain).
+ */
+export function applyChemistryBuff(stat: number, level: 0 | 1 | 2 | 3): number {
+  return stat + CHEMISTRY_STAT_BUFF[level];
+}
+
+/** Back-compat alias (Phase 11 tests used tier → buff). Keep the old
+ *  multiplicative contract name mapped to the new additive one so balance-pass
+ *  tests only touch the constant table. Deprecated — new callers use
+ *  CHEMISTRY_STAT_BUFF directly. */
+export function chemistryBuffForLevel(level: 0 | 1 | 2 | 3): number {
+  return CHEMISTRY_STAT_BUFF[level];
 }
 
 /** D-18: LEA-driven support-effect trigger chance — clamp(0.15 x (1 + (lea-10)
- *  x 0.02), 0.05, 0.35). Phase 8 stat definition: LEA raises friendly-buff
- *  rate. The battleEngine's runLegionBattle support rolls use this value
- *  (11-05 Task 1 keeps a private copy so the engine stays self-contained;
- *  this export is the canonical source for assembly/UI consumers, 11-06/11-07). */
+ *  x 0.02), 0.05, 0.35). Unchanged (Phase 8 stat definition). */
 export function supportTriggerChance(lea: number): number {
   return Math.min(0.35, Math.max(0.05, 0.15 * (1 + (lea - 10) * 0.02)));
 }

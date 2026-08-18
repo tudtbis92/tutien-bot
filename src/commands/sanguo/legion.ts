@@ -15,13 +15,14 @@ import { heroClasses } from '../../db/schema/heroClasses.js';
 import { heroRelations } from '../../db/schema/heroRelations.js';
 import { userHeroes } from '../../db/schema/userHeroes.js';
 import { formationSlots } from '../../db/schema/formations.js';
+import { formationChemistryLinks } from '../../db/schema/formationChemistryLinks.js';
 import type { SupportedLocale } from '../../i18n/index.js';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { resolveComponentUser as resolveInteractionUser } from '../../utils/componentContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
 import { buildSanguoLegionEmbed, type SanguoLegionEmbedData } from '../../ui/embeds/buildSanguoLegionEmbed.js';
 import { heroEmoji } from '../../assets/sanguoEmojis.js';
-import { mainChemistryPoints, chemistryTier } from '../../services/sanguo/chemistryService.js';
+import { pairChemistryPoints, chemistryLevel } from '../../services/sanguo/chemistryService.js';
 import {
   listOwnedFormations,
   getActiveLegion,
@@ -160,53 +161,70 @@ const CHEM_COLUMNS = {
   level: userHeroes.level,
 } as const;
 
-/** Resolve the tier label key + the link-count for one main vs its supports. */
+/**
+ * CR-11-09: compute a hero's chemistry from the formation's link graph + the
+ * current assignment. For the hero at :slotOrder, sum pairChemistryPoints over
+ * every LINKED slot that is filled (position gate) — each linked neighbor
+ * contributes its strongest single relationship (family/spouse 3, faction 2,
+ * role 1). Total points → chemistry level 0-3 (capped) + active link count.
+ */
+function chemistryForSlot(
+  slotOrder: number,
+  hero: ChemHeroRow,
+  linkEdges: [number, number][],
+  assignment: AssignmentMap,
+  spousePairs: Set<string>,
+): { points: number; level: 0 | 1 | 2 | 3; activeCount: number } {
+  const neighbors: ChemHeroRow[] = [];
+  for (const [a, b] of linkEdges) {
+    const other = a === slotOrder ? b : b === slotOrder ? a : null;
+    if (other === null) continue;
+    const neighbor = assignment.get(other);
+    if (neighbor) neighbors.push(neighbor);
+  }
+  let points = 0;
+  for (const n of neighbors) {
+    points += pairChemistryPoints(
+      { factionId: hero.factionId, role: hero.role, familyId: hero.familyId },
+      {
+        factionId: n.factionId,
+        role: n.role,
+        familyId: n.familyId,
+        spouseOfHero: spousePairs.has(sortPair(hero.id, n.id)),
+      },
+    );
+  }
+  return { points, level: chemistryLevel(points), activeCount: neighbors.length };
+}
+
+/** Resolve the level label key + the active link-count for one hero. */
 function chemistryLineFor(
-  main: ChemHeroRow,
-  supports: ChemHeroRow[],
+  slotOrder: number,
+  hero: ChemHeroRow,
+  linkEdges: [number, number][],
+  assignment: AssignmentMap,
   spousePairs: Set<string>,
   t: TFunction,
   locale: SupportedLocale,
-): { line: string; linkCount: number } {
-  const supportInputs = supports.map((s) => ({
-    factionId: s.factionId,
-    role: s.role,
-    familyId: s.familyId,
-    spouseOfMain: spousePairs.has(sortPair(main.id, s.id)),
-  }));
-  const points = mainChemistryPoints(
-    { factionId: main.factionId, role: main.role, familyId: main.familyId },
-    supportInputs,
-  );
-  const tier = chemistryTier(points);
-  const linkCount = supportInputs.filter((s) => isLinked(main, s.factionId, s.role, s.familyId, s.spouseOfMain)).length;
-  const tierLabel = tier.label ? t(`sanguo:legion.tier_${tier.label.toLowerCase()}`) : t('sanguo:legion.tier_none');
+): { line: string; level: 0 | 1 | 2 | 3; activeCount: number } {
+  const { level, activeCount } = chemistryForSlot(slotOrder, hero, linkEdges, assignment, spousePairs);
+  const levelLabel =
+    level > 0
+      ? t(`sanguo:legion.chem_level_${level}`)
+      : t('sanguo:legion.chem_none');
   return {
     line: t('sanguo:legion.chemistry_line', {
-      hero: pickName(main, locale),
-      tier: tierLabel,
-      n: linkCount,
+      hero: pickName(hero, locale),
+      level: levelLabel,
+      n: activeCount,
     }),
-    linkCount,
+    level,
+    activeCount,
   };
 }
 
 function sortPair(a: number, b: number): string {
   return a < b ? `${a}:${b}` : `${b}:${a}`;
-}
-
-function isLinked(
-  main: ChemHeroRow,
-  factionId: number,
-  role: string,
-  familyId: number | null,
-  spouseOfMain: boolean,
-): boolean {
-  if (spouseOfMain) return true;
-  if (main.familyId !== null && familyId === main.familyId) return true;
-  if (factionId === main.factionId) return true;
-  if (role === main.role) return true;
-  return false;
 }
 
 /** The per-slot assignment state for the render. */
@@ -359,6 +377,13 @@ async function renderLegion(
     .where(eq(formationSlots.formationId, currentFormationId))
     .orderBy(asc(formationSlots.slotOrder));
 
+  // 3b. CR-11-09: the formation's chemistry link graph (slot_a, slot_b pairs).
+  const chemLinkRows = await db
+    .select()
+    .from(formationChemistryLinks)
+    .where(eq(formationChemistryLinks.formationId, currentFormationId));
+  const linkEdges: [number, number][] = chemLinkRows.map((r) => [r.slotA, r.slotB]);
+
   // 4. The current assignment per slot (from the active legion).
   const assigned = await fetchAssignedHeroes(userId);
   const assignedById = new Map(assigned.map((h) => [h.copyId, h])); // CR-11-03: key on copy id
@@ -388,6 +413,7 @@ async function renderLegion(
     assignment,
     spousePairs,
     locale,
+    linkEdges,
   );
   const filledMains = slotDefs
     .filter((s) => s.slotOrder < MAIN_SLOT_COUNT && assignment.get(s.slotOrder))
@@ -423,13 +449,14 @@ function firstEmptySlot(assignment: AssignmentMap, slotDefs: { slotOrder: number
   return ordered[0] ?? 0;
 }
 
-/** Build the mains + supports field VALUES (D-12: tier labels + counts only). */
+/** Build the mains + supports field VALUES (D-12: level labels + active counts only). */
 function buildSlotFieldValues(
   t: TFunction,
   slotDefs: { slotOrder: number; class: string }[],
   assignment: AssignmentMap,
   spousePairs: Set<string>,
   locale: SupportedLocale,
+  linkEdges: [number, number][],
 ): { mainValue: string; supportValue: string } {
   const mains = slotDefs.filter((s) => s.slotOrder < MAIN_SLOT_COUNT).sort((a, b) => a.slotOrder - b.slotOrder);
   const supports = slotDefs.filter((s) => s.slotOrder >= MAIN_SLOT_COUNT).sort((a, b) => a.slotOrder - b.slotOrder);
@@ -443,10 +470,7 @@ function buildSlotFieldValues(
       mainLines.push(`${slotLabel}: ${t('sanguo:legion.slot_empty')}`);
       continue;
     }
-    const supportList = supports
-      .map((s) => assignment.get(s.slotOrder))
-      .filter((h): h is ChemHeroRow => h != null);
-    const chem = chemistryLineFor(hero, supportList, spousePairs, t, locale);
+    const chem = chemistryLineFor(def.slotOrder, hero, linkEdges, assignment, spousePairs, t, locale);
     const heroLine = `${slotLabel}: ${safeHeroEmoji(hero.heroId) ?? ''}${pickName(hero, locale)}`;
     mainLines.push(heroLine);
     mainLines.push(`  ${chem.line}`);
@@ -461,7 +485,9 @@ function buildSlotFieldValues(
       supportLines.push(`${slotLabel}: ${t('sanguo:legion.slot_empty')}`);
       continue;
     }
+    const chem = chemistryLineFor(def.slotOrder, hero, linkEdges, assignment, spousePairs, t, locale);
     supportLines.push(`${slotLabel}: ${safeHeroEmoji(hero.heroId) ?? ''}${pickName(hero, locale)}`);
+    supportLines.push(`  ${chem.line}`);
   }
 
   return { mainValue: mainLines.join('\n'), supportValue: supportLines.join('\n') };

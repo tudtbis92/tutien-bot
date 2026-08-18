@@ -43,6 +43,8 @@ export * from './userSanguoState.js';
 
 // Phase 8 post-gate schemas
 export * from './formations.js';
+export * from './formationChemistryLinks.js';
+export * from './formationChemistryLinks.js';
 
 // Phase 9 schemas (mapEdges authored in 09-01 — re-exported here so drizzle-kit
 // generate, which reads index.ts, sees the table at 09-05 migration time)

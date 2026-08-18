@@ -277,14 +277,8 @@
     "hero_option": "{{name}} • Lv{{level}} • {{grade}}",
     "save_button": "保存阵型",
     "saved": "✅ 阵型{{formation}}已保存。",
-    "chemistry_line": "{{hero}}：**{{tier}}** • {{n}}条羁绊",
+    "chemistry_line": "{{hero}}：**{{level}}** • {{n}}个链接",
     "link_line": "{{heroA}} ↔ {{heroB}}（{{type}}）",
-    "tier_s": "S级",
-    "tier_a": "A级",
-    "tier_b": "B级",
-    "tier_c": "C级",
-    "tier_d": "D级",
-    "tier_none": "暂无羁绊",
     "link_type_family": "家族",
     "link_type_spouse": "夫妻",
     "link_type_faction": "势力",
@@ -296,7 +290,11 @@
     "copy_suffix": " • #{{n}}",
     "hero_option_multi": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}}",
     "hero_option_assigned": "{{name}} • Lv{{level}} • {{grade}} • ({{slot}})",
-    "hero_option_multi_assigned": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}} ({{slot}})"
+    "hero_option_multi_assigned": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}} ({{slot}})",
+    "chem_level_1": "化学1级",
+    "chem_level_2": "化学2级",
+    "chem_level_3": "化学3级",
+    "chem_none": "未激活"
   },
   "classes": {
     "vanguard": "先锋",

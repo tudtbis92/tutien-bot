@@ -169,6 +169,13 @@
       "when": 1787029332233,
       "tag": "0023_hero_multi_class",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787036470626,
+      "tag": "0024_formation_chemistry_links",
+      "breakpoints": true
     }
   ]
 }

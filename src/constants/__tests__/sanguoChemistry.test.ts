@@ -1,14 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { CHEMISTRY_POINTS, CHEMISTRY_TIERS } from '../sanguoChemistry.js';
+import {
+  CHEMISTRY_POINTS,
+  CHEMISTRY_LEVEL_THRESHOLDS,
+  CHEMISTRY_STAT_BUFF,
+} from '../sanguoChemistry.js';
 
 /**
- * Chemistry constant sanity tests (11-02 Task 1, behavior 3).
+ * Chemistry constant sanity tests (11-02 Task 2 behavior, CR-11-09 revised).
  *
- * Contract context: EA FC-grounded chemistry (D-19) — links -> points ->
- * tier -> buff, bonus-only (0 links = no buff, no penalty). These tables are
- * HIDDEN mechanics (D-12): points and buff % NEVER render; only the tier
- * label (S/A/B/C/D) and link count reach a UI surface. Values are the
- * balance contract (flagged assumption A3); the 11-08 balance pass tunes.
+ * Contract context: EA FC-grounded chemistry (D-19) — position-gated pair
+ * points -> chemistry LEVEL 0-3 -> ADDITIVE stat buff on STR/AGI/INT. These
+ * tables are HIDDEN mechanics (D-12): points and buff NEVER render; only the
+ * level label (Bậc 1/2/3) and the active link count reach a UI surface.
  */
 
 describe('CHEMISTRY_POINTS (D-19 hierarchy: family+spouse > faction > role)', () => {
@@ -33,50 +36,34 @@ describe('CHEMISTRY_POINTS (D-19 hierarchy: family+spouse > faction > role)', ()
   });
 });
 
-describe('CHEMISTRY_TIERS (S>=12 +10% ... D 1-2 +2%, 0 = bonus-only)', () => {
-  it('thresholds are strictly descending (S first, 0 last)', () => {
-    expect(CHEMISTRY_TIERS[0]!.min).toBe(12);
-    expect(CHEMISTRY_TIERS[1]!.min).toBe(8);
-    expect(CHEMISTRY_TIERS[2]!.min).toBe(5);
-    expect(CHEMISTRY_TIERS[3]!.min).toBe(3);
-    expect(CHEMISTRY_TIERS[4]!.min).toBe(1);
-    expect(CHEMISTRY_TIERS[5]!.min).toBe(0);
-    for (let i = 1; i < CHEMISTRY_TIERS.length; i++) {
-      expect(CHEMISTRY_TIERS[i]!.min < CHEMISTRY_TIERS[i - 1]!.min).toBe(true);
+describe('CHEMISTRY_LEVEL_THRESHOLDS (CR-11-09 — 0/1/2/3, capped at 3)', () => {
+  it('thresholds are 1-2 → L1, 3-4 → L2, 5+ → L3, 0 → none', () => {
+    expect(CHEMISTRY_LEVEL_THRESHOLDS).toEqual([
+      { min: 5, level: 3 },
+      { min: 3, level: 2 },
+      { min: 1, level: 1 },
+      { min: 0, level: 0 },
+    ]);
+  });
+
+  it('thresholds are strictly ascending by min (5 > 3 > 1 > 0)', () => {
+    for (let i = 1; i < CHEMISTRY_LEVEL_THRESHOLDS.length; i++) {
+      expect(CHEMISTRY_LEVEL_THRESHOLDS[i]!.min < CHEMISTRY_LEVEL_THRESHOLDS[i - 1]!.min).toBe(true);
     }
   });
+});
 
-  it('buffs are strictly descending across the S..D block (S +10% ... D +2%)', () => {
-    expect(CHEMISTRY_TIERS[0]!.buff).toBeCloseTo(0.1, 10);
-    expect(CHEMISTRY_TIERS[1]!.buff).toBeCloseTo(0.08, 10);
-    expect(CHEMISTRY_TIERS[2]!.buff).toBeCloseTo(0.06, 10);
-    expect(CHEMISTRY_TIERS[3]!.buff).toBeCloseTo(0.04, 10);
-    expect(CHEMISTRY_TIERS[4]!.buff).toBeCloseTo(0.02, 10);
-    // Along the S-first array (min descending), buffs strictly DESCEND with
-    // tier quality: S is the best tier (+10%), D the weakest (+2%). The
-    // final min-0 entry is the bonus-only FLOOR (buff 0 — a decrease by
-    // design, never a penalty), so the strict-descent invariant spans the
-    // S..D block only.
-    for (let i = 1; i <= 4; i++) {
-      expect(CHEMISTRY_TIERS[i]!.buff < CHEMISTRY_TIERS[i - 1]!.buff).toBe(true);
-    }
-    expect(CHEMISTRY_TIERS[5]!.buff).toBe(0);
+describe('CHEMISTRY_STAT_BUFF (CR-11-09 — cumulative additive STR/AGI/INT)', () => {
+  it('is L0 +0, L1 +2, L2 +7 (+2+5), L3 +17 (+2+5+10) — user-signed 2026-08-18', () => {
+    expect(CHEMISTRY_STAT_BUFF[0]).toBe(0);
+    expect(CHEMISTRY_STAT_BUFF[1]).toBe(2);
+    expect(CHEMISTRY_STAT_BUFF[2]).toBe(7);
+    expect(CHEMISTRY_STAT_BUFF[3]).toBe(17);
   });
 
-  it('tier labels are the UI-SPEC-locked set S/A/B/C/D + a null 0-tier (bonus-only)', () => {
-    expect(CHEMISTRY_TIERS[0]!.label).toBe('S');
-    expect(CHEMISTRY_TIERS[1]!.label).toBe('A');
-    expect(CHEMISTRY_TIERS[2]!.label).toBe('B');
-    expect(CHEMISTRY_TIERS[3]!.label).toBe('C');
-    expect(CHEMISTRY_TIERS[4]!.label).toBe('D');
-    expect(CHEMISTRY_TIERS[5]!.label).toBeNull();
-  });
-
-  it('is bonus-only: the 0-point entry carries buff 0, never a penalty', () => {
-    expect(CHEMISTRY_TIERS[5]!.buff).toBe(0);
-    // No negative buff exists anywhere in the table
-    for (const tier of CHEMISTRY_TIERS) {
-      expect(tier.buff).toBeGreaterThanOrEqual(0);
+  it('is strictly ascending (full chemistry = +17, never a penalty)', () => {
+    for (let i = 1; i < CHEMISTRY_STAT_BUFF.length; i++) {
+      expect(CHEMISTRY_STAT_BUFF[i]!).toBeGreaterThan(CHEMISTRY_STAT_BUFF[i - 1]!);
     }
   });
 });

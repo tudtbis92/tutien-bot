@@ -25,8 +25,9 @@
  * The point tables here assume class-matched slots only.
  */
 
-/** D-19: points awarded per matching link type (main<->support pairs only,
- *  D-17 — supports never link to each other; they buff, not fight). */
+/** D-19: points awarded per matching relationship between a PAIR of heroes
+ *  (family/spouse 3, faction 2, role 1 — EA FC-style, unchanged). The pair's
+ *  STRONGEST single relationship counts (first-match, never summed). */
 export const CHEMISTRY_POINTS: Readonly<Record<'family' | 'spouse' | 'faction' | 'role', number>> = {
   family: 3,
   spouse: 3,
@@ -34,17 +35,18 @@ export const CHEMISTRY_POINTS: Readonly<Record<'family' | 'spouse' | 'faction' |
   role: 1,
 };
 
-/** D-19: chemistry tier table — a main's total link points -> tier -> buff.
- *  Strictly descending `min` thresholds (S first, 0 last) with strictly
- *  ascending buffs. The final min-0 entry is the bonus-only floor: label
- *  null (no tier line rendered) and buff 0 (no penalty, EA FC grounding).
- *  Buff is MULTIPLICATIVE on the final combatStat:
- *  (base + IV + levelGain) x (1 + buff). */
-export const CHEMISTRY_TIERS: readonly { min: number; label: string | null; buff: number }[] = [
-  { min: 12, label: 'S', buff: 0.1 },
-  { min: 8, label: 'A', buff: 0.08 },
-  { min: 5, label: 'B', buff: 0.06 },
-  { min: 3, label: 'C', buff: 0.04 },
-  { min: 1, label: 'D', buff: 0.02 },
-  { min: 0, label: null, buff: 0 },
+/** CR-11-09: chemistry LEVEL (bậc) thresholds — a hero's TOTAL points (summed
+ *  over its active linked neighbors) map to a level 0-3, capped at 3. The
+ *  thresholds are 1-2 → L1, 3-4 → L2, 5+ → L3 (user-signed 2026-08-18). */
+export const CHEMISTRY_LEVEL_THRESHOLDS: readonly { min: number; level: 0 | 1 | 2 | 3 }[] = [
+  { min: 5, level: 3 },
+  { min: 3, level: 2 },
+  { min: 1, level: 1 },
+  { min: 0, level: 0 },
 ] as const;
+
+/** CR-11-09: the CUMULATIVE additive stat buff per chemistry level, applied to
+ *  the three primary combat stats (STR/AGI/INT) only. Index = level:
+ *  L0 +0, L1 +2, L2 +7 (+2+5), L3 +17 (+2+5+10). User-signed 2026-08-18. */
+export const CHEMISTRY_STAT_BUFF: readonly number[] = [0, 2, 7, 17] as const;
+

@@ -480,6 +480,8 @@ describe('startEncounterBattle — boss → FORCED legion routing (D-24/D-25/D-3
       [activeJoin()], // active companion (not used for boss, but read)
       [LEGION],
       legionJoin(), // 12 slots
+      [], // formation chemistry links (CR-11-09)
+      [], // hero_relations spouse pairs among the legion (CR-11-09)
       [], // main[0] skill snapshot
       [], // main[1] skill snapshot
       [], // main[2] skill snapshot

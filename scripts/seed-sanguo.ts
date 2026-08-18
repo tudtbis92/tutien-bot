@@ -381,6 +381,8 @@ interface FormationDef {
   basePrice: number;
   emoji: string;
   slots: FormationSlotDef[];
+  /** CR-11-09: the per-formation chemistry link edges (slot_a, slot_b). */
+  chemistryLinks?: [number, number][];
 }
 
 const SKILLS_PATH = fileURLToPath(new URL('./data/sanguo-skills.json', import.meta.url));
@@ -842,6 +844,19 @@ async function seed() {
           },
         });
       formationSlotCount++;
+    }
+
+    // CR-11-09: per-formation chemistry link graph — full-replace the edges
+    // (unique (formationId, slot_a, slot_b) index) so re-seeds converge.
+    await db
+      .delete(schema.formationChemistryLinks)
+      .where(eq(schema.formationChemistryLinks.formationId, inserted.id));
+    for (const [a, b] of f.chemistryLinks ?? []) {
+      await db.insert(schema.formationChemistryLinks).values({
+        formationId: inserted.id,
+        slotA: Math.min(a, b),
+        slotB: Math.max(a, b),
+      });
     }
     formationCount++;
   }

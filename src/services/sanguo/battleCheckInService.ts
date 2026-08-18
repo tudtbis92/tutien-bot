@@ -8,10 +8,14 @@ import { userHeroes } from '../../db/schema/userHeroes.js';
 import { userLegions } from '../../db/schema/userLegions.js';
 import { userLegionSlots } from '../../db/schema/userLegions.js';
 import { heroes } from '../../db/schema/heroes.js';
+import { heroRelations } from '../../db/schema/heroRelations.js';
 import { sanguoBattles } from '../../db/schema/sanguoBattles.js';
 import { sanguoSkills } from '../../db/schema/sanguoSkills.js';
+import { formationChemistryLinks } from '../../db/schema/formationChemistryLinks.js';
+import { pairChemistryPoints, chemistryLevel } from './chemistryService.js';
 import { runBattle, runLegionBattle, type CombatantInput, type BattleResult, type LegionBattleInput, type LegionMainInput, type LegionBattleResult } from './battleEngine.js';
 import { TIER_MULTIPLIERS, STAT_GAIN_PER_LEVEL } from '../../constants/sanguoProgression.js';
+import { CHEMISTRY_STAT_BUFF } from '../../constants/sanguoChemistry.js';
 import { rollBossDrop } from './dropService.js';
 
 /**
@@ -313,11 +317,60 @@ async function buildLegionInput(
   const mains = joined.slice(0, 3);
   const supportRows = joined.slice(3, 12).filter((s) => s !== undefined);
 
+  // CR-11-09: the formation's chemistry link graph + the spouse pairs, so each
+  // main's chemistry LEVEL (position-gated, EA FC-style) can be computed.
+  const linkEdges = legion
+    ? await tx
+        .select({ slotA: formationChemistryLinks.slotA, slotB: formationChemistryLinks.slotB })
+        .from(formationChemistryLinks)
+        .where(eq(formationChemistryLinks.formationId, legion.formationId))
+    : [];
+  const allCopyIds = joined.map((s) => s.uh.id);
+  const spouseRows = allCopyIds.length > 0
+    ? await tx
+        .select({ a: heroRelations.heroAId, b: heroRelations.heroBId })
+        .from(heroRelations)
+        .where(and(inArray(heroRelations.heroAId, joined.map((s) => s.h.id)), inArray(heroRelations.heroBId, joined.map((s) => s.h.id))))
+    : [];
+  const spousePairKeys = new Set(spouseRows.map((r) => `${Math.min(r.a, r.b)}:${Math.max(r.a, r.b)}`));
+  const spouseOf = (a: number, b: number) => spousePairKeys.has(`${Math.min(a, b)}:${Math.max(a, b)}`);
+
+  // Per-slot lookup + the chemistry level for every FILLED slot (mains AND
+  // supports — chemistry is position-gated across the whole formation).
+  const heroBySlot = new Map<number, LegionJoined>();
+  for (const s of joined) heroBySlot.set(s.slotOrder, s);
+  const chemLevelBySlot = new Map<number, 0 | 1 | 2 | 3>();
+  for (const s of joined) {
+    const hero = s.h;
+    const heroId = hero.id;
+    const neighbors: { h: typeof heroes.$inferSelect }[] = [];
+    for (const edge of linkEdges) {
+      const other = edge.slotA === s.slotOrder ? edge.slotB : edge.slotB === s.slotOrder ? edge.slotA : null;
+      if (other === null) continue;
+      const nb = heroBySlot.get(other);
+      if (nb) neighbors.push({ h: nb.h });
+    }
+    let points = 0;
+    for (const nb of neighbors) {
+      points += pairChemistryPoints(
+        { factionId: hero.factionId, role: hero.role, familyId: hero.familyId },
+        {
+          factionId: nb.h.factionId,
+          role: nb.h.role,
+          familyId: nb.h.familyId,
+          spouseOfHero: spouseOf(heroId, nb.h.id),
+        },
+      );
+    }
+    chemLevelBySlot.set(s.slotOrder, chemistryLevel(points));
+  }
+
   // Resolve skill snapshots for the mains' copies (D-31).
   const mainsInput: LegionMainInput[] = [];
   for (const main of mains) {
     const skills = await resolveSkillSnapshot(tx, main.uh.skillNormalId, main.uh.skillSpecialId);
-    const buffed = bakeMain(main);
+    const chemLevel = chemLevelBySlot.get(main.slotOrder) ?? 0;
+    const buffed = bakeMain(main, chemLevel); // CR-11-09: buff now applies in battle
     mainsInput.push({ ...buffed, skillNormal: skills.skillNormal, skillSpecial: skills.skillSpecial });
   }
 
@@ -334,7 +387,7 @@ async function buildLegionInput(
  *  (PLAN-FIX P0-2 — D-07 evolution term). HP/MP stay base×tier. WR-01: the
  *  input carries `userHeroId` (the owning userHeroes copy id) so the caller
  *  can write each main's HP back to its OWN copy after the battle. */
-function bakeMain(main: LegionJoined): LegionMainInput {
+function bakeMain(main: LegionJoined, chemLevel: 0 | 1 | 2 | 3 = 0): LegionMainInput {
   const tier = main.uh.tier;
   const mult = TIER_MULTIPLIERS[tier] ?? 1;
   const base = {
@@ -347,10 +400,18 @@ function bakeMain(main: LegionJoined): LegionMainInput {
     hp: Math.round(main.h.hp * mult),
     mp: Math.round(main.h.mp * mult),
   };
+  // CR-11-09: the chemistry buff is ADDITIVE on the three primary combat stats
+  // (STR/AGI/INT) — CHEMISTRY_STAT_BUFF[chemLevel] (0/2/7/17). Applied on the
+  // tier-multiplied base; HP/MP stay base-only (D-05). This FIXES the
+  // display-only gap: chemistry now actually affects the battle.
+  const buff = chemLevel > 0 ? CHEMISTRY_STAT_BUFF[chemLevel] : 0;
+  const strBuffed = Math.round(base.str) + buff;
+  const agiBuffed = Math.round(base.agi) + buff;
+  const intBuffed = Math.round(base.int) + buff;
   return {
     heroId: main.h.heroId,
     userHeroId: main.uh.id, // WR-01: the copy id — HP write-back keys on this
-    base,
+    base: { ...base, str: strBuffed, agi: agiBuffed, int: intBuffed },
     iv: {
       str: main.uh.ivStr,
       agi: main.uh.ivAgi,

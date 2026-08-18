@@ -277,14 +277,8 @@
     "hero_option": "{{name}} • Lv{{level}} • {{grade}}",
     "save_button": "Lưu trận hình",
     "saved": "✅ Đã lưu trận hình {{formation}}.",
-    "chemistry_line": "{{hero}}: **{{tier}}** • {{n}} liên kết",
+    "chemistry_line": "{{hero}}: **{{level}}** • {{n}} liên kết",
     "link_line": "{{heroA}} ↔ {{heroB}} ({{type}})",
-    "tier_s": "Bậc S",
-    "tier_a": "Bậc A",
-    "tier_b": "Bậc B",
-    "tier_c": "Bậc C",
-    "tier_d": "Bậc D",
-    "tier_none": "Chưa có liên kết",
     "link_type_family": "gia tộc",
     "link_type_spouse": "phu thê",
     "link_type_faction": "thế lực",
@@ -296,7 +290,11 @@
     "copy_suffix": " • #{{n}}",
     "hero_option_multi": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}}",
     "hero_option_assigned": "{{name}} • Lv{{level}} • {{grade}} • ({{slot}})",
-    "hero_option_multi_assigned": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}} ({{slot}})"
+    "hero_option_multi_assigned": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}} ({{slot}})",
+    "chem_level_1": "Bậc 1",
+    "chem_level_2": "Bậc 2",
+    "chem_level_3": "Bậc 3",
+    "chem_none": "Chưa kích hoạt"
   },
   "classes": {
     "vanguard": "Tiên phong",

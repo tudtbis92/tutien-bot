@@ -7,7 +7,7 @@ import {
   EVOLUTION_COSTS,
   REROLL_COST,
 } from '../../../constants/sanguoProgression.js';
-import { applyChemistryBuff } from '../chemistryService.js';
+import { CHEMISTRY_STAT_BUFF } from '../../../constants/sanguoChemistry.js';
 
 /**
  * Phase 11 closing balance pass (11-08 — RESEARCH Pitfall 4 + Open Question 2).
@@ -15,26 +15,26 @@ import { applyChemistryBuff } from '../chemistryService.js';
  * Simulates the seeded stat ranges at representative legion levels (L50/60/70 ×
  * t0/t1/t2 mains × chemistry tiers) against the boss wall — the boss is a REAL
  * zone-general at t2 base × IV all-31 × L50 (D-24/D-35) — via the deterministic
- * runLegionBattle engine (11-05). The pass tunes CONSTANTS only (STAT_GAIN_PER_
- * LEVEL / TIER_MULTIPLIERS / CHEMISTRY_TIERS) — NEVER the D-05 fight formula.
- *
- * PLAN-FIX P0-2 (parity with the 11-06 legion builder): each main's
- * CombatantInput bakes `Math.round(base[key] × TIER_MULTIPLIERS[tier])` into its
- * base stats — IDENTICAL to production's bakeMain (battleCheckInService.ts) — so
- * this simulation calibrates the SAME power curve production fights on. The
- * chemistry buff is then applied multiplicatively to the final combatStat
- * (applyChemistryBuff, RESEARCH Pattern 2: (base + IV + levelGain) × (1 + buff))
- * by adjusting the baked `base` so the engine's eff() = base + IV + levelGain
- * equals the intended buffed value. HP/MP stay base-only × tier (D-05).
- *
- * CALIBRATION RESULT (fixed seeds, adopted constants — no tuning required):
- * The boss wall is a SHARP THRESHOLD WALL (a D-05 consequence — damage floors
- * at max(atk−def,1); verified with NEUTRAL mp_regen supports so the calibration
- * isolates chemistry + tier + level, not support DPS variance):
- *   - A L50+ t2 S-chemistry 3-man legion WINS (beatable — the plan Test-1 anchor);
- *   - A L50 t0 lone legion LOSES (the wall holds — the plan Test-2 anchor);
- *   - L50 t2 WITHOUT chemistry, L50 t1 (not evolved to t2), and L45 t2 S legions
- *     all LOSE — the boss requires FULL depth (t2 + ~L50+ + S chemistry) to beat.
+  * runLegionBattle engine (11-05). The pass tunes CONSTANTS only (STAT_GAIN_PER_
+  * LEVEL / TIER_MULTIPLIERS / CHEMISTRY_STAT_BUFF) — NEVER the D-05 fight formula.
+  *
+  * PLAN-FIX P0-2 (parity with the 11-06 legion builder): each main's
+  * CombatantInput bakes `Math.round(base[key] × TIER_MULTIPLIERS[tier])` into its
+  * base stats — IDENTICAL to production's bakeMain (battleCheckInService.ts) — so
+  * this simulation calibrates the SAME power curve production fights on. The
+  * chemistry buff is then applied ADDITIVELY to the three primary combat stats
+  * (STR/AGI/INT — CHEMISTRY_STAT_BUFF[level] = 0/2/7/17, CR-11-09) by adjusting
+  * the baked `base`. HP/MP stay base-only × tier (D-05).
+  *
+  * CALIBRATION RESULT (fixed seeds, adopted constants — no tuning required):
+  * The boss wall is a SHARP THRESHOLD WALL (a D-05 consequence — damage floors
+  * at max(atk−def,1); verified with NEUTRAL mp_regen supports so the calibration
+  * isolates chemistry + tier + level, not support DPS variance):
+  *   - A L50+ t2 chemistry-3 3-man legion WINS (beatable — the plan Test-1 anchor);
+  *   - A L50 t0 lone legion LOSES (the wall holds — the plan Test-2 anchor);
+  *   - L50 t2 WITHOUT chemistry, L50 t1 (not evolved to t2), and L45 t2 chem-3
+  *     legions all LOSE — the boss requires FULL depth (t2 + ~L50+ + chemistry)
+  *     to beat.
  *     The wall is NOT trivially won by a starter/half-invested legion.
  *   - A MAXED L70 t2 S legion WINS (not unwinnable).
  * Because the two hard anchors hold and the wall correctly gates depth
@@ -49,8 +49,8 @@ interface SimMain {
   iv: { str: number; agi: number; int: number; mov: number; lea: number; cha: number };
   tier: 0 | 1 | 2;
   level: number;
-  /** chemistry buff (0 = none, 0.02 D, 0.06 B, 0.10 S). */
-  buff: number;
+  /** chemistry LEVEL 0-3 (CR-11-09 additive — 0/2/7/17 on STR/AGI/INT only). */
+  chemLevel: 0 | 1 | 2 | 3;
   cls: CombatantInput['class'];
 }
 
@@ -93,9 +93,9 @@ function buildBoss(): CombatantInput {
 /**
  * PLAN-FIX P0-2: bake one main's CombatantInput identically to production's
  * bakeMain — base × TIER_MULTIPLIERS[tier] (rounded), IV pass-through, level,
- * hpCurrent. The chemistry buff is baked multiplicatively on the FINAL combatStat
- * (base + IV + levelGain) × (1 + buff) via applyChemistryBuff, by setting `base`
- * such that the engine's eff() = base + IV + levelGain returns the buffed value.
+ * hpCurrent. CR-11-09: the chemistry buff is ADDITIVE on the three primary
+ * combat stats (STR/AGI/INT) — CHEMISTRY_STAT_BUFF[chemLevel] (0/2/7/17) added
+ * to the tier-multiplied base; MOV/LEA/CHA/HP/MP stay tier-base only.
  */
 function bakeMainForSim(m: SimMain): CombatantInput & { level: number } {
   const mult = TIER_MULTIPLIERS[m.tier];
@@ -109,14 +109,14 @@ function bakeMainForSim(m: SimMain): CombatantInput & { level: number } {
     hp: Math.round(m.base.hp * mult),
     mp: Math.round(m.base.mp * mult),
   };
-  const levelGain = (m.level - 1) * STAT_GAIN_PER_LEVEL;
+  const chem = CHEMISTRY_STAT_BUFF[m.chemLevel]; // additive STR/AGI/INT
   const base = {
-    str: applyChemistryBuff(tierBase.str + m.iv.str + levelGain, m.buff) - m.iv.str - levelGain,
-    agi: applyChemistryBuff(tierBase.agi + m.iv.agi + levelGain, m.buff) - m.iv.agi - levelGain,
-    int: applyChemistryBuff(tierBase.int + m.iv.int + levelGain, m.buff) - m.iv.int - levelGain,
-    mov: applyChemistryBuff(tierBase.mov + m.iv.mov + levelGain, m.buff) - m.iv.mov - levelGain,
-    lea: applyChemistryBuff(tierBase.lea + m.iv.lea + levelGain, m.buff) - m.iv.lea - levelGain,
-    cha: applyChemistryBuff(tierBase.cha + m.iv.cha + levelGain, m.buff) - m.iv.cha - levelGain,
+    str: tierBase.str + chem,
+    agi: tierBase.agi + chem,
+    int: tierBase.int + chem,
+    mov: tierBase.mov, // non-combat-primary: no chemistry
+    lea: tierBase.lea,
+    cha: tierBase.cha,
     hp: tierBase.hp, // HP/MP base-only × tier (D-05)
     mp: tierBase.mp,
   };
@@ -143,11 +143,11 @@ const MAIN_BASE = {
 /** Representative mid-range IV (the simulator's assumption for an evolved main). */
 const MAIN_IV = { str: 15, agi: 12, int: 10, mov: 11, lea: 9, cha: 8 } as const;
 
-/** A legion of `n` class-matched mains at the given level/tier/chemistry. */
-function legion(level: number, tier: 0 | 1 | 2, buff: number, n: number): LegionBattleInput {
+/** A legion of `n` class-matched mains at the given level/tier/chemistry level. */
+function legion(level: number, tier: 0 | 1 | 2, chemLevel: 0 | 1 | 2 | 3, n: number): LegionBattleInput {
   const classes: CombatantInput['class'][] = ['vanguard', 'archer', 'spellcaster'];
   const mains = Array.from({ length: n }, (_, i) =>
-    bakeMainForSim({ base: { ...MAIN_BASE }, tier, level, buff, iv: { ...MAIN_IV }, cls: classes[i % 3] }),
+    bakeMainForSim({ base: { ...MAIN_BASE }, tier, level, chemLevel, iv: { ...MAIN_IV }, cls: classes[i % 3] }),
   );
   // 9 class-matched supports (the basic formation's support slots) carrying a
   // NEUTRAL D-18 special (mp_regen) so the boss-wall calibration isolates the
@@ -155,7 +155,8 @@ function legion(level: number, tier: 0 | 1 | 2, buff: number, n: number): Legion
   // (attack_up, +20% on a 30% trigger) would skew the kill-threshold and make
   // the wall trivially winnable by under-invested legions (measured: L45 t2 S
   // flipped to 10/10 with attack_up supports). The mains' chemistry buff is
-  // baked directly (S-tier), so the outcome is deterministic for the pass.
+  // baked directly (level 3 = the old S-tier), so the outcome is deterministic
+  // for the pass.
   const supportClasses: CombatantInput['class'][] = [
     'cavalry', 'schemer', 'vu_co', 'thu_binh', 'cong_binh',
     'vanguard', 'archer', 'spellcaster', 'schemer',
@@ -169,8 +170,8 @@ function legion(level: number, tier: 0 | 1 | 2, buff: number, n: number): Legion
   return { mains, supports, boss: buildBoss() };
 }
 
-/** Chemistry buff constants (sanguoChemistry.ts) — none / D / B / S. */
-const CHEM = { none: 0, D: 0.02, B: 0.06, S: 0.1 } as const;
+/** Chemistry LEVEL constants (sanguoChemistry.ts CR-11-09) — none / L1 / L2 / L3. */
+const CHEM = { none: 0, L1: 1, L2: 2, L3: 3 } as const;
 
 /** Fixed deterministic seed sample used by the band assertions. */
 const SEEDS = [1001, 2002, 3003, 4004, 5005, 6006, 7007, 8008, 9009, 10101] as const;
@@ -182,7 +183,7 @@ function eff(c: CombatantInput, key: 'str' | 'agi' | 'int' | 'mov' | 'lea' | 'ch
 
 describe('balance pass (11-08): boss-wall calibration (Pitfall 4)', () => {
   it('a L60 t2 S-chemistry legion BEATS the t2×IV31×L50 boss (beatable anchor)', () => {
-    const result = runLegionBattle(4000, legion(60, 2, CHEM.S, 3));
+    const result = runLegionBattle(4000, legion(60, 2, CHEM.L3, 3));
     expect(result.winner).toBe('player');
     expect(result.enemyHpAfter).toBe(0);
   });
@@ -198,8 +199,8 @@ describe('balance pass (11-08): boss-wall calibration (Pitfall 4)', () => {
     // those loses — the boss is not beaten by a starter or half-invested squad.
     for (const [label, input] of [
       ['L50 t2 WITHOUT chemistry', legion(50, 2, CHEM.none, 3)],
-      ['L50 t1 S (not evolved to t2)', legion(50, 1, CHEM.S, 3)],
-      ['L45 t2 S (under the L48 threshold)', legion(45, 2, CHEM.S, 3)],
+      ['L50 t1 S (not evolved to t2)', legion(50, 1, CHEM.L3, 3)],
+      ['L45 t2 S (under the L48 threshold)', legion(45, 2, CHEM.L3, 3)],
     ] as Array<[string, LegionBattleInput]>) {
       const wins = SEEDS.filter((s) => runLegionBattle(s, input).winner === 'player').length;
       void label;
@@ -208,8 +209,8 @@ describe('balance pass (11-08): boss-wall calibration (Pitfall 4)', () => {
   });
 
   it('the wall is NOT unwinnable — a MAXED L70 t2 S legion wins (and L60 t2 S wins consistently)', () => {
-    const l60Wins = SEEDS.filter((s) => runLegionBattle(s, legion(60, 2, CHEM.S, 3)).winner === 'player').length;
-    const l70Wins = SEEDS.filter((s) => runLegionBattle(s, legion(70, 2, CHEM.S, 3)).winner === 'player').length;
+    const l60Wins = SEEDS.filter((s) => runLegionBattle(s, legion(60, 2, CHEM.L3, 3)).winner === 'player').length;
+    const l70Wins = SEEDS.filter((s) => runLegionBattle(s, legion(70, 2, CHEM.L3, 3)).winner === 'player').length;
     // both fully-invested legions win every sampled seed — definitively not >
     // 95% loss (the unwinnable reference).
     expect(l60Wins).toBeGreaterThanOrEqual(6);
@@ -217,7 +218,7 @@ describe('balance pass (11-08): boss-wall calibration (Pitfall 4)', () => {
   });
 
   it('replay contract (D-06): the simulation is deterministic — same seed, same outcome', () => {
-    const input = legion(60, 2, CHEM.S, 3);
+    const input = legion(60, 2, CHEM.L3, 3);
     expect(runLegionBattle(4000, input)).toEqual(runLegionBattle(4000, input));
   });
 });
@@ -229,14 +230,14 @@ describe('balance pass (11-08): tuning invariants (RESEARCH OQ2 — constants, N
     // the SAME legion with S-tier chemistry (a +10% buff constant step) wins —
     // proving the constants are the tuning surface, the engine untouched.
     const noChem = runLegionBattle(SEEDS[0], legion(50, 2, CHEM.none, 3));
-    const sChem = runLegionBattle(SEEDS[0], legion(50, 2, CHEM.S, 3));
+    const sChem = runLegionBattle(SEEDS[0], legion(50, 2, CHEM.L3, 3));
     expect(noChem.winner).toBe('enemy'); // wall holds at no chemistry
     expect(sChem.winner).toBe('player'); // buff step flips it — constants tune
   });
 
   it('P0-2: an evolved t2 main is strictly stronger than an identical t0 main at the same level (the tier lever)', () => {
-    const t0 = bakeMainForSim({ base: { ...MAIN_BASE }, tier: 0, level: 60, buff: CHEM.S, iv: { ...MAIN_IV }, cls: 'vanguard' });
-    const t2 = bakeMainForSim({ base: { ...MAIN_BASE }, tier: 2, level: 60, buff: CHEM.S, iv: { ...MAIN_IV }, cls: 'vanguard' });
+    const t0 = bakeMainForSim({ base: { ...MAIN_BASE }, tier: 0, level: 60, chemLevel: CHEM.L3, iv: { ...MAIN_IV }, cls: 'vanguard' });
+    const t2 = bakeMainForSim({ base: { ...MAIN_BASE }, tier: 2, level: 60, chemLevel: CHEM.L3, iv: { ...MAIN_IV }, cls: 'vanguard' });
     for (const k of ['str', 'agi', 'int', 'mov', 'lea', 'cha'] as const) {
       expect(eff(t2, k)).toBeGreaterThan(eff(t0, k));
     }
