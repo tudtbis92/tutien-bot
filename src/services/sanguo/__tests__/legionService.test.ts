@@ -53,14 +53,6 @@ const CAO_CAO = {
   tier: 3,
   hp: 120,
 };
-const LIU_BEI = {
-  ...CAO_CAO,
-  id: 9,
-  heroId: 'liu_bei',
-  nameVi: 'Lưu Bị',
-  nameEn: 'Liu Bei',
-  class: 'archer', // archer → does NOT match slot 0 (vanguard) — the wrong-class case
-};
 
 const USER_HERO_CAO_CAO = {
   id: 11,
@@ -198,13 +190,13 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
   });
 
   it('T1: assigns a hero whose class matches the slot — row upserted in user_legion_slots', async () => {
-    // reads: [1] formation owned, [2] user_heroes FOR UPDATE lock, [3] slot class, [4] catalog class, [5] dup check (none)
+    // reads: [1] formation owned, [2] user_heroes FOR UPDATE lock, [3] slot class, [4] hero_classes membership (Cao Cao has vanguard), [5] dup check (none)
     const { promise, tx } = runInTx(
       [
         [{ id: 1 }], // 1. user_formations owned → formationId 1
         [USER_HERO_CAO_CAO], // 2. user_heroes FOR UPDATE (owned — userId 42)
         [FORMATION_SLOT_VANGUARD_0], // 3. formation_slots class='vanguard'
-        [CAO_CAO], // 4. heroes catalog class='vanguard' (matches)
+        [{ id: 1, heroId: 5, class: 'vanguard' }], // 4. hero_classes membership (multi-class, Phase 11)
         [], // 5. dup check: no existing assignment
       ],
       () => assignHero(USER_ID, 1, 0, 11),
@@ -215,14 +207,14 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
     expect(tx.insert).toHaveBeenCalled();
   });
 
-  it('T2: a wrong-class hero → legion.class_mismatch BEFORE any write (D-20 strict)', async () => {
-    // liu_bei is archer; the slot 0 is vanguard → mismatch → NO upsert.
+  it('T2: a hero not in the slot class (no hero_classes membership) → legion.class_mismatch BEFORE any write (D-20 strict)', async () => {
+    // liu_bei has no hero_classes row for slot 0 (vanguard) → mismatch → NO upsert.
     const { promise, insert } = runInTx(
       [
         [{ id: 1 }], // formation owned
         [USER_HERO_LIU_BEI], // user_heroes FOR UPDATE (owned)
         [FORMATION_SLOT_VANGUARD_0], // slot class='vanguard'
-        [LIU_BEI], // catalog class='archer' → mismatch vs vanguard
+        [], // hero_classes: liu_bei NOT in vanguard → mismatch
       ],
       () => assignHero(USER_ID, 1, 0, 12),
     );

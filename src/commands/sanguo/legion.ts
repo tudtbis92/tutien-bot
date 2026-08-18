@@ -11,6 +11,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { TFunction } from 'i18next';
 import { db } from '../../db/client.js';
 import { heroes, heroClassEnum } from '../../db/schema/heroes.js';
+import { heroClasses } from '../../db/schema/heroClasses.js';
 import { heroRelations } from '../../db/schema/heroRelations.js';
 import { userHeroes } from '../../db/schema/userHeroes.js';
 import { formationSlots } from '../../db/schema/formations.js';
@@ -234,7 +235,9 @@ async function fetchSpousePairs(heroIds: number[]): Promise<Set<string>> {
   return new Set(rows.map((r) => sortPair(r.a, r.b)));
 }
 
-/** Class-matched owned heroes for the hero-pick menu (D-20 strict). */
+/** Class-matched owned heroes for the hero-pick menu (D-20 strict, Phase 11
+ *  multi-class — a hero is eligible if ANY of its hero_classes equals the
+ *  slot class). distinct on the copy id so a multi-class hero appears once. */
 async function fetchClassMatchedHeroes(
   userId: number,
   slotClass: string,
@@ -245,17 +248,26 @@ async function fetchClassMatchedHeroes(
     .select(CHEM_COLUMNS)
     .from(userHeroes)
     .innerJoin(heroes, eq(userHeroes.heroId, heroes.id))
-    .where(and(eq(userHeroes.userId, userId), eq(heroes.class, slotClass as (typeof heroClassEnum.enumValues)[number])))
+    .innerJoin(heroClasses, eq(heroClasses.heroId, heroes.id))
+    .where(
+      and(
+        eq(userHeroes.userId, userId),
+        eq(heroClasses.class, slotClass as (typeof heroClassEnum.enumValues)[number]),
+      ),
+    )
     .orderBy(asc(userHeroes.id));
-  return rows.map((h) => ({
-    userHeroId: h.id,
-    label: t('sanguo:legion.hero_option', {
-      name: pickName(h, locale),
-      stars: '★'.repeat(h.tier),
-      grade: t(ivGradeKey(h.ivStr, h.ivAgi, h.ivInt, h.ivMov, h.ivLea, h.ivCha)),
-    }),
-    emoji: safeHeroEmoji(h.heroId),
-  }));
+  const seen = new Set<number>();
+  return rows
+    .filter((h) => (seen.has(h.id) ? false : (seen.add(h.id), true)))
+    .map((h) => ({
+      userHeroId: h.id,
+      label: t('sanguo:legion.hero_option', {
+        name: pickName(h, locale),
+        stars: '★'.repeat(h.tier),
+        grade: t(ivGradeKey(h.ivStr, h.ivAgi, h.ivInt, h.ivMov, h.ivLea, h.ivCha)),
+      }),
+      emoji: safeHeroEmoji(h.heroId),
+    }));
 }
 
 interface RenderOpts {

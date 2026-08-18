@@ -29,6 +29,7 @@ export * from './mapNodes.js';
 export * from './walletTransactions.js';
 export * from './heroes.js';
 export * from './heroFactions.js';
+export * from './heroClasses.js';
 export * from './heroFamilies.js';
 export * from './heroRelations.js';
 export * from './userHeroes.js';

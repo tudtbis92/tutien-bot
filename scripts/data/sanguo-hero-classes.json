@@ -1,0 +1,518 @@
+{
+  "han_ling_di": [
+    "schemer"
+  ],
+  "han_shao_di": [
+    "schemer"
+  ],
+  "han_xian_di": [
+    "schemer"
+  ],
+  "ha_thai_hau": [
+    "schemer"
+  ],
+  "dong_thai_hau": [
+    "schemer"
+  ],
+  "vuong_my_nhan": [
+    "schemer"
+  ],
+  "truong_nhuong": [
+    "schemer"
+  ],
+  "trieu_trung": [
+    "schemer"
+  ],
+  "kien_thac": [
+    "schemer"
+  ],
+  "doan_khue": [
+    "schemer"
+  ],
+  "phong_tu": [
+    "schemer"
+  ],
+  "tao_tiet": [
+    "schemer"
+  ],
+  "hau_lam": [
+    "schemer"
+  ],
+  "ha_uan": [
+    "schemer"
+  ],
+  "quach_thang": [
+    "schemer"
+  ],
+  "trinh_khoang": [
+    "schemer"
+  ],
+  "ha_tien": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "ha_mieu": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "vuong_doan": [
+    "schemer"
+  ],
+  "thai_ung": [
+    "schemer",
+    "spellcaster"
+  ],
+  "tran_lam": [
+    "schemer"
+  ],
+  "luu_dao": [
+    "schemer"
+  ],
+  "truong_quan": [
+    "schemer"
+  ],
+  "dau_vu": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "tran_phien": [
+    "schemer"
+  ],
+  "ly_ung": [
+    "schemer"
+  ],
+  "pham_bang": [
+    "schemer"
+  ],
+  "quach_thai": [
+    "schemer",
+    "spellcaster"
+  ],
+  "hoang_phu_tung": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "chu_tuan": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "lu_thuc": [
+    "schemer",
+    "vanguard",
+    "cavalry"
+  ],
+  "pho_tiep": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "bao_tin": [
+    "cavalry",
+    "vanguard",
+    "archer"
+  ],
+  "bao_hong": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "thuan_vu_quynh": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "gongsun_zan": [
+    "cavalry",
+    "vanguard",
+    "archer"
+  ],
+  "truong_giac": [
+    "spellcaster"
+  ],
+  "truong_bao": [
+    "spellcaster"
+  ],
+  "truong_luong": [
+    "schemer"
+  ],
+  "ma_nguyen_nghia": [
+    "schemer"
+  ],
+  "duong_chau": [
+    "schemer"
+  ],
+  "truong_man_thanh": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "ba_tai": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "banh_thoat": [
+    "cavalry",
+    "vanguard",
+    "archer"
+  ],
+  "trieu_hoang": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "han_trung": [
+    "archer",
+    "vanguard",
+    "cavalry"
+  ],
+  "ton_ha": [
+    "archer",
+    "vanguard",
+    "cavalry"
+  ],
+  "bac_ky": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "trinh_vien_chi": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "quan_hoi": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "zhang_yan": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "bian_chuong": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "han_toai": [
+    "cavalry",
+    "vanguard",
+    "archer"
+  ],
+  "bac_cung_ba_ngoc": [
+    "archer",
+    "vanguard",
+    "cavalry"
+  ],
+  "vuong_quoc": [
+    "cavalry",
+    "vanguard",
+    "archer"
+  ],
+  "dong_trac": [
+    "vanguard",
+    "cavalry"
+  ],
+  "yuan_shao": [
+    "cavalry",
+    "vanguard"
+  ],
+  "yuan_shu": [
+    "vanguard",
+    "cavalry"
+  ],
+  "sun_jian": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "ma_dang": [
+    "cavalry",
+    "vanguard",
+    "archer"
+  ],
+  "dinh_nguyen": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "liu_bei": [
+    "vanguard",
+    "cavalry"
+  ],
+  "guan_yu": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "zhang_fei": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "cao_cao": [
+    "schemer",
+    "vanguard",
+    "cavalry"
+  ],
+  "xiahou_dun": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "xiahou_yuan": [
+    "archer",
+    "vanguard",
+    "cavalry"
+  ],
+  "huang_gai": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "cheng_pu": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "liu_yu": [
+    "schemer"
+  ],
+  "han_fu": [
+    "schemer"
+  ],
+  "ju_shou": [
+    "schemer",
+    "spellcaster"
+  ],
+  "tian_feng": [
+    "schemer",
+    "spellcaster"
+  ],
+  "zhang_yang": [
+    "schemer"
+  ],
+  "gongsun_du": [
+    "schemer",
+    "vanguard"
+  ],
+  "liu_biao": [
+    "schemer",
+    "vanguard"
+  ],
+  "wang_rui": [
+    "schemer"
+  ],
+  "kuai_yue": [
+    "schemer",
+    "spellcaster"
+  ],
+  "kuai_liang": [
+    "schemer",
+    "spellcaster"
+  ],
+  "cai_mao": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "huang_zu": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "chen_wen": [
+    "schemer"
+  ],
+  "liu_yao": [
+    "schemer",
+    "vanguard"
+  ],
+  "wang_lang": [
+    "schemer"
+  ],
+  "xu_gong": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "shi_xie": [
+    "schemer",
+    "vanguard"
+  ],
+  "shi_yi": [
+    "schemer"
+  ],
+  "zhang_jin": [
+    "schemer"
+  ],
+  "lai_gong": [
+    "schemer"
+  ],
+  "liu_yan": [
+    "schemer"
+  ],
+  "zhao_wei": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "zhang_lu": [
+    "spellcaster"
+  ],
+  "zhang_xiu": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "ma_xiang": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "xi_jian": [
+    "schemer"
+  ],
+  "tao_qian": [
+    "schemer",
+    "vanguard"
+  ],
+  "mi_zhu": [
+    "schemer"
+  ],
+  "chen_deng": [
+    "schemer",
+    "spellcaster"
+  ],
+  "ze_rong": [
+    "spellcaster"
+  ],
+  "liu_dai": [
+    "schemer"
+  ],
+  "zhang_miao": [
+    "schemer"
+  ],
+  "qiao_mao": [
+    "cavalry",
+    "vanguard",
+    "archer"
+  ],
+  "kong_zhou": [
+    "schemer"
+  ],
+  "huang_wan": [
+    "schemer"
+  ],
+  "kong_rong": [
+    "schemer",
+    "spellcaster"
+  ],
+  "wang_kuang": [
+    "schemer"
+  ],
+  "gai_xun": [
+    "schemer"
+  ],
+  "zhang_wen": [
+    "schemer",
+    "vanguard",
+    "cavalry"
+  ],
+  "tan_shihuai": [
+    "archer",
+    "cavalry",
+    "vanguard"
+  ],
+  "helian": [
+    "vanguard",
+    "cavalry"
+  ],
+  "kuitou": [
+    "cavalry",
+    "vanguard"
+  ],
+  "qianman": [
+    "vanguard",
+    "cavalry"
+  ],
+  "budugen": [
+    "vanguard",
+    "cavalry"
+  ],
+  "qiangqu": [
+    "cavalry"
+  ],
+  "yufuluo": [
+    "vanguard"
+  ],
+  "huchuquan": [
+    "archer"
+  ],
+  "xubu_guduhou": [
+    "vanguard"
+  ],
+  "qiuliju": [
+    "archer",
+    "cavalry",
+    "vanguard"
+  ],
+  "tadun": [
+    "cavalry",
+    "vanguard"
+  ],
+  "nanlou": [
+    "vanguard",
+    "cavalry"
+  ],
+  "supuyan": [
+    "vanguard",
+    "cavalry"
+  ],
+  "dianwu": [
+    "archer",
+    "cavalry",
+    "vanguard"
+  ],
+  "yang_teng": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "tan_dai_vuong": [
+    "vanguard"
+  ],
+  "co_quoc_xuyen_vuong": [
+    "cavalry"
+  ],
+  "at_ba_to": [
+    "schemer"
+  ],
+  "uy_cuu_dai": [
+    "schemer"
+  ],
+  "tieu_co_vuong": [
+    "vanguard"
+  ],
+  "gia_tong": [
+    "schemer"
+  ],
+  "luong_long": [
+    "vanguard",
+    "cavalry",
+    "archer"
+  ],
+  "si_tu": [
+    "schemer"
+  ],
+  "ngo_cu": [
+    "schemer"
+  ]
+}

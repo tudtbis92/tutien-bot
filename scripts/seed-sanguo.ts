@@ -70,7 +70,7 @@
 
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { notInArray } from 'drizzle-orm';
+import { notInArray, eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -202,6 +202,19 @@ function loadClassifications(): Record<string, HeroClassification> {
     return JSON.parse(fs.readFileSync(CLASSIFICATIONS_PATH, 'utf8')) as Record<string, HeroClassification>;
   } catch {
     console.error('[Seed] FATAL: scripts/data/sanguo-classifications.json not found — 132 hero classifications required');
+    process.exit(1);
+  }
+}
+
+// Phase 11 multi-class (hero_classes join table) — the set of formation classes
+// each hero may fill (a superset of the primary heroes.class). Content-in-DB,
+// consumed by legion slot matching. REQUIRED dataset.
+const HERO_CLASSES_PATH = fileURLToPath(new URL('./data/sanguo-hero-classes.json', import.meta.url));
+function loadHeroClasses(): Record<string, string[]> {
+  try {
+    return JSON.parse(fs.readFileSync(HERO_CLASSES_PATH, 'utf8')) as Record<string, string[]>;
+  } catch {
+    console.error('[Seed] FATAL: scripts/data/sanguo-hero-classes.json not found — 132 hero multi-class assignments required');
     process.exit(1);
   }
 }
@@ -532,6 +545,37 @@ async function seed() {
       .returning({ id: schema.heroes.id });
     if (!inserted) throw new Error(`[Seed] Failed to upsert hero: ${row.heroId}`);
     heroCount++;
+  }
+
+  // --- Hero multi-class (Phase 11, hero_classes join table) -----------------
+  // The primary combat class stays on heroes.class (battle attack type + skill
+  // pool); the join table carries the set of formation classes the hero may
+  // fill in a legion. Full-replace per hero (delete + re-insert) keyed on the
+  // unique (hero_id, class) index — idempotent, never accumulates.
+  const heroClasses = loadHeroClasses();
+  const heroIdToClassDbId = new Map<string, number>();
+  const heroDbRows = await db.select({ heroId: schema.heroes.heroId, id: schema.heroes.id }).from(schema.heroes);
+  for (const h of heroDbRows) heroIdToClassDbId.set(h.heroId, h.id);
+
+  let classCount = 0;
+  for (const h of rawHeroes) {
+    const dbId = heroIdToClassDbId.get(h.id);
+    if (!dbId) throw new Error(`[Seed] Missing hero row for class assignment: ${h.id}`);
+    const clsList = heroClasses[h.id];
+    if (!clsList || clsList.length === 0) {
+      throw new Error(`[Seed] Missing multi-class assignment for hero ${h.id}`);
+    }
+    // Ensure the primary class is always present in the set.
+    const primary = classifications[h.id].class;
+    const fullSet = clsList.includes(primary) ? clsList : [primary, ...clsList];
+    await db.delete(schema.heroClasses).where(eq(schema.heroClasses.heroId, dbId));
+    for (const cls of fullSet) {
+      await db.insert(schema.heroClasses).values({
+        heroId: dbId,
+        class: cls as NonNullable<typeof schema.heroes.$inferInsert['class']>,
+      });
+      classCount++;
+    }
   }
 
   // --- Map data (TQC-09, D-20 full-replace) ---------------------------------

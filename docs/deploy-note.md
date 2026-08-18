@@ -25,7 +25,7 @@
 
 ## 3. CẤU TRÚC CƠ SỞ DỮ LIỆU (sau Phase 8 + post-gate)
 
-### Migrations: 0000 → 0022
+### Migrations: 0000 → 0023
 
 | Migration | Nội dung | Đặc điểm |
 |---|---|---|
@@ -39,6 +39,7 @@
 | 0020 | sanguo_skills/user_hero_soulgems/user_legion_slots/user_legions/soulgem_transactions tables; user_heroes +tier/skill_normal_id/skill_special_id; sanguo_items +price_linh/price_event/sale_state/drop_weight; encounter_runs +level/skill ids; formations +emoji; FK + indexes | ADDITIVE 100% — deploy 2026-08-18 |
 | 0021 | sanguo_items +emoji | ADDITIVE |
 | 0022 | UNIQUE index user_legion_slots (user_id, user_hero_id) — WR-05 | ADDITIVE |
+| 0023 | hero_classes join table (hero_id FK, hero_class, unique hero_id+class) — Phase 11 multi-class | ADDITIVE — deploy 2026-08-18 |
 
 ### ⚠️ Điểm cần biết về migration
 
@@ -189,6 +190,6 @@ cd /path/to/tutien-bot
 | Production env (CLIENT_ID) | ✅ xác nhận = 1381818375633899562 |
 | Backup production DB | ✅ `/root/backups/tutien_20260818_0436.sql` (33M) |
 | Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo subcommands: map/travel/battle/heroes/hero/shop/bag/legion registered, journal 22 rows, skills=41/items=2 purchasable/formations emoji=3 |
-| UAT (Phase 11) | 🔄 đang testing — 3 human tests pending (shop tabs, legion 4-row, boss drop+capture) |
+| UAT (Phase 11) | 🔄 đang testing — test 1 PASS, tests 2-3 in progress. CR-11-01 (shop handler mismatch) + CR-11-02 (legion empty menu crash) + multi-class (hero_classes) fixes deployed |
 
-**Kết luận: ĐÃ DEPLOY Phase 11 thành công.** Còn 3 UAT tests human (1–3) chờ live-Discord, sau đó commit UAT kết quả. Lần deploy kế tiếp lặp lại gate 4.4–4.6.
+**Kết luận: ĐÃ DEPLOY Phase 11 + multi-class thành công.** Còn UAT test 2-3 chờ live-Discord, sau đó commit UAT kết quả. Lần deploy kế tiếp lặp lại gate 4.4–4.6.

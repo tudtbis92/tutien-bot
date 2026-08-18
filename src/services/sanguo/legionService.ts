@@ -4,6 +4,7 @@ import { formations, formationSlots, userFormations } from '../../db/schema/form
 import { userLegions, userLegionSlots } from '../../db/schema/userLegions.js';
 import { userHeroes } from '../../db/schema/userHeroes.js';
 import { heroes } from '../../db/schema/heroes.js';
+import { heroClasses } from '../../db/schema/heroClasses.js';
 
 /**
  * Sanguo legion service (Phase 11 — TQC-17 assembly half, D-20/D-22, A9).
@@ -244,13 +245,23 @@ export async function assignHero(
       .limit(1);
     if (!slotDef) throw new Error('legion.class_mismatch');
 
-    // 4. Resolve the copy's catalog class + STRICT match (D-20) BEFORE any write.
-    const [hero] = await tx
-      .select({ class: heroes.class })
-      .from(heroes)
-      .where(eq(heroes.id, copy.heroId))
+    // 4. Resolve the copy's MULTI-CLASS set + membership match (Phase 11 —
+    //    a hero may fill any slot whose class is in hero_classes, a superset
+    //    of the primary heroes.class). STRICT membership BEFORE any write.
+    const [heroClassRow] = await tx
+      .select({ id: heroClasses.id })
+      .from(heroClasses)
+      .where(
+        and(
+          eq(heroClasses.heroId, copy.heroId),
+          eq(
+            heroClasses.class,
+            slotDef.class as (typeof heroClasses.class)['_']['data'],
+          ),
+        ),
+      )
       .limit(1);
-    if (!hero || hero.class !== slotDef.class) throw new Error('legion.class_mismatch');
+    if (!heroClassRow) throw new Error('legion.class_mismatch');
 
     // 5. One-copy-one-slot (D-17): the copy cannot be in another slot of this
     //    legion. This pre-SELECT is the fast path for the common (serialized)
