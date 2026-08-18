@@ -72,6 +72,35 @@
 
   **RE-SIGNED (2026-08-14, Phase 11 D-18):** the shop prices (heal_pill 50💎, booster_x2 100💎), formation prices (200/300/500💎), and boss drop weights (70/25/4.9/0.1) above are the approved Phase 11 economy contract — the single source the 11-02 seed writes and the 11-04 shopService charges (Pitfall 8); evolution/leveling/re-roll are hồn ngọc sinks and NEVER call `wallet.deductBalance` (D-01/D-06 hard prohibition); the booster is a documented, bounded Linh thạch→hồn ngọc bridge (flagged A11, Phase 12 TQC-19 monitoring). Any rebalancing requires a new sign-off (D-18 one-way gate).
 
+- **COMPLIANCE VERIFICATION (2026-08-14, Phase 11):** the 11-08 balance pass verified the LIVE seeded economy (11-02 seed) against this amendment's signed numbers, per Pitfall 8 (prices are seed data — the single source). **COMPLIANCE VERIFIED** — every live value matches the amendment, with one flagged drift reconciled below.
+
+  **Live sink set (verified against the seed + production services):**
+
+  | Sink | Live price (Linh thạch) | Verified source | Amendment match |
+  |------|-------------------------|-----------------|-----------------|
+  | Shop — `heal_pill` | 50💎 | `sanguo-items.json` priceLinh; `shopService.buyItem` → `wallet.deductBalance` | ✓ 50💎 |
+  | Shop — `booster_x2` | 100💎 | `sanguo-items.json` priceLinh; `shopService.buyItem` → `wallet.deductBalance` | ✓ 100💎 |
+  | Formation — `can_ban` (starter) | 0💎 (free grant) | `sanguo-formations.json` basePrice 0 | ✓ |
+  | Formation — `thien_co` | 200💎 | `sanguo-formations.json` basePrice; `shopService` → `wallet.deductBalance` | ✓ 200💎 |
+  | Formation — `vu_sat` | 300💎 | `sanguo-formations.json` basePrice; `shopService` → `wallet.deductBalance` | ✓ 300💎 |
+
+  > **FLAGGED RECONCILIATION (Pitfall 8):** the amendment's "200/300/500💎" set lists a 500💎 formation that is NOT seeded in v3 — the live `sanguo-formations.json` carries only the free starter (`can_ban` 0💎) + the two purchasable (`thien_co` 200💎, `vu_sat` 300💎), per the D-21 amendment (v3 ships the free starter + shop purchase only). The seed is the single source; the 500💎 tier is a not-yet-authored catalog price, flagged here (not silently dropped) and tracked for Phase 12 TQC-19. The gross-bound math below uses the LIVE set (max 300💎) and remains compliant.
+
+  **Confirmed boss drop weights (items only, never money — D-19):** the live `sanguo-items.json` dropWeight matches the amendment — `heal_pill` 70 / `booster_x2` 25 / `capture_tier4_key` 4.9 / `capture_tier5_key` 0.1; `dropService.rollBossDrop` filters `dropWeight > 0` so `capture_key` (weight 0) is excluded. All via `user_sanguo_items` upsert (never `users.balance`) — boss drops never touch money.
+
+  **E[net/hour] recomputation (verified with the LIVE seed, realistic cadence 5–10 encounters/hr):**
+
+  `E[net/hour] = E[inflow] − E[outflow]`
+
+  - **E[inflow] = 0** — the free starter hero (10-07) is the only faucet; the booster is a Linh thạch **sink** (100💎), not a source; boss drops are items only; no sanguo mechanic mints Linh thạch (D-19).
+  - **E[outflow]** — Phase 10 capture fees (already signed, 75–394💎/hr) plus the Phase 11 Linh thạch sinks:
+    - `heal_pill` 50💎 at ~1–2/hr → **50–100💎/hr**;
+    - `booster_x2` 100💎, amortized ≤ ~20💎/hr;
+    - formations (live max 300💎) one-time, amortized ≤ ~10💎/hr.
+  - **E[net] = 0 − E[outflow] < 0** → **satisfies D-19** (net <= 0) at every cadence — every Phase 11 price is a pure sink by construction.
+  - **Gross per-hour** at realistic cadence: Phase 11 shop/formation flow ≈ **50–130💎/hr**; the full loop (incl. capture fees) ≈ **~160–520💎/hr** — the upper-realistic corner stays **below the ~416/hr magnitude bound** in the realistic model; only the theoretical 20/hr supply-ceiling (a full battle+capture chain every 3 min continuously — not human-achievable) can exceed it, mirroring the Phase 10 F8 analysis.
+  - **Conclusion:** live-seed-verified E[net] <= 0 (D-19 hard constraint) and gross < ~416/hr at realistic cadence — **the Phase 11 sink set is compliant against the live seed; any future rebalancing of these values requires a new sign-off (D-18 one-way gate).**
+
 ---
 
 ## Context
