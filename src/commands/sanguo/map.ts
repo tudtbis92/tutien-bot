@@ -34,7 +34,7 @@ export {
   handleCaptureRetryPress,
   handleCaptureRetreatPress,
 } from './battle.js';
-export { handleStarterPick, handleZoneFilterSelect } from './heroes.js';
+export { handleStarterPick, handleZoneFilterSelect, handleFactionFilterSelect, handleIvFilterSelect } from './heroes.js';
 export {
   handleCompanionPress,
   handleCopyPress,

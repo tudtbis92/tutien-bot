@@ -42,6 +42,8 @@ import { LEGION_FORMATION_MENU_ID } from '../ui/components/sanguoLegionFormation
 import { LEGION_SLOT_MENU_ID } from '../ui/components/sanguoLegionSlotMenu.js';
 import { LEGION_HERO_PREFIX } from '../ui/components/sanguoLegionHeroMenu.js';
 import { LEGION_SAVE_ID } from '../ui/components/sanguoLegionSaveButton.js';
+import { HEROES_FACTION_MENU_ID } from '../ui/components/sanguoHeroesFactionMenu.js';
+import { HEROES_IV_MENU_ID } from '../ui/components/sanguoHeroesIvMenu.js';
 
 export const name = Events.InteractionCreate;
 
@@ -59,6 +61,8 @@ interface SanguoComponentHandlers {
   handleCaptureRetreatPress?: (interaction: ButtonInteraction) => Promise<void>;
   handleStarterPick?: (interaction: ButtonInteraction) => Promise<void>;
   handleZoneFilterSelect?: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  handleFactionFilterSelect?: (interaction: StringSelectMenuInteraction) => Promise<void>;
+  handleIvFilterSelect?: (interaction: StringSelectMenuInteraction) => Promise<void>;
   handleCompanionPress?: (interaction: ButtonInteraction) => Promise<void>;
   handleCopyPress?: (interaction: StringSelectMenuInteraction) => Promise<void>;
   handleCopyPage?: (interaction: ButtonInteraction) => Promise<void>;
@@ -118,6 +122,40 @@ export async function execute(interaction: Interaction): Promise<void> {
         }
       } catch (err) {
         logger.error('InteractionCreate', 'Error in sanguo heroes zone filter', err);
+      }
+      return;
+    }
+
+    // sanguo:heroes:faction — SC5 faction filter select (static customId; the
+    // CHOSEN faction code rides interaction.values[0], validated server-side
+    // against heroFactions codes — T-11-07-05).
+    if (customId === HEROES_FACTION_MENU_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleFactionFilterSelect === 'function') {
+          await cmd.handleFactionFilterSelect(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo heroes faction filter', err);
+      }
+      return;
+    }
+
+    // sanguo:heroes:iv — SC5 IV-grade filter select (static customId; the
+    // CHOSEN iv_grade KEY rides interaction.values[0], validated against the
+    // 5 grade keys — grade, never raw IV, D-12).
+    if (customId === HEROES_IV_MENU_ID) {
+      try {
+        const cmd = interaction.client.commands?.get('sanguo') as
+          | SanguoComponentHandlers
+          | undefined;
+        if (cmd && typeof cmd.handleIvFilterSelect === 'function') {
+          await cmd.handleIvFilterSelect(interaction);
+        }
+      } catch (err) {
+        logger.error('InteractionCreate', 'Error in sanguo heroes IV filter', err);
       }
       return;
     }

@@ -36,6 +36,10 @@ export interface SanguoHeroesEmbedData {
   lines: SanguoHeroesLine[];
   /** Per-locale zone label when a zone filter is applied. */
   zoneLabel?: string;
+  /** Per-locale faction label when a faction filter is applied (SC5). */
+  factionLabel?: string;
+  /** Per-locale IV-grade label when an IV filter is applied (SC5, grade key only). */
+  ivLabel?: string;
   /** Starter-acquired confirmation name — renders the SUCCESS state. */
   successName?: string;
   /** Filtered-empty hint copy — renders instead of the starter picker. */
@@ -81,11 +85,18 @@ export function buildSanguoHeroesEmbed(
           .join('\n')
       : (data.emptyHint ?? '');
 
+  // The field name reflects the ACTIVE filter state (SC5) — zone + faction +
+  // IV-grade labels joined; when no filter is active it falls back to the title.
+  const activeFilters = [data.zoneLabel, data.factionLabel, data.ivLabel].filter(
+    (l): l is string => l != null,
+  );
+  const fieldName = activeFilters.length > 0 ? activeFilters.join(' • ') : t('sanguo:heroes.title', { count: data.count });
+
   return embed
     .setColor(COLORS.SEASON)
     .setTitle(t('sanguo:heroes.title', { count: data.count }))
     .addFields({
-      name: data.zoneLabel ?? t('sanguo:heroes.title', { count: data.count }),
+      name: fieldName,
       value,
     });
 }

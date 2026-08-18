@@ -10,11 +10,13 @@ import {
 import { eq, and, asc, inArray, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { heroes } from '../../db/schema/heroes.js';
+import { heroFactions } from '../../db/schema/heroFactions.js';
 import { userHeroes } from '../../db/schema/userHeroes.js';
 import { userSanguoState } from '../../db/schema/userSanguoState.js';
 import { mapZones } from '../../db/schema/mapZones.js';
 import { heroEmoji } from '../../assets/sanguoEmojis.js';
 import type { SupportedLocale } from '../../i18n/index.js';
+import type { TFunction } from 'i18next';
 import { fetchCommandContext } from '../../utils/commandContext.js';
 import { resolveComponentUser as resolveInteractionUser } from '../../utils/componentContext.js';
 import { buildErrorEmbed } from '../../ui/embeds/buildErrorEmbed.js';
@@ -27,6 +29,11 @@ import {
   buildStarterButtons,
 } from '../../ui/components/sanguoStarterButtons.js';
 import { buildZoneFilterMenu } from '../../ui/components/sanguoHeroesZoneMenu.js';
+import {
+  buildSanguoHeroesFactionMenu,
+  FILTER_ALL_VALUE,
+} from '../../ui/components/sanguoHeroesFactionMenu.js';
+import { buildSanguoHeroesIvMenu, IV_GRADE_KEYS } from '../../ui/components/sanguoHeroesIvMenu.js';
 
 /**
  * /sanguo heroes command (Phase 10 — TQC-12/TQC-13, D-14/D-15).
@@ -135,21 +142,71 @@ const OWNED_COLUMNS = {
   capturedZone: userHeroes.capturedZone,
 } as const;
 
-async function queryOwnedHeroes(
+/** SC5 filter state — zone + faction (stable code) + IV grade (grade key). */
+export interface OwnedHeroFilters {
+  /** map_zones.code — the captured zone. */
+  zone?: string;
+  /** hero_factions.code — the stable faction code. */
+  factionCode?: string;
+  /** An iv_grade.* KEY — grade, never raw IV (D-12). */
+  ivGrade?: string;
+}
+
+/** Owned-hero query — zone + faction (via heroFactions) + IV-grade (via the
+ *  SAME ivGradeKey() the render uses) filters AND-combined (SC5).
+ *  T-11-07-05: an invalid faction code resolves to no faction → EMPTY result
+ *  (never a crash); an unknown IV grade key simply matches zero rows via the
+ *  JS grade filter. Zone filter is the existing D-15 filter (unchanged). */
+export async function queryOwnedHeroes(
   userId: number,
-  zoneCode?: string,
+  filters: OwnedHeroFilters = {},
 ): Promise<OwnedHeroRow[]> {
-  return db
+  // Resolve the faction code → faction id (reference set, T-11-07-05).
+  let factionId: number | undefined;
+  if (filters.factionCode) {
+    const [faction] = await db
+      .select({ id: heroFactions.id })
+      .from(heroFactions)
+      .where(eq(heroFactions.code, filters.factionCode))
+      .limit(1);
+    factionId = faction?.id;
+    if (factionId == null) return [];
+  }
+
+  let rows = await db
     .select(OWNED_COLUMNS)
     .from(userHeroes)
     .innerJoin(heroes, eq(userHeroes.heroId, heroes.id))
     .where(
       and(
         eq(userHeroes.userId, userId),
-        zoneCode ? eq(userHeroes.capturedZone, zoneCode) : undefined,
+        filters.zone ? eq(userHeroes.capturedZone, filters.zone) : undefined,
+        factionId !== undefined ? eq(heroes.factionId, factionId) : undefined,
       ),
     )
     .orderBy(asc(heroes.id));
+
+  // IV-grade filter — the SAME grade function the collection render uses
+  // (D-12: grade keys, never raw IV values on the filter surface).
+  if (filters.ivGrade) {
+    rows = rows.filter(
+      (r) => ivGradeKey(r.ivStr, r.ivAgi, r.ivInt, r.ivMov, r.ivLea, r.ivCha) === filters.ivGrade,
+    );
+  }
+  return rows;
+}
+
+/** Per-locale faction name column (D-07 content-in-DB — never i18n keys). */
+function pickFactionName(row: PerLocaleName, locale: SupportedLocale): string {
+  if (locale === 'en') return row.nameEn;
+  if (locale === 'zh-cn') return row.nameZh ?? row.nameVi;
+  return row.nameVi;
+}
+
+/** Faction filter options (hero_factions.sortOrder — SC5). */
+async function fetchFactions(locale: SupportedLocale): Promise<{ code: string; label: string }[]> {
+  const rows = await db.select().from(heroFactions).orderBy(asc(heroFactions.sortOrder));
+  return rows.map((f) => ({ code: f.code, label: pickFactionName(f, locale) }));
 }
 
 /** Resolve the users.id row for a component press — shared util (IN-05). */
@@ -214,6 +271,112 @@ async function fetchZones(locale: SupportedLocale): Promise<{ code: string; labe
 }
 
 /**
+ * Shared collection renderer (SC5): applies the current zone + faction + IV
+ * filter state and renders the collection embed + the 3 filter rows (one per
+ * ActionRow, CR-09-01). The UNFILTERED empty-collection state (no filters, 0
+ * rows) still renders the starter picker (the ONLY empty state, D-14).
+ */
+async function renderCollection(
+  interaction: ChatInputCommandInteraction | StringSelectMenuInteraction,
+  userId: number,
+  locale: SupportedLocale,
+  t: TFunction,
+  shardId: number | undefined,
+  filters: OwnedHeroFilters,
+): Promise<void> {
+  // Reference sets first — used to validate the pressed filter values
+  // (T-11-07-05: invalid / filter_all → cleared, never a crash).
+  const zones = await fetchZones(locale);
+  const factions = await fetchFactions(locale);
+  const effZone =
+    filters.zone && filters.zone !== FILTER_ALL_VALUE && zones.some((z) => z.code === filters.zone)
+      ? filters.zone
+      : undefined;
+  const effFaction =
+    filters.factionCode && filters.factionCode !== FILTER_ALL_VALUE && factions.some((f) => f.code === filters.factionCode)
+      ? filters.factionCode
+      : undefined;
+  const effIv =
+    filters.ivGrade && filters.ivGrade !== FILTER_ALL_VALUE && (IV_GRADE_KEYS as readonly string[]).includes(filters.ivGrade)
+      ? filters.ivGrade
+      : undefined;
+
+  const owned = await queryOwnedHeroes(userId, {
+    zone: effZone,
+    factionCode: effFaction,
+    ivGrade: effIv,
+  });
+  const noFilter = !effZone && !effFaction && !effIv;
+
+  if (noFilter && owned.length === 0) {
+    // ── Starter picker (D-14) — the ONLY empty-collection state.
+    const views = await incrementStarterViews(userId);
+    const pool = views >= 3 ? STARTER_SET_2 : STARTER_SET_1;
+    const poolHeroes = await fetchStarterHeroes(pool, locale);
+    await interaction.editReply({
+      embeds: [buildSanguoHeroesEmbed({ count: 0, lines: [], shardId }, t)],
+      components: [
+        new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+          ...buildStarterButtons(t, poolHeroes),
+        ),
+      ],
+    });
+    return;
+  }
+
+  // ── Collection (TQC-13/SC5): owned-only, star + grade, one active badge.
+  const [state] = await db
+    .select()
+    .from(userSanguoState)
+    .where(eq(userSanguoState.userId, userId))
+    .limit(1);
+  const activeHeroId = state?.activeHeroId ?? null;
+
+  const lines = owned.map((h) => ({
+    emoji: safeHeroEmoji(h.heroHeroId),
+    name: pickName(h, locale),
+    stars: '★'.repeat(h.tier),
+    gradeKey: ivGradeKey(h.ivStr, h.ivAgi, h.ivInt, h.ivMov, h.ivLea, h.ivCha),
+    active: h.id === activeHeroId,
+  }));
+  const zoneLabel = effZone ? zones.find((z) => z.code === effZone)?.label : undefined;
+  const factionLabel = effFaction
+    ? factions.find((f) => f.code === effFaction)?.label
+    : undefined;
+  const ivLabel = effIv ? t(effIv) : undefined;
+
+  await interaction.editReply({
+    embeds: [
+      buildSanguoHeroesEmbed(
+        {
+          count: owned.length,
+          lines,
+          zoneLabel,
+          factionLabel,
+          ivLabel,
+          emptyHint:
+            !noFilter && owned.length === 0 ? t('sanguo:heroes.empty_filtered') : undefined,
+          shardId,
+        },
+        t,
+      ),
+    ],
+    components: [
+      // CR-09-01: each select menu lives in its OWN ActionRow (3 filter rows).
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        buildZoneFilterMenu(t, zones),
+      ),
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        buildSanguoHeroesFactionMenu(t, factions),
+      ),
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        buildSanguoHeroesIvMenu(t),
+      ),
+    ],
+  });
+}
+
+/**
  * /sanguo heroes execute — NO deferReply (the parent 'sanguo' command owns it,
  * map.ts execute). Empty collection → starter picker; non-empty → collection.
  */
@@ -227,48 +390,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
 
   try {
-    const owned = await queryOwnedHeroes(user.id);
-
-    if (owned.length === 0) {
-      // ── Starter picker (D-14) — the ONLY empty-collection state.
-      const views = await incrementStarterViews(user.id);
-      const pool = views >= 3 ? STARTER_SET_2 : STARTER_SET_1;
-      const poolHeroes = await fetchStarterHeroes(pool, locale);
-      await interaction.editReply({
-        embeds: [buildSanguoHeroesEmbed({ count: 0, lines: [], shardId }, t)],
-        components: [
-          new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-            ...buildStarterButtons(t, poolHeroes),
-          ),
-        ],
-      });
-      return;
-    }
-
-    // ── Collection (TQC-13): owned-only, stars + IV grade, one active badge.
-    const [state] = await db
-      .select()
-      .from(userSanguoState)
-      .where(eq(userSanguoState.userId, user.id))
-      .limit(1);
-    const activeHeroId = state?.activeHeroId ?? null;
-    const zones = await fetchZones(locale);
-    const lines = owned.map((h) => ({
-      emoji: safeHeroEmoji(h.heroHeroId),
-      name: pickName(h, locale),
-      stars: '★'.repeat(h.tier),
-      gradeKey: ivGradeKey(h.ivStr, h.ivAgi, h.ivInt, h.ivMov, h.ivLea, h.ivCha),
-      active: h.id === activeHeroId,
-    }));
-    await interaction.editReply({
-      embeds: [buildSanguoHeroesEmbed({ count: owned.length, lines, shardId }, t)],
-      components: [
-        // CR-09-01: the select menu lives in its OWN ActionRow.
-        new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-          buildZoneFilterMenu(t, zones),
-        ),
-      ],
-    });
+    await renderCollection(interaction, user.id, locale, t, shardId, {});
   } catch (err) {
     logger.error('HeroesExecute', 'Error in /sanguo heroes', err);
     await interaction.editReply({
@@ -399,53 +521,63 @@ export async function handleZoneFilterSelect(interaction: StringSelectMenuIntera
   const { userId, t, locale, shardId } = ctx;
 
   try {
-    const zones = await fetchZones(locale);
-    const zoneCode = interaction.values[0];
-    const valid = zoneCode !== undefined && zones.some((z) => z.code === zoneCode);
-    const effectiveZone = valid ? zoneCode : undefined;
-
-    const owned = await queryOwnedHeroes(userId, effectiveZone);
-    const [state] = await db
-      .select()
-      .from(userSanguoState)
-      .where(eq(userSanguoState.userId, userId))
-      .limit(1);
-    const activeHeroId = state?.activeHeroId ?? null;
-
-    const lines = owned.map((h) => ({
-      emoji: safeHeroEmoji(h.heroHeroId),
-      name: pickName(h, locale),
-      stars: '★'.repeat(h.tier),
-      gradeKey: ivGradeKey(h.ivStr, h.ivAgi, h.ivInt, h.ivMov, h.ivLea, h.ivCha),
-      active: h.id === activeHeroId,
-    }));
-    const zoneLabel = effectiveZone
-      ? zones.find((z) => z.code === effectiveZone)?.label
-      : undefined;
-
-    await interaction.editReply({
-      embeds: [
-        buildSanguoHeroesEmbed(
-          {
-            count: owned.length,
-            lines,
-            zoneLabel,
-            // Filtered-empty: never the starter picker — the picker renders
-            // only when the collection is entirely empty (flagged assumption).
-            emptyHint: effectiveZone && owned.length === 0 ? t('sanguo:heroes.empty_filtered') : undefined,
-            shardId,
-          },
-          t,
-        ),
-      ],
-      components: [
-        new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-          buildZoneFilterMenu(t, zones),
-        ),
-      ],
+    // renderCollection validates the pressed value against map_zones codes
+    // (T-10-07-05 / T-11-07-05 — invalid + 'Tất cả' → clear, never a crash).
+    await renderCollection(interaction, userId, locale, t, shardId, {
+      zone: interaction.values[0],
     });
   } catch (err) {
     logger.error('HeroesZoneFilter', 'Error in zone filter select', err);
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:heroes.error'), shardId)],
+      components: [],
+    });
+  }
+}
+
+/**
+ * Faction filter select (SC5) — re-renders the collection with only that
+ * faction's heroes. renderCollection validates the value against heroFactions
+ * codes + the 'Tất cả' (filter_all) reset (T-11-07-05).
+ */
+export async function handleFactionFilterSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  await interaction.deferUpdate();
+  const ctx = await resolveInteractionUser(interaction);
+  if (!ctx) return;
+  const { userId, t, locale, shardId } = ctx;
+
+  try {
+    await renderCollection(interaction, userId, locale, t, shardId, {
+      factionCode: interaction.values[0],
+    });
+  } catch (err) {
+    logger.error('HeroesFactionFilter', 'Error in faction filter select', err);
+    await interaction.editReply({
+      embeds: [buildErrorEmbed(t('sanguo:heroes.error'), shardId)],
+      components: [],
+    });
+  }
+}
+
+/**
+ * IV-grade filter select (SC5) — re-renders with only that grade's copies.
+ * The value is an iv_grade.* KEY (grade — NEVER raw IV, D-12); 'Tất cả'
+ * (filter_all) resets; unknown → full collection (T-11-07-05).
+ */
+export async function handleIvFilterSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  await interaction.deferUpdate();
+  const ctx = await resolveInteractionUser(interaction);
+  if (!ctx) return;
+  const { userId, t, locale, shardId } = ctx;
+
+  try {
+    // renderCollection validates the value against the iv_grade KEYS (D-12 —
+    // grade, never raw IV; 'Tất cả' clears).
+    await renderCollection(interaction, userId, locale, t, shardId, {
+      ivGrade: interaction.values[0],
+    });
+  } catch (err) {
+    logger.error('HeroesIvFilter', 'Error in IV-grade filter select', err);
     await interaction.editReply({
       embeds: [buildErrorEmbed(t('sanguo:heroes.error'), shardId)],
       components: [],
