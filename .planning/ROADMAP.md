@@ -196,7 +196,7 @@ Plans:
   4. User can field a legion of 3 mains + 9 buff heroes in legion battle; chemistry buffs (bonus-only, no penalty) apply per system/faction via `battleEngine` extension.
   5. Full collection filters (faction/zone/IV) available in `/sanguo heroes` for team building.
 
-**Plans**: 7/8 plans executed planned (2026-08-14)
+**Plans**: 8/8 plans executed planned (2026-08-14)
 Plans:
 **Wave 1**
 
@@ -225,7 +225,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6)*
 
-- [ ] 11-08-PLAN.md — Balance pass + economy compliance verification + i18n parity + full regression (TQC-14..17)
+- [x] 11-08-PLAN.md — Balance pass + economy compliance verification + i18n parity + full regression (TQC-14..17)
 
 **UI hint**: yes
 
@@ -250,7 +250,7 @@ Plans:
 | 8. Foundation, Economy Budget & Content Infrastructure | 4/4 | In Progress|  |
 | 9. Travel & Encounters | 5/5 | Complete    | 2026-08-13 |
 | 10. Battle & Capture | 7/7 | Complete    | 2026-08-14 |
-| 11. Progression, Chemistry & Economy Depth | 7/8 | In Progress|  |
+| 11. Progression, Chemistry & Economy Depth | 8/8 | In Progress|  |
 | 12. Anti-Abuse, Monitoring & Marketplace Gating | 0/TBD | Not started | - |
 
 ---
