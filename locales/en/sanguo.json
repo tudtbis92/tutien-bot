@@ -274,7 +274,7 @@
     "slot_pick": "Choose a slot",
     "hero_pick": "Choose a hero for {{slot}}",
     "hero_none": "No hero matches this slot's class",
-    "hero_option": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}}",
+    "hero_option": "{{name}} • Lv{{level}} • {{grade}}",
     "save_button": "Save formation",
     "saved": "✅ Formation {{formation}} saved.",
     "chemistry_line": "{{hero}}: **{{tier}}** • {{n}} links",
@@ -294,7 +294,9 @@
     "class_mismatch": "{{hero}} does not fit slot {{slot}} (needs class {{class}}).",
     "error": "There was an error assembling the formation. Please try again.",
     "copy_suffix": " • #{{n}}",
-    "hero_option_multi": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}} • #{{copy}}"
+    "hero_option_multi": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}}",
+    "hero_option_assigned": "{{name}} • Lv{{level}} • {{grade}} • ({{slot}})",
+    "hero_option_multi_assigned": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}} ({{slot}})"
   },
   "classes": {
     "vanguard": "Vanguard",

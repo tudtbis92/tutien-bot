@@ -274,7 +274,7 @@
     "slot_pick": "Chọn vị trí",
     "hero_pick": "Chọn tướng cho {{slot}}",
     "hero_none": "Chưa có tướng hợp lớp cho vị trí này",
-    "hero_option": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}}",
+    "hero_option": "{{name}} • Lv{{level}} • {{grade}}",
     "save_button": "Lưu trận hình",
     "saved": "✅ Đã lưu trận hình {{formation}}.",
     "chemistry_line": "{{hero}}: **{{tier}}** • {{n}} liên kết",
@@ -294,7 +294,9 @@
     "class_mismatch": "{{hero}} không hợp vị trí {{slot}} (cần lớp {{class}}).",
     "error": "Có lỗi khi lập trận hình. Hãy thử lại.",
     "copy_suffix": " • #{{n}}",
-    "hero_option_multi": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}} • #{{copy}}"
+    "hero_option_multi": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}}",
+    "hero_option_assigned": "{{name}} • Lv{{level}} • {{grade}} • ({{slot}})",
+    "hero_option_multi_assigned": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}} ({{slot}})"
   },
   "classes": {
     "vanguard": "Tiên phong",

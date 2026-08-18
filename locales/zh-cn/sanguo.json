@@ -274,7 +274,7 @@
     "slot_pick": "选择位置",
     "hero_pick": "为{{slot}}选择武将",
     "hero_none": "没有符合此位置职业的武将",
-    "hero_option": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}}",
+    "hero_option": "{{name}} • Lv{{level}} • {{grade}}",
     "save_button": "保存阵型",
     "saved": "✅ 阵型{{formation}}已保存。",
     "chemistry_line": "{{hero}}：**{{tier}}** • {{n}}条羁绊",
@@ -294,7 +294,9 @@
     "class_mismatch": "{{hero}}不适合位置{{slot}}（需要{{class}}职业）。",
     "error": "组建阵型时出错，请重试。",
     "copy_suffix": " • #{{n}}",
-    "hero_option_multi": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}} • #{{copy}}"
+    "hero_option_multi": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}}",
+    "hero_option_assigned": "{{name}} • Lv{{level}} • {{grade}} • ({{slot}})",
+    "hero_option_multi_assigned": "{{name}} • Lv{{level}} • {{grade}} • #{{copy}} ({{slot}})"
   },
   "classes": {
     "vanguard": "先锋",

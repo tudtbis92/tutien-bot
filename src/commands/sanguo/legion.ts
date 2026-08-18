@@ -246,12 +246,16 @@ async function fetchSpousePairs(heroIds: number[]): Promise<Set<string>> {
  *  slot class). distinct on the copy id so a multi-class hero appears once.
  *  CR-11-05: ALL copies of a hero are listed, each with distinguishing info —
  *  Lv{level} + a copy ordinal (#n) when a hero has multiple copies, so the
- *  player can tell them apart (same name/stars can collide otherwise). */
+ *  player can tell them apart. CR-11-08: copies already assigned to a slot
+ *  show the slot's formation ordinal (e.g. "Chủ lực 1") so the player knows
+ *  where each copy currently sits; the rarity stars are NOT shown. */
 async function fetchClassMatchedHeroes(
   userId: number,
   slotClass: string,
   locale: SupportedLocale,
   t: TFunction,
+  slotDefs: { slotOrder: number; class: string }[],
+  assignment: AssignmentMap,
 ): Promise<{ userHeroId: number; label: string; emoji?: string }[]> {
   const rows = await db
     .select(CHEM_COLUMNS)
@@ -283,17 +287,38 @@ async function fetchClassMatchedHeroes(
     ordinalByCopyId.set(h.copyId, ord);
   }
 
+  // copyId → the slot it currently occupies (the label suffix).
+  const slotLabelByCopyId = new Map<number, string>();
+  for (const [slotOrder] of assignment) {
+    const assignedHero = assignment.get(slotOrder);
+    if (!assignedHero) continue;
+    const def = slotDefs.find((s) => s.slotOrder === slotOrder);
+    if (!def) continue;
+    const isMain = def.slotOrder < MAIN_SLOT_COUNT;
+    const n = isMain ? def.slotOrder + 1 : def.slotOrder - MAIN_SLOT_COUNT + 1;
+    slotLabelByCopyId.set(
+      assignedHero.copyId,
+      t(isMain ? 'sanguo:legion.main_slot' : 'sanguo:legion.support_slot', { n }),
+    );
+  }
+
   return copies.map((h) => {
     const multi = (copyCountByHero.get(h.heroId) ?? 0) > 1;
+    const assignedSlot = slotLabelByCopyId.get(h.copyId);
     return {
       userHeroId: h.copyId, // CR-11-03: menu value = the COPY id (userHeroes.id)
-      label: t(multi ? 'sanguo:legion.hero_option_multi' : 'sanguo:legion.hero_option', {
-        name: pickName(h, locale),
-        stars: '★'.repeat(h.tier),
-        grade: t(ivGradeKey(h.ivStr, h.ivAgi, h.ivInt, h.ivMov, h.ivLea, h.ivCha)),
-        level: h.level,
-        copy: ordinalByCopyId.get(h.copyId) ?? 1,
-      }),
+      label: t(
+        assignedSlot
+          ? (multi ? 'sanguo:legion.hero_option_multi_assigned' : 'sanguo:legion.hero_option_assigned')
+          : (multi ? 'sanguo:legion.hero_option_multi' : 'sanguo:legion.hero_option'),
+        {
+          name: pickName(h, locale),
+          grade: t(ivGradeKey(h.ivStr, h.ivAgi, h.ivInt, h.ivMov, h.ivLea, h.ivCha)),
+          level: h.level,
+          copy: ordinalByCopyId.get(h.copyId) ?? 1,
+          slot: assignedSlot ?? '',
+        },
+      ),
       emoji: safeHeroEmoji(h.heroId),
     };
   });
@@ -349,7 +374,7 @@ async function renderLegion(
   const heroSlot = opts.heroSlot ?? firstEmptySlot(assignment, slotDefs);
   const heroSlotDef = slotDefs.find((s) => s.slotOrder === heroSlot);
   const heroOptions = heroSlotDef
-    ? (await fetchClassMatchedHeroes(userId, heroSlotDef.class, locale, t)).slice(0, HERO_PAGE_SIZE)
+    ? (await fetchClassMatchedHeroes(userId, heroSlotDef.class, locale, t, slotDefs, assignment)).slice(0, HERO_PAGE_SIZE)
     : [];
 
   // 6. Chemistry — spouse pairs among the assigned hero ids.
