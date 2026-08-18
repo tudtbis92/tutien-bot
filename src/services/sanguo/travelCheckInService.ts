@@ -6,8 +6,11 @@ import { mapEdges } from '../../db/schema/mapEdges.js';
 import { mapNodes } from '../../db/schema/mapNodes.js';
 import { mapZones } from '../../db/schema/mapZones.js';
 import { heroZoneRates } from '../../db/schema/heroZoneRates.js';
+import { heroes } from '../../db/schema/heroes.js';
 import { redis } from '../../cache/redis.js';
 import { logger } from '../../utils/logger.js';
+import { rollWildLevel } from './encounterLevelService.js';
+import { rollSkillsForSpawn } from './skillService.js';
 import {
   capHit,
   pickEncounterHero,
@@ -38,6 +41,11 @@ export interface CheckInEncounter {
   heroId: number | null;
   zone: string;
   boss: boolean;
+  /** D-33: the spawn-rolled fight level (wild = rollWildLevel, boss = 50). */
+  level?: number;
+  /** D-31: the spawn-rolled skills — carried to battle + capture. */
+  skillNormalId?: number | null;
+  skillSpecialId?: number | null;
 }
 
 export interface CheckInResult {
@@ -68,6 +76,11 @@ export interface RollMinuteResult {
   heroId?: number | null;
   zone?: string;
   boss?: boolean;
+  /** D-33: the spawn-rolled level (boss = 50, D-35). */
+  level?: number;
+  /** D-31: the spawn-rolled skill ids carried to battle + capture. */
+  skillNormalId?: number | null;
+  skillSpecialId?: number | null;
   /** True when the roll was silently skipped by the ~20/hr cap (D-13). */
   skipped?: boolean;
 }
@@ -78,12 +91,40 @@ export type RollMinuteFn = (ctx: RollMinuteContext) => Promise<RollMinuteResult>
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
- * The 09-04 real rollMinute — cap-first (D-13, Pitfall 7), position-blended
- * pick (D-15), boss sub-roll (D-14), encounter_runs record (D-24).
- * Runs INSIDE the check-in tx (single writer, Pitfall 5) and writes ONLY
- * encounter_runs + the Redis cap window.
+ * Injectable rng sources for the default roll (D-24/D-30/D-33). Crypto-backed
+ * defaults (player-facing rolls — ASVS V6); the injection exists ONLY so
+ * deterministic tests can drive the pick/level/skill draws.
  */
-function makeDefaultRollMinute(tx: Tx, userId: number, travelId: number): RollMinuteFn {
+export interface SpawnRollDeps {
+  /** Position-blended zone-general pick rng (boss + wild hero pick, D-15/D-24). */
+  pickRng?: () => number;
+  /** Wild level band rng (D-33 — defaults to cryptoUniform). */
+  levelRng?: () => number;
+  /** Class-pool skill roll rng (D-30 — defaults to cryptoUniform). */
+  skillRng?: () => number;
+}
+
+/**
+ * The 09-04 real rollMinute — cap-first (D-13, Pitfall 7), position-blended
+ * pick (D-15), boss sub-roll (D-14), spawn level + skills (D-31/D-33/D-35),
+ * encounter_runs record (D-24). Runs INSIDE the check-in tx (single writer,
+ * Pitfall 5) and writes ONLY encounter_runs + the Redis cap window.
+ *
+ * D-24 (boss redesign): a boss sub-roll now picks a REAL zone-general hero
+ * from the zone pool (pickEncounterHero — hero_id NON-NULL) at FIXED level 50
+ * (D-35) with rolled class-pool skills (D-30/D-31). Wild heroes spawn at a
+ * rolled level (D-33) with rolled skills (D-30/D-31).
+ */
+export function makeDefaultRollMinute(
+  tx: Tx,
+  userId: number,
+  travelId: number,
+  deps: SpawnRollDeps = {},
+): RollMinuteFn {
+  const pickRng = deps.pickRng;
+  const levelRng = deps.levelRng;
+  const skillRng = deps.skillRng;
+
   return async (ctx: RollMinuteContext): Promise<RollMinuteResult> => {
     const now = Date.now();
     const capKey = `sanguo:enc:win:${userId}`;
@@ -149,32 +190,39 @@ function makeDefaultRollMinute(tx: Tx, userId: number, travelId: number): RollMi
     const isBoss = shouldRollBoss(bossRate);
 
     // 6. Pick + record. Stop-at-first-hit is the 09-03 loop's job (D-24).
-    let heroId: number | null;
-    let zone: string;
-    if (isBoss) {
-      heroId = null;
-      zone = dominantZone;
-    } else {
-      if (poolFrom.length === 0 && poolTo.length === 0) {
-        logger.warn('EncounterRoll', `empty pool for zones ${fromZone}/${toZone}, skipping minute`);
-        return { hit: false };
-      }
-      const pick = pickEncounterHero(poolFrom, poolTo, pos);
-      heroId = pick.heroId;
-      zone = pick.zone;
+    // Empty pools are a content error only when a roll lands — skip the minute.
+    if (poolFrom.length === 0 && poolTo.length === 0) {
+      logger.warn('EncounterRoll', `empty pool for zones ${fromZone}/${toZone}, skipping minute`);
+      return { hit: false };
     }
+    const pick = pickEncounterHero(poolFrom, poolTo, pos, pickRng);
+    const heroId = pick.heroId;
+    const zone = pick.zone;
+    const encounterType: 'hero' | 'boss' = isBoss ? 'boss' : 'hero';
+
+    // Spawn level + skills (D-31/D-33/D-35). The hero's class drives the
+    // class-pool skill roll (D-30); the boss fights at FIXED level 50 (D-35).
+    // Skills ride the SAME tx as the encounter_runs insert (Pitfall 5).
+    const [heroRow] = await tx.select().from(heroes).where(eq(heroes.id, heroId)).limit(1);
+    const level = isBoss ? 50 : rollWildLevel(levelRng);
+    const skills = heroRow
+      ? await rollSkillsForSpawn(heroRow.class, skillRng, tx)
+      : { normalId: null, specialId: null };
 
     await tx.insert(encounterRuns).values({
       userId,
       travelId,
       zone,
       heroId,
-      encounterType: isBoss ? 'boss' : 'hero',
+      encounterType,
       status: 'pending',
+      level,
+      skillNormalId: skills.normalId,
+      skillSpecialId: skills.specialId,
     });
     await redis.zadd(capKey, now, String(now)); // boss counts toward the cap (it IS an encounter)
 
-    return { hit: true, heroId, zone, boss: isBoss };
+    return { hit: true, heroId, zone, boss: isBoss, level, skillNormalId: skills.normalId, skillSpecialId: skills.specialId };
   };
 }
 
@@ -189,7 +237,7 @@ function addMinutes(base: Date, mins: number): Date {
  */
 export async function checkInTravel(
   userId: number,
-  deps: { rollMinute?: RollMinuteFn } = {},
+  deps: { rollMinute?: RollMinuteFn; spawnRoll?: SpawnRollDeps } = {},
 ): Promise<CheckInResult> {
   const injectedRoll = deps.rollMinute;
 
@@ -260,8 +308,9 @@ export async function checkInTravel(
     };
 
     // The real roll (09-04): cap-first ZSET, position blend, boss sub-roll,
-    // encounter_runs record. Tests inject their own for deterministic paths.
-    const rollMinute = injectedRoll ?? makeDefaultRollMinute(tx, userId, row.id);
+    // encounter_runs record. Tests inject their own for deterministic paths;
+    // spawnRoll carries deterministic rng sources for the real factory.
+    const rollMinute = injectedRoll ?? makeDefaultRollMinute(tx, userId, row.id, deps.spawnRoll);
 
     // Per-counted-minute roll loop — STOP at the first hit (D-24). The hit
     // minute IS counted (F4, D-28 amended): remaining decrements through it and
