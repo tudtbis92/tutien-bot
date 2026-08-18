@@ -266,6 +266,33 @@ describe('assignHero — ownership + strict class-match + one-copy-one-slot (D-2
     await expect(promise).rejects.toThrow('NOT_OWNED');
     expect(insert).not.toHaveBeenCalled();
   });
+
+  it('WR-05: a DB unique-violation on user_legion_slots_unique_user_hero is surfaced as HERO_ALREADY_ASSIGNED (structural race guard)', async () => {
+    // The pre-SELECT dup check passed (`[]` — the concurrent race: both
+    // presses ran before either inserted), so the INSERT hits the new
+    // (userId, userHeroId) unique index (migration 0022) and throws a Postgres
+    // 23505 — which the service must surface as HERO_ALREADY_ASSIGNED, never
+    // leak as a raw error.
+    const mocks = makeTx([
+      [{ id: 1 }], // 1. user_formations owned → formationId 1
+      [USER_HERO_CAO_CAO], // 2. user_heroes FOR UPDATE (owned — userId 42)
+      [FORMATION_SLOT_VANGUARD_1], // 3. formation_slots slot 1 class='vanguard'
+      [CAO_CAO], // 4. heroes catalog class='vanguard' (matches)
+      [], // 5. dup pre-check: none — both concurrent presses passed it
+    ]);
+    mocks.tx.insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoUpdate: vi.fn().mockRejectedValueOnce(
+          Object.assign(new Error('duplicate key value violates unique constraint "user_legion_slots_unique_user_hero"'), {
+            code: '23505',
+            constraint: 'user_legion_slots_unique_user_hero',
+          }),
+        ),
+      }),
+    });
+    (db.transaction as any).mockImplementation(async (cb: any) => cb(mocks.tx));
+    await expect(assignHero(USER_ID, 1, 1, 11)).rejects.toThrow('HERO_ALREADY_ASSIGNED');
+  });
 });
 
 // ── clearSlot ────────────────────────────────────────────────────────────────

@@ -21,7 +21,11 @@ import { heroes } from '../../db/schema/heroes.js';
  * either case (the security-critical piece).
  *
  * ONE-COPY-ONE-SLOT (D-17): a hero cannot occupy two slots of the same legion
- * — HERO_ALREADY_ASSIGNED.
+ * — HERO_ALREADY_ASSIGNED. WR-05 (Phase 11 review): this is now STRUCTURAL —
+ * the DB unique index `user_legion_slots_unique_user_hero (userId, userHeroId)`
+ * (migration 0022) rejects a concurrent assign that slips past the pre-SELECT
+ * check, and that DB conflict is surfaced as HERO_ALREADY_ASSIGNED (not a raw
+ * 23505 error / duplicate-row state).
  *
  * FREE-ASSEMBLY (D-19): NO currency deduction anywhere — formation PURCHASE is
  * the 11-04 shop sink; assigning/saving is free (grep-gated).
@@ -176,6 +180,20 @@ export interface AssignHeroResult {
   userHeroId: number;
 }
 
+/** True when `e` is a Postgres unique-violation (SQLSTATE 23505) on the given
+ *  constraint — used to surface the WR-05 one-copy-one-slot DB race as
+ *  HERO_ALREADY_ASSIGNED instead of leaking a raw 23505 to the command layer. */
+function isUniqueViolation(e: unknown, constraint: string): boolean {
+  if (typeof e !== 'object' || e === null) return false;
+  const err = e as { code?: string; constraint?: string; message?: string };
+  if (err.code === '23505') {
+    if (err.constraint === constraint) return true;
+    // Fallback: some drivers only surface the constraint in the message.
+    if (typeof err.message === 'string' && err.message.includes(constraint)) return true;
+  }
+  return false;
+}
+
 /**
  * D-20/D-22 (V4): assign ONE copy to ONE slot — ONE tx that (1) verifies the
  * formation is owned, (2) FOR UPDATE locks the target copy + re-gates ownership
@@ -235,7 +253,8 @@ export async function assignHero(
     if (!hero || hero.class !== slotDef.class) throw new Error('legion.class_mismatch');
 
     // 5. One-copy-one-slot (D-17): the copy cannot be in another slot of this
-    //    legion.
+    //    legion. This pre-SELECT is the fast path for the common (serialized)
+    //    case.
     const [dup] = await tx
       .select({ id: userLegionSlots.id })
       .from(userLegionSlots)
@@ -243,14 +262,25 @@ export async function assignHero(
       .limit(1);
     if (dup) throw new Error('HERO_ALREADY_ASSIGNED');
 
-    // 6. Upsert the slot row — unique(userId, slotOrder).
-    await tx
-      .insert(userLegionSlots)
-      .values({ userId, slotOrder, userHeroId })
-      .onConflictDoUpdate({
-        target: [userLegionSlots.userId, userLegionSlots.slotOrder],
-        set: { userHeroId },
-      });
+    // 6. Upsert the slot row — unique(userId, slotOrder). WR-05: the DB unique
+    //    index on (userId, userHeroId) (migration 0022) is the STRUCTURAL
+    //    one-copy-one-slot guard — a concurrent assign that slipped past the
+    //    pre-check conflicts on that index here; we surface it as
+    //    HERO_ALREADY_ASSIGNED rather than leaking a raw 23505.
+    try {
+      await tx
+        .insert(userLegionSlots)
+        .values({ userId, slotOrder, userHeroId })
+        .onConflictDoUpdate({
+          target: [userLegionSlots.userId, userLegionSlots.slotOrder],
+          set: { userHeroId },
+        });
+    } catch (e) {
+      if (isUniqueViolation(e, 'user_legion_slots_unique_user_hero')) {
+        throw new Error('HERO_ALREADY_ASSIGNED');
+      }
+      throw e;
+    }
 
     return { slotOrder, userHeroId };
   });

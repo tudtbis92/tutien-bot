@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "user_legion_slots_unique_user_hero" ON "user_legion_slots" USING btree ("user_id","user_hero_id");

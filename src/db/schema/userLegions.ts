@@ -44,6 +44,12 @@ export const userLegionSlots = pgTable(
     check('legion_slot_order_range', sql`${table.slotOrder} >= 0 AND ${table.slotOrder} <= 11`),
     // Unique per (user, slotOrder) — one hero per slot per legion
     uniqueIndex('user_legion_slots_unique_user_slot').on(table.userId, table.slotOrder),
+    // WR-05 (Phase 11 review): one copy = one slot is STRUCTURAL — a hero can
+    //   never occupy two slots of the same legion. The DB unique on
+    //   (userId, userHeroId) makes the assignHero dup guard race-safe (a
+    //   concurrent assign that slips past the pre-SELECT is rejected by the
+    //   index and surfaced as HERO_ALREADY_ASSIGNED).
+    uniqueIndex('user_legion_slots_unique_user_hero').on(table.userId, table.userHeroId),
   ],
 );
 
