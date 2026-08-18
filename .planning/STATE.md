@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Tam Quốc Collection
-current_phase: 11
-current_phase_name: progression-chemistry-economy-depth
-status: executing
-stopped_at: Completed 11-01-PLAN.md (economy amendment + migration 0020)
-last_updated: "2026-08-18T03:25:24.655Z"
-last_activity: 2026-08-14
-last_activity_desc: Phase 10 complete (deployed + UAT 43/43), transitioned to Phase 11
+current_phase: 12
+current_phase_name: Anti-Abuse, Monitoring & Marketplace Gating
+status: planning
+stopped_at: Phase 11 complete (deployed + UAT 3/3), ready to plan Phase 12
+last_updated: "2026-08-18T08:38:04.901Z"
+last_activity: 2026-08-18
+last_activity_desc: Phase 11 complete, transitioned to Phase 12
 progress:
   total_phases: 4
   completed_phases: 4
@@ -25,19 +25,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-14)
+See: .planning/PROJECT.md (updated 2026-08-18)
 
 **Core value:** Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi phút voice, mỗi reaction đều âm thầm xây dựng hành trình tu tiên của người chơi.
-**Current focus:** Phase 11 — progression-chemistry-economy-depth
+**Current focus:** Phase 12 — Anti-Abuse, Monitoring & Marketplace Gating
 
 ## Current Position
 
-Phase: 11 (progression-chemistry-economy-depth) — EXECUTING
-Plan: 7 of 8
-Status: Ready to execute
-Last activity: 2026-08-14 — Phase 11 execution started
+Phase: 12 — Anti-Abuse, Monitoring & Marketplace Gating
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-18 — Phase 11 complete, transitioned to Phase 12
 
-Progress: [████████████████████] 9/9 plans ([██████████] 100%)
+Progress: [████████████████████] 24/24 plans (100%)
 
 ## Phase Registry (Milestone v3)
 
@@ -46,7 +46,7 @@ Progress: [████████████████████] 9/9 pla
 | 08 | Foundation, Economy Budget & Content Infrastructure | TQC-01..05 | ✅ COMPLETE | 2026-08-12 (deployed) |
 | 09 | Travel & Encounters | TQC-06..09 | ✅ COMPLETE | 2026-08-13 (UAT 17/18 + 6 CR fixes) |
 | 10 | Battle & Capture | TQC-10..13 | ✅ COMPLETE | 2026-08-14 (deployed + UAT 43/43) |
-| 11 | Progression, Chemistry & Economy Depth | TQC-14..17 | ░░ Not started | - |
+| 11 | Progression, Chemistry & Economy Depth | TQC-14..17 | ✅ COMPLETE | 2026-08-18 (deployed + UAT 3/3, live fixes DD-11-01..10 / CR-11-01..10) |
 | 12 | Anti-Abuse, Monitoring & Marketplace Gating | TQC-18..21 | ░░ Not started | - |
 
 **Total v3 requirements:** 21/21 mapped ✓
@@ -56,11 +56,11 @@ Progress: [████████████████████] 9/9 pla
 | Metric | Value |
 |--------|-------|
 | Phases total | 5 |
-| Phases complete | 2 |
+| Phases complete | 4 |
 | Requirements total | 21 |
-| Requirements delivered | 9 (TQC-01..09) |
-| Plans created | 9 |
-| Plans complete | 9 |
+| Requirements delivered | 17 (TQC-01..17) |
+| Plans created | 24 |
+| Plans complete | 24 |
 
 ## Accumulated Context (v3)
 
@@ -91,22 +91,28 @@ Progress: [████████████████████] 9/9 pla
 | **Encounter supply = f(check-in cadence) ≤ 20/hr** — không phải continuous cron supply | `docs/economy-budget.md` re-baseline: capture-fee sink (Phase 10) phải price theo pull-driven supply | Phase 9 redesign (2026-08-12) |
 | **Live-Discord CR-09-01→06 (2026-08-13):** select+button tách riêng ActionRow (COMPONENT_LAYOUT_WIDTH_EXCEEDED); emoji qua `option.setEmoji` không label; `components: []` trên mọi editReply (PATCH merge giữ component cũ); ack edit sang ack-confirm embed; travel embed title theo state (confirm/started/status); bỏ duplicate deferReply | Live UAT trên production phát hiện 6 lỗi Discord-client mà unit tests không bắt được (layout width, PATCH merge semantics, emoji markup trong label, component stale). Tất cả fixed + regression-tested | Phase 9 UAT (2026-08-13) |
 | **Boss GOLD encounter variant = UI-SPEC GOLD 0xF59E0B** (không phải 0x9E0B) | Live UAT test 4 xác nhận SEASON/GOLD contract; boss rate 0.07 nên variant GOLD không render được live — covered bởi automated tests | Phase 9 UAT (2026-08-13) |
+| **Multi-class heroes (DD-11-01)** — bảng `hero_classes` join (migration 0023), `heroes.class` = PRIMARY class (battle/skill pool), membership quyết định legion slot-match | Hero thuộc NHIỀU class (phản hồi Tào Tháo bị khóa vào Mưu Sĩ); content Tavily-researched | Phase 11 UAT (2026-08-18) |
+| **Position-based chemistry EA FC-style (DD-11-02/03/04)** — 2 tầng: (1) gate vị trí qua `formation_chemistry_links` (migration 0024, per-formation topology, 1-3 links/slot); (2) quan hệ pair points family/spouse 3 > faction 2 > role 1. Level 0-3 (1-2→L1, 3-4→L2, 5+→L3), buff CỘNG DỒN additive STR/AGI/INT L1+2/L2+7/L3+17. Fix chemistry display-only bug (bakeMain giờ áp buff thực) | Thay hệ cũ multiplicative S/A/B/C/D; chemistry ACTUALLY áp trong battle (verified live Đôn+Uyên L3, Lỗ L2) | Phase 11 UAT (2026-08-18) |
+| **vu_co/thu_binh/cong_binh để TRỐNG (DD-11-05)** | Tavily research xác nhận không hero nào trong 132 roster phù hợp 3 class hybrid; revert heuristic gán (CR-11-10) | Phase 11 UAT (2026-08-18) |
+| **Boss redesign (DD-11-06/07)** — boss sẽ = random tướng vùng (t2 + IV 100), battle 3v1 (3 chủ lực + 9 hỗ trợ); boss capture hiện là BOSS_CAPTURE_UNAVAILABLE stub, superseded khi boss thành tướng thật | WINDOWS.md #5, Phase 11+ content/schema work | Phase 11 UAT (2026-08-18) |
+| **booster_x2 rename (DD-11-08)** — 'Linh Đan Tăng Tu Vi' → **'Song Hồn Ngọc Đan'**/'Double Soul-Jade Pill' | Tên cũ sai chủ đề Tam Quốc + confuse; item nhân đôi hồn ngọc khi convert dupe | Phase 11 UAT (2026-08-18) |
 
 ### Pending Todos / Blockers
 
 - [x] Resolve charge-on-arrival vs deduct-at-departure conflict (research gap) — ✅ RESOLVED 2026-08-12 (Phase 9 D-01): travel is TIME-ONLY — no charge model exists (no cost, no deduct-at-departure, no charge-on-arrival); no cancel/refund path (D-03/D-04).
 - [x] Emoji rendering deployment smoke-test (application-owned emoji) — ✅ DONE 2026-08-12: `<a:name:id>` animated-prefix fix, /sanguo map render confirmed live
-- [ ] **Phase 10 capture-fee re-sign (D-18)** — `docs/economy-budget.md` flags: capture fee (D-02) MUST be priced + re-signed assuming pull-driven encounter supply (≤20/hr) before Phase 10 content ships
+- [x] **Phase 10 capture-fee re-sign (D-18)** — ✅ RESOLVED 2026-08-13 (Phase 10 D-20): CAPTURE_TIERS 5/15/40/100/250 signed with pull-driven supply
+- [x] **Phase 11 pacing balance + chemistry values research** — ✅ DONE 2026-08-18: position-based chemistry (DD-11-02/03), hidden balance constants in 11-02, chemistry values verified live (Đôn+Uyên L3, Lỗ L2)
 - [ ] Economy budget numbers cần tu vi caps + VWAP band values hiện tại — Phase 8
-- [ ] Research-phase khả năng cao: Phase 12 (bot detection vs farming captcha infra), Phase 11 (pacing balance + chemistry values)
+- [ ] Research-phase khả năng cao: Phase 12 (bot detection vs farming captcha infra)
 
 ## Session Continuity
 
 **Resume file:** None
 
-Last session: 2026-08-14T07:47:29.896Z
-Stopped at: Completed 11-01-PLAN.md (economy amendment + migration 0020)
-Resume: `/gsd-plan-phase 11` (next: Progression, Chemistry & Economy Depth)
+Last session: 2026-08-18
+Stopped at: Phase 11 complete (deployed + UAT 3/3), ready to plan Phase 12
+Resume: `/gsd-plan-phase 12` (next: Anti-Abuse, Monitoring & Marketplace Gating)
 
 ---
 

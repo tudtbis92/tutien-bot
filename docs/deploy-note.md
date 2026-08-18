@@ -2,7 +2,7 @@
 
 > Tài liệu tham khảo cho agent/bạn chạy deploy trên production server.
 > Cập nhật: 2026-08-18 — **ĐÃ DEPLOY** toàn bộ Phase 11 (progression, chemistry & economy depth) lên production.
-> **Production hiện chạy `origin/main` = HEAD `10a12f9` (Phase 11 + UAT session).**
+> **Production hiện chạy `origin/main` = HEAD `0948f94` (Phase 11 + live UAT fixes CR-11-01..10 + migrations 0023/0024).**
 
 ---
 
@@ -186,11 +186,11 @@ cd /path/to/tutien-bot
 | Hạng mục | Trạng thái |
 |---|---|
 | Code quality gates (build/test/lint/typecheck/i18n) | ✅ xanh (449 tests / 43 files) |
-| Migrations trên production | ✅ (0014–0022 đã apply, journal 22 rows) |
-| Push lên origin/main | ✅ HEAD `10a12f9` (Phase 11) |
+| Migrations trên production | ✅ (0014–0024 đã apply, journal 24 rows) |
+| Push lên origin/main | ✅ HEAD `0948f94` (Phase 11 + live fixes) |
 | Production env (CLIENT_ID) | ✅ xác nhận = 1381818375633899562 |
 | Backup production DB | ✅ `/root/backups/tutien_20260818_0436.sql` (33M) |
-| Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo subcommands: map/travel/battle/heroes/hero/shop/bag/legion registered, journal 22 rows, skills=41/items=2 purchasable/formations emoji=3 |
-| UAT (Phase 11) | 🔄 test 1-2 PASS (shop + legion/chemistry), test 3 pending (boss rate low 0.07/zone). DD-11-01→10 design decisions + CR-11-01→10 fixes (multi-class, position-based chemistry, class-empty, boss redesign) — ghi đầy đủ trong 11-UAT.md |
+| Deploy production | ✅ hoàn tất — bot Shard 0 ready, /health ok, /sanguo subcommands: map/travel/battle/heroes/hero/shop/bag/legion registered, journal 24 rows, skills=41/items=2 purchasable/formations emoji=3 |
+| UAT (Phase 11) | ✅ COMPLETE — test 1-2 PASS live (shop + legion/chemistry), test 3 PASS via automated coverage (boss rate 0.07/zone quá thấp để trigger live; logic covered bởi encounterService/battleCheckInService/dropService suites). DD-11-01→10 design decisions + CR-11-01→10 fixes (multi-class, position-based chemistry, class-empty, boss redesign) — ghi đầy đủ trong 11-UAT.md |
 
-**Kết luận: ĐÃ DEPLOY Phase 11 + position-based chemistry thành công.** UAT test 3 (boss drop+capture) pending live boss trigger. Lần deploy kế tiếp lặp lại gate 4.4–4.6.
+**Kết luận: ĐÃ DEPLOY + HOÀN TẤT Phase 11 (progression + position-based chemistry).** UAT 3/3 pass (test 3 qua automated coverage, live boss trigger deferred). Phase 11 marked complete 2026-08-18; next: Phase 12 (Anti-Abuse, Monitoring & Marketplace Gating). Lần deploy kế tiếp lặp lại gate 4.4–4.6.

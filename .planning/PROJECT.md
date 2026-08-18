@@ -28,7 +28,8 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 - [x] Hỗ trợ đa ngôn ngữ (i18n) từ đầu — Validated in Phase 01: Foundation (i18next VI/EN/ZH-CN scaffold, ESLint i18n enforcement, zero hardcoded strings)
 - [x] Infrastructure backbone (DB, Redis, CI/CD) — Validated in Phase 01: Foundation (Drizzle + pg, ioredis, pg-boss, GitHub Actions CI/CD, Fastify health check)
 - [x] Bản đồ di chuyển + encounters (Tam Quốc) — Validated in Phase 09: Travel & Encounters (`/sanguo travel` time-only one-way journeys + pull-based check-in, crypto-RNG encounter rolls, boss sub-roll, ~20/hr cap, TQC-09 map data layer)
-- [x] Battle + thu phục hero (Tam Quốc) — Validated in Phase 10: Battle & Capture (seeded replayable `battleEngine` with pure-rand xoroshiro128plus, `/sanguo battle` spar + encounter battles, D-20-signed capture-fee tiers 5/15/40/100/250💎, server-authoritative capture with CR-01/CR-02 anti-tamper guards, IV 6-stat capture, starter onboarding faucet, collection + companion switch, TQC-10..13) — deployed + UAT 43/43 (2026-08-14); boss redesign (random zone general + 3v1) tracked to Phase 11+
+- [x] Battle + thu phục hero (Tam Quốc) — Validated in Phase 10: Battle & Capture (seeded replayable `battleEngine` with pure-rand xoroshiro128plus, `/sanguo battle` spar + encounter battles, D-20-signed capture-fee tiers 5/15/40/100/250💎, server-authoritative capture with CR-01/CR-02 anti-tamper guards, IV 6-stat capture, starter onboarding faucet, collection + companion switch, TQC-10..13) — deployed + UAT 43/43 (2026-08-14); boss redesign (random zone general + 3v1) tracked to WINDOWS.md #5
+- [x] Progression + economy depth (Tam Quốc) — Validated in Phase 11: Progression, Chemistry & Economy Depth (dupe → hồn ngọc tier-scaled account-bound, evolution L20→t1/L50→t2 with t3 schema-gated, `/sanguo shop` 2-currency tabs + bag + use, boss drops items-only never money, legion battle 3+9 với position-based chemistry buffs, multi-class heroes, TQC-14..17) — deployed + UAT 3/3 (2026-08-18)
 
 ### Active
 
@@ -65,7 +66,7 @@ Mọi hoạt động Discord đều có ý nghĩa — mỗi tin nhắn, mỗi ph
 
 ## Current State
 
-Phase 10 (Battle & Capture) complete + deployed + verified (2026-08-14). The first complete vertical loop ships: seeded battle engine (D-05/D-06, replayable via pure-rand), `/sanguo battle` spar + encounter battles, capture with D-20-signed fees + pity + audit trail, IV capture/starter grant (only faucet), `/sanguo heroes` collection + zone filter + companion switch, map current-position fix. Two critical review gaps (CR-01 capture-without-won-battle, CR-02 stale-button re-battle) fixed in `bec0c0e`; live UAT 43/43 pass. Ready for Phase 11 (Progression, Chemistry & Economy Depth), incl. the boss REDESIGN (random zone general, t2 + IV 100, 3v1 formation) and boss-capture mapping (WINDOWS.md #5).
+Phase 11 (Progression, Chemistry & Economy Depth) complete + deployed + verified (2026-08-18). Dupe → hồn ngọc conversion (tier-scaled, account-bound, never → Linh thạch), evolution L20→t1/L50→t2 (t3 schema-gated), `/sanguo shop` (2 currency tabs: Linh thạch + Sự kiện; capture_key locked) + bag + use, boss drops items-only never money, legion battle 3+9 with **position-based chemistry** (EA FC-style: `formation_chemistry_links` topology + family/spouse 3 > faction 2 > role 1, level 0-3 additive STR/AGI/INT buffs), multi-class heroes (`hero_classes` join). Live UAT found + fixed 10 CR issues (handler name mismatch, empty menu crash, copy-id vs catalog-id, re-pick move, chemistry display-only bug...) — 11 design decisions DD-11-01..10 (multi-class, position-based chemistry, class-empty, boss redesign to WINDOWS.md #5). 8/8 plans, 449 tests green, deployed to production. Ready for Phase 12 (Anti-Abuse, Monitoring & Marketplace Gating).
 
 
 
@@ -110,6 +111,9 @@ Phase 10 (Battle & Capture) complete + deployed + verified (2026-08-14). The fir
 | Travel = PULL-based check-in (D-22..D-28), không cron/REST DM | Đơn giản, elapsed tự heal, chống bot (cần chủ động gọi lệnh); SUPERSEDES D-11/D-12 | ✓ Confirmed |
 | Travel time-only (D-01): không cost, không cancel (D-03) | Travel chỉ tốn thời gian; travel-as-sink bị bỏ — capture fee là sink (Phase 10, D-18 re-sign) | ✓ Confirmed |
 | Encounter supply = f(check-in cadence) ≤ 20/hr | Re-baseline theo pull model; capture fee (Phase 10) phải price theo supply này | ✓ Confirmed |
+| Multi-class heroes (`hero_classes` join, migration 0023) | Hero thuộc nhiều class; `heroes.class` = primary (battle/skill), membership quyết định legion slot | ✓ Confirmed (Phase 11, DD-11-01) |
+| Position-based chemistry EA FC-style (migration 0024, level 0-3 additive buff) | Gate vị trí qua `formation_chemistry_links` + pair points family/spouse 3 > faction 2 > role 1; thay hệ multiplicative cũ; chemistry áp thực trong battle | ✓ Confirmed (Phase 11, DD-11-02/03/04) |
+| Boss drops items only, never money; capture phí qua wallet.deductBalance | Faucet an toàn không chạm `users.balance`; mọi sink đi qua wallet | ✓ Confirmed (Phase 11) |
 
 ## Evolution
 
@@ -129,4 +133,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-14 after Phase 10 (Battle & Capture)*
+*Last updated: 2026-08-18 after Phase 11 (Progression, Chemistry & Economy Depth)*

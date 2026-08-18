@@ -254,10 +254,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ### Progression, Chemistry & Economy Depth
 
-- [ ] **TQC-14**: Duplicate → hồn ngọc: tier-scaled, diminishing returns, daily conversion cap, account-bound (không convert Linh thạch).
-- [ ] **TQC-15**: Evolution L20→t1 / L50→t2; t3 schema-gated (chờ event/item đặc biệt).
-- [ ] **TQC-16**: `/sanguo shop` + bag; boss thường drop items (never money); mọi sink qua `wallet.deductBalance`.
-- [ ] **TQC-17**: Legion battle 3+9 chemistry (buff hệ kiểu EA FC, bonus-only không penalty) mở rộng `battleEngine`; chemistry data model thiết kế từ Phase 1.
+- [x] **TQC-14**: Duplicate → hồn ngọc: tier-scaled, diminishing returns, daily conversion cap, account-bound (không convert Linh thạch).
+- [x] **TQC-15**: Evolution L20→t1 / L50→t2; t3 schema-gated (chờ event/item đặc biệt).
+- [x] **TQC-16**: `/sanguo shop` + bag; boss thường drop items (never money); mọi sink qua `wallet.deductBalance`.
+- [x] **TQC-17**: Legion battle 3+9 chemistry (buff hệ kiểu EA FC, bonus-only không penalty) mở rộng `battleEngine`; chemistry data model thiết kế từ Phase 1.
 
 ### Anti-Abuse, Monitoring & Marketplace Gating
 
