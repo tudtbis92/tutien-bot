@@ -209,6 +209,13 @@ function loadClassifications(): Record<string, HeroClassification> {
 // Phase 11 multi-class (hero_classes join table) — the set of formation classes
 // each hero may fill (a superset of the primary heroes.class). Content-in-DB,
 // consumed by legion slot matching. REQUIRED dataset.
+// Provenance (2026-08-18): Tavily-researched — the assignments reflect each
+// hero's HISTORICAL combat/leadership roles (e.g. Tào Tháo hand-to-hand +
+// archery + strategy → vanguard/cavalry/schemer; Hạ Hầu Uyên famed archer →
+// archer/cavalry/vanguard; Công Tôn Toản "White Horse General" → cavalry/
+// vanguard/archer; Trương Giác religious leader → spellcaster/schemer).
+// Research sources: Wikipedia, Total War: Three Kingdoms wiki, Baidu Baike,
+// reddit r/threekingdoms historical discussions (2026-08-18). NOT agent-guessed.
 const HERO_CLASSES_PATH = fileURLToPath(new URL('./data/sanguo-hero-classes.json', import.meta.url));
 function loadHeroClasses(): Record<string, string[]> {
   try {
