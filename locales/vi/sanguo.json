@@ -274,7 +274,7 @@
     "slot_pick": "Chọn vị trí",
     "hero_pick": "Chọn tướng cho {{slot}}",
     "hero_none": "Chưa có tướng hợp lớp cho vị trí này",
-    "hero_option": "{{name}} • ★{{stars}} • {{grade}}",
+    "hero_option": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}}",
     "save_button": "Lưu trận hình",
     "saved": "✅ Đã lưu trận hình {{formation}}.",
     "chemistry_line": "{{hero}}: **{{tier}}** • {{n}} liên kết",
@@ -292,7 +292,9 @@
     "incomplete": "Trận hình chưa đủ: **{{n}}/3** chủ lực. Vẫn có thể chiến đấu nhưng sẽ rất khó.",
     "not_assembled": "Bạn chưa lập trận hình. Hãy dùng /sanguo legion trước khi đánh boss.",
     "class_mismatch": "{{hero}} không hợp vị trí {{slot}} (cần lớp {{class}}).",
-    "error": "Có lỗi khi lập trận hình. Hãy thử lại."
+    "error": "Có lỗi khi lập trận hình. Hãy thử lại.",
+    "copy_suffix": " • #{{n}}",
+    "hero_option_multi": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}} • #{{copy}}"
   },
   "classes": {
     "vanguard": "Tiên phong",

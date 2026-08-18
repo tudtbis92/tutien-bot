@@ -136,6 +136,7 @@ interface ChemHeroRow {
   ivMov: number;
   ivLea: number;
   ivCha: number;
+  level: number;
 }
 
 const CHEM_COLUMNS = {
@@ -156,6 +157,7 @@ const CHEM_COLUMNS = {
   ivMov: userHeroes.ivMov,
   ivLea: userHeroes.ivLea,
   ivCha: userHeroes.ivCha,
+  level: userHeroes.level,
 } as const;
 
 /** Resolve the tier label key + the link-count for one main vs its supports. */
@@ -241,7 +243,10 @@ async function fetchSpousePairs(heroIds: number[]): Promise<Set<string>> {
 
 /** Class-matched owned heroes for the hero-pick menu (D-20 strict, Phase 11
  *  multi-class — a hero is eligible if ANY of its hero_classes equals the
- *  slot class). distinct on the copy id so a multi-class hero appears once. */
+ *  slot class). distinct on the copy id so a multi-class hero appears once.
+ *  CR-11-05: ALL copies of a hero are listed, each with distinguishing info —
+ *  Lv{level} + a copy ordinal (#n) when a hero has multiple copies, so the
+ *  player can tell them apart (same name/stars can collide otherwise). */
 async function fetchClassMatchedHeroes(
   userId: number,
   slotClass: string,
@@ -260,18 +265,38 @@ async function fetchClassMatchedHeroes(
       ),
     )
     .orderBy(asc(userHeroes.id));
+  // De-dupe join explosion: one copy belongs to N classes → N rows; keep one
+  // entry PER COPY (copyId), preserving row order (first class row wins).
   const seen = new Set<number>();
-  return rows
-    .filter((h) => (seen.has(h.copyId) ? false : (seen.add(h.copyId), true)))
-    .map((h) => ({
+  const copies = rows.filter((h) => (seen.has(h.copyId) ? false : (seen.add(h.copyId), true)));
+
+  // Count copies per CATALOG hero for the ordinal suffix.
+  const copyCountByHero = new Map<string, number>();
+  for (const h of copies) {
+    copyCountByHero.set(h.heroId, (copyCountByHero.get(h.heroId) ?? 0) + 1);
+  }
+  const ordinalByCopyId = new Map<number, number>();
+  const seenByHero = new Map<string, number>();
+  for (const h of copies) {
+    const ord = (seenByHero.get(h.heroId) ?? 0) + 1;
+    seenByHero.set(h.heroId, ord);
+    ordinalByCopyId.set(h.copyId, ord);
+  }
+
+  return copies.map((h) => {
+    const multi = (copyCountByHero.get(h.heroId) ?? 0) > 1;
+    return {
       userHeroId: h.copyId, // CR-11-03: menu value = the COPY id (userHeroes.id)
-      label: t('sanguo:legion.hero_option', {
+      label: t(multi ? 'sanguo:legion.hero_option_multi' : 'sanguo:legion.hero_option', {
         name: pickName(h, locale),
         stars: '★'.repeat(h.tier),
         grade: t(ivGradeKey(h.ivStr, h.ivAgi, h.ivInt, h.ivMov, h.ivLea, h.ivCha)),
+        level: h.level,
+        copy: ordinalByCopyId.get(h.copyId) ?? 1,
       }),
       emoji: safeHeroEmoji(h.heroId),
-    }));
+    };
+  });
 }
 
 interface RenderOpts {

@@ -274,7 +274,7 @@
     "slot_pick": "选择位置",
     "hero_pick": "为{{slot}}选择武将",
     "hero_none": "没有符合此位置职业的武将",
-    "hero_option": "{{name}} • ★{{stars}} • {{grade}}",
+    "hero_option": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}}",
     "save_button": "保存阵型",
     "saved": "✅ 阵型{{formation}}已保存。",
     "chemistry_line": "{{hero}}：**{{tier}}** • {{n}}条羁绊",
@@ -292,7 +292,9 @@
     "incomplete": "阵型不完整：**{{n}}/3**主力。仍可战斗，但会非常困难。",
     "not_assembled": "你尚未组建阵型。请在挑战首领前使用 /sanguo legion。",
     "class_mismatch": "{{hero}}不适合位置{{slot}}（需要{{class}}职业）。",
-    "error": "组建阵型时出错，请重试。"
+    "error": "组建阵型时出错，请重试。",
+    "copy_suffix": " • #{{n}}",
+    "hero_option_multi": "{{name}} • Lv{{level}} • ★{{stars}} • {{grade}} • #{{copy}}"
   },
   "classes": {
     "vanguard": "先锋",
