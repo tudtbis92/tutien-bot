@@ -87,11 +87,15 @@ function mockDbSelect(results: unknown[][]) {
   (db.select as any).mockReturnValue({ from });
 }
 
-function runCheckIn(readResults: unknown[][], rollMinute?: (ctx: any) => Promise<any>) {
+function runCheckIn(
+  readResults: unknown[][],
+  rollMinute?: (ctx: any) => Promise<any>,
+  spawnRoll?: { pickRng?: () => number; levelRng?: () => number; skillRng?: () => number },
+) {
   mockDbSelect(readResults);
   const { tx, chain, update, updateSet, updateWhere, insert, insertValues } = makeTx(readResults);
   (db.transaction as any).mockImplementation(async (cb: any) => cb(tx));
-  const result = checkInTravel(42, rollMinute ? { rollMinute } : undefined);
+  const result = checkInTravel(42, rollMinute ? { rollMinute } : spawnRoll ? { spawnRoll } : undefined);
   return { result, chain, update, updateSet, updateWhere, insert, insertValues };
 }
 
@@ -234,6 +238,10 @@ const RATES = [
   { id: 1, heroId: 10, zone: 'trung_nguyen', rate: '1.0' },
   { id: 2, heroId: 11, zone: 'du_chau', rate: '0.5' },
 ];
+const HEROES = [
+  { id: 10, heroId: 'cao_cao', class: 'vanguard' }, // trung_nguyen (dominant at pos 0.4)
+  { id: 11, heroId: 'dong_zhuo', class: 'cavalry' }, // du_chau
+];
 const ZONE_TRUNG_NGUYEN = {
   id: 1,
   code: 'trung_nguyen',
@@ -244,6 +252,22 @@ const ZONE_TRUNG_NGUYEN = {
   encounterRate: '0.35',
   bossRate: '0.07',
 };
+/** Boss-triggering zone — bossRate 1.0 makes the sub-roll a guaranteed boss. */
+const ZONE_BOSS = { ...ZONE_TRUNG_NGUYEN, bossRate: '1.0' };
+/** Skill-pool rows (the 11-02 seed shape) — used by the spawn skill rolls. */
+const VANGUARD_SKILLS = [
+  { id: 1, code: 'vanguard_normal_common', class: 'vanguard', slot: 'normal', rarity: 'common', mpCost: 0, mpGain: 12, effectType: 'damage', effectValue: 100, emoji: '⚔️' },
+  { id: 2, code: 'vanguard_normal_rare', class: 'vanguard', slot: 'normal', rarity: 'rare', mpCost: 0, mpGain: 12, effectType: 'damage', effectValue: 120, emoji: '🗡️' },
+  { id: 3, code: 'vanguard_special_common', class: 'vanguard', slot: 'special', rarity: 'common', mpCost: 15, mpGain: 0, effectType: 'damage', effectValue: 150, emoji: '🛡️' },
+  { id: 4, code: 'vanguard_special_rare', class: 'vanguard', slot: 'special', rarity: 'rare', mpCost: 25, mpGain: 0, effectType: 'damage', effectValue: 200, emoji: '💥' },
+  { id: 5, code: 'vanguard_special_epic', class: 'vanguard', slot: 'special', rarity: 'epic', mpCost: 40, mpGain: 0, effectType: 'damage', effectValue: 300, emoji: '🔥' },
+];
+function normalPool(): any[] {
+  return VANGUARD_SKILLS.filter((s) => s.slot === 'normal');
+}
+function specialPool(): any[] {
+  return VANGUARD_SKILLS.filter((s) => s.slot === 'special');
+}
 
 describe('checkInTravel — default rollMinute (09-04 encounterService-backed)', () => {
   beforeEach(() => {
@@ -265,11 +289,13 @@ describe('checkInTravel — default rollMinute (09-04 encounterService-backed)',
     expect(redis.zremrangebyscore).toHaveBeenCalled(); // cap window cleaned first
   });
 
-  it('T9 (D-10/D-24/F8): cap open + roll true → weighted pick → encounter_runs INSERT hero → zadd → result', async () => {
-    vi.spyOn(crypto, 'randomInt').mockReturnValue(200_000 as never); // uniform 0.2
+it('T9 (D-10/D-24/F8/D-31/D-33): cap open + roll true → weighted pick → encounter_runs INSERT hero with spawned LEVEL + SKILLS → zadd → result', async () => {
+    // Arg-aware crypto mock: the uniform-0.2 roll (0,1e6) + the within-band level draw (1,11) = 3.
+    vi.spyOn(crypto, 'randomInt').mockImplementation(((min: number, max: number) =>
+      min === 0 && max === 1_000_000 ? 200_000 : 3) as typeof crypto.randomInt);
     const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 });
     const { result, insert, insertValues, updateSet } = runCheckIn(
-      [[row], [EDGE], NODES, RATES, [ZONE_TRUNG_NGUYEN]],
+      [[row], [EDGE], NODES, RATES, [ZONE_TRUNG_NGUYEN], HEROES, normalPool(), specialPool()],
     );
 
     await expect(result).resolves.toMatchObject({
@@ -286,6 +312,9 @@ describe('checkInTravel — default rollMinute (09-04 encounterService-backed)',
       heroId: 10,
       encounterType: 'hero',
       status: 'pending',
+      level: 3, // rollWildLevel: band 0.2 → L1-10; crypto.randomInt(1,11) = 3
+      skillNormalId: 1, // normal skill roll 0.2×100=20 → first common of the vanguard normal pool
+      skillSpecialId: 3, // special skill roll 0.2×100=20 → first common of the vanguard special pool
     });
     expect(redis.zadd).toHaveBeenCalledTimes(1); // cap ZADD on a successful roll
     // single-writer rule (Pitfall 5): the ONLY playerTravelState write carries
@@ -297,24 +326,27 @@ describe('checkInTravel — default rollMinute (09-04 encounterService-backed)',
     ]);
   });
 
-  it('T10 (D-14): roll true + boss sub-roll true → encounter_runs INSERT boss, hero_id NULL, zone=dominant; boss counts toward the cap', async () => {
-    vi.spyOn(crypto, 'randomInt').mockReturnValue(30_000 as never); // uniform 0.03 → hero AND boss roll true
+  it('T10 (D-14/D-24): roll true + boss sub-roll true → encounter_runs INSERT boss with a REAL zone-general heroId (hero_id no longer NULL), L50 + rolled skills; boss counts toward the cap', async () => {
+    vi.spyOn(crypto, 'randomInt').mockReturnValue(30_000 as never); // uniform 0.03 → hero AND boss roll true; skill draws
     const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 });
     const { result, insertValues } = runCheckIn(
-      [[row], [EDGE], NODES, RATES, [ZONE_TRUNG_NGUYEN]],
+      [[row], [EDGE], NODES, RATES, [ZONE_BOSS], HEROES, normalPool(), specialPool()],
     );
 
     await expect(result).resolves.toMatchObject({
       mode: 'encounter',
-      encounter: { heroId: null, zone: 'trung_nguyen', boss: true },
+      encounter: { heroId: 10, zone: 'trung_nguyen', boss: true },
     });
     expect(insertValues).toHaveBeenCalledWith({
       userId: 42,
       travelId: 1,
       zone: 'trung_nguyen', // dominant zone at pos 0.4
-      heroId: null, // boss → hero_id NULL (D-14)
+      heroId: 10, // D-24: boss = a REAL zone-general hero (hero_id NON-NULL)
       encounterType: 'boss',
       status: 'pending',
+      level: 50, // D-35: the boss fights at FIXED level 50
+      skillNormalId: 1, // rolled skills — the boss's class pool (vanguard)
+      skillSpecialId: 3,
     });
     expect(redis.zadd).toHaveBeenCalledTimes(1); // boss IS an encounter → counts toward the cap
   });
@@ -326,5 +358,61 @@ describe('checkInTravel — default rollMinute (09-04 encounterService-backed)',
     await expect(result).resolves.toMatchObject({ mode: 'status', remaining: 480 });
     expect(insert).not.toHaveBeenCalled();
     expect(redis.zadd).not.toHaveBeenCalled();
+  });
+
+  it('T12 (D-33/D-31, spawn integration): a WILD hit writes rollWildLevel + rolled class-pool skills into encounter_runs', async () => {
+    // Arg-aware crypto mock: the uniform-0.2 roll (0,1e6) + the within-band level draw (1,11) = 3.
+    vi.spyOn(crypto, 'randomInt').mockImplementation(((min: number, max: number) =>
+      min === 0 && max === 1_000_000 ? 200_000 : 3) as typeof crypto.randomInt);
+    const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 });
+    // pick rng 0.5 → lands in hero10's band (weight 0.6 of 0.8 total → [0,0.75));
+    // level rng 0.5 → band < 600 → L1-10; skill rng 0.0 → first of each slot pool.
+    const pickRng = () => 0.5;
+    const levelRng = () => 0.5;
+    const skillRng = () => 0.0;
+    const { result, insert, insertValues } = runCheckIn(
+      [[row], [EDGE], NODES, RATES, [ZONE_TRUNG_NGUYEN], HEROES, normalPool(), specialPool()],
+      undefined,
+      { pickRng, levelRng, skillRng },
+    );
+    await expect(result).resolves.toMatchObject({
+      mode: 'encounter',
+      encounter: { heroId: 10, zone: 'trung_nguyen', boss: false },
+    });
+    expect(insert).toHaveBeenCalledWith(encounterRuns);
+    expect(insertValues).toHaveBeenCalledWith({
+      userId: 42,
+      travelId: 1,
+      zone: 'trung_nguyen',
+      heroId: 10,
+      encounterType: 'hero',
+      status: 'pending',
+      level: 3, // band 0.5 → L1-10; crypto.randomInt(1,11) = 3 (arg-aware mock)
+      skillNormalId: 1, // skill roll 0.0 → first normal-common of the vanguard pool
+      skillSpecialId: 3, // skill roll 0.0 → first special-common of the vanguard pool
+    });
+  });
+
+  it('T13 (D-24/D-31/D-35, spawn integration): a BOSS sub-roll inserts a REAL zone-general heroId (non-null) with L50 + ROLLED skills via the default roll', async () => {
+    vi.spyOn(crypto, 'randomInt').mockReturnValue(30_000 as never); // uniform 0.03 → hero + boss sub-roll true
+    const row = rowUpdatedAgo(60_000, { travelSecondsRemaining: 600 });
+    const { result, insertValues } = runCheckIn(
+      [[row], [EDGE], NODES, RATES, [ZONE_BOSS], HEROES, normalPool(), specialPool()],
+    );
+    await expect(result).resolves.toMatchObject({
+      mode: 'encounter',
+      encounter: { heroId: 10, zone: 'trung_nguyen', boss: true },
+    });
+    expect(insertValues).toHaveBeenCalledWith({
+      userId: 42,
+      travelId: 1,
+      zone: 'trung_nguyen',
+      heroId: 10, // D-24: boss = a REAL zone-general hero — hero_id NON-NULL
+      encounterType: 'boss',
+      status: 'pending',
+      level: 50, // D-35: the boss fights at FIXED level 50
+      skillNormalId: 1, // boss's rolled class-pool skills (vanguard)
+      skillSpecialId: 3,
+    });
   });
 });
