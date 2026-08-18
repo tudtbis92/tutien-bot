@@ -273,6 +273,7 @@
     "formation_select": "选择阵型",
     "slot_pick": "选择位置",
     "hero_pick": "为{{slot}}选择武将",
+    "hero_none": "没有符合此位置职业的武将",
     "hero_option": "{{name}} • ★{{stars}} • {{grade}}",
     "save_button": "保存阵型",
     "saved": "✅ 阵型{{formation}}已保存。",

@@ -273,6 +273,7 @@
     "formation_select": "Choose a formation",
     "slot_pick": "Choose a slot",
     "hero_pick": "Choose a hero for {{slot}}",
+    "hero_none": "No hero matches this slot's class",
     "hero_option": "{{name}} • ★{{stars}} • {{grade}}",
     "save_button": "Save formation",
     "saved": "✅ Formation {{formation}} saved.",

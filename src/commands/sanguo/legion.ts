@@ -1,6 +1,7 @@
 import {
   ActionRowBuilder,
   SlashCommandSubcommandBuilder,
+  StringSelectMenuOptionBuilder,
   type ButtonInteraction,
   type ChatInputCommandInteraction,
   type MessageActionRowComponentBuilder,
@@ -442,9 +443,26 @@ function buildRows(
   );
 
   // Row 3: hero-pick select (own ActionRow) — class-matched owned heroes.
+  // CR-11-02: when the slot's class has NO owned heroes, an empty select menu
+  // (0 options) is rejected by Discord (BASE_TYPE_BAD_LENGTH, "must be between
+  // 1 and 25 in length") and crashes /sanguo legion. A DISABLED menu still
+  // fails validation with 0 options — so inject ONE disabled placeholder
+  // option. The player can still save / leave the slot empty (flexible legion,
+  // no 12-hero requirement).
+  const heroMenu = buildSanguoLegionHeroMenu(t, heroSlot, heroOptions);
+  if (heroOptions.length === 0) {
+    heroMenu
+      .addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel(t('sanguo:legion.hero_none'))
+          .setValue('none'),
+      )
+      .setDisabled(true)
+      .setPlaceholder(t('sanguo:legion.hero_none'));
+  }
   rows.push(
     new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-      buildSanguoLegionHeroMenu(t, heroSlot, heroOptions),
+      heroMenu,
     ),
   );
 

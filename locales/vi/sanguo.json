@@ -273,6 +273,7 @@
     "formation_select": "Chọn trận hình",
     "slot_pick": "Chọn vị trí",
     "hero_pick": "Chọn tướng cho {{slot}}",
+    "hero_none": "Chưa có tướng hợp lớp cho vị trí này",
     "hero_option": "{{name}} • ★{{stars}} • {{grade}}",
     "save_button": "Lưu trận hình",
     "saved": "✅ Đã lưu trận hình {{formation}}.",
