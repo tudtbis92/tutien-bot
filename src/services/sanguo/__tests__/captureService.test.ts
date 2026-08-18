@@ -541,6 +541,7 @@ describe('attemptCapture — wild level carry (PLAN-FIX P1-1) + boss capture (D-
         heroId: 99,
         level: 20, // D-36: FIXED L20 — never the L50 fight level
         tier: 2, // t0 95 / t1 4.98 / t2 0.02 roll → 0.9999 → t2
+        hpCurrent: 300, // WR-03: the captured boss copy is inserted at FULL base HP (BOSS_HERO.hp)
         skillNormalId: 1, // skills from encounter_runs (D-31)
         skillSpecialId: 3,
         ivStr: 17,
@@ -552,6 +553,32 @@ describe('attemptCapture — wild level carry (PLAN-FIX P1-1) + boss capture (D-
         capturedZone: 'du_chau',
       }),
     );
+  });
+
+  it('WR-02: the boss tier roll is a SINGLE partitioned draw pinning t0 95 / t1 4.98 / t2 0.02; tierFn runs exactly once', async () => {
+    // Boundary sweep: one draw `t` maps to t0 (<0.95), t1 (<0.9998), else t2.
+    const cases: Array<[tierRoll: number, expectedTier: number]> = [
+      [0.0, 0],
+      [0.94, 0],
+      [0.949, 0],
+      [0.95, 1], // signed t0 upper exclusive boundary → t1
+      [0.9997, 1],
+      [0.9998, 2], // signed t1 upper exclusive boundary → t2 (0.9998 not < 0.9998)
+      [0.9999, 2],
+      [1.0, 2],
+    ];
+    for (const [root, expectedTier] of cases) {
+      const tierFn = vi.fn(() => root);
+      const { promise, insertValues } = attemptInTx(
+        BOSS_QUEUE,
+        { roll: () => 0.01, ivRoll: () => 17, tierRoll: tierFn },
+      );
+      await promise;
+      const values = insertValues.mock.calls.find((c: any) => c[0]?.heroId === 99)?.[0];
+      expect(values?.tier, `tier roll ${root} → tier ${expectedTier}`).toBe(expectedTier);
+      // CRITICAL (WR-02): a single draw — the old two-call form made t2 20× rarer.
+      expect(tierFn, `tier roll ${root}`).toHaveBeenCalledTimes(1);
+    }
   });
 
   it('P1-2 pin: boss base chance === CAPTURE_BASE_BY_RARITY[5] regardless of the zone general real rarity', () => {

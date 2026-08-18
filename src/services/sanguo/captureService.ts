@@ -113,7 +113,13 @@ async function wildRarity(tx: Tx, encounter: typeof encounterRuns.$inferSelect):
   if (encounter.encounterType === 'boss') {
     // Boss rarity is a constant — the capture-fee model is the signed rarity-5
     // 10% base (D-26), independent of the zone general's real rarity (P1-2).
-    return { rarity: 5, heroBaseHp: 0 };
+    // WR-03: the captured copy's HP is the boss's REAL base HP (read from the
+    // heroes row) so the freshly-captured zone-general is NOT fainted on
+    // arrival — a hardcoded 0 would insert a 0-HP copy (D-04 gate blocks it).
+    if (encounter.heroId == null) throw new Error('NO_WILD_HERO');
+    const [general] = await tx.select().from(heroes).where(eq(heroes.id, encounter.heroId)).limit(1);
+    if (!general) throw new Error('NO_WILD_HERO');
+    return { rarity: 5, heroBaseHp: general.hp };
   }
   // Wild path — the wild encounter ALWAYS carries a real heroes row (D-33);
   // guard the nullable hero_id before reading the heroes row.
@@ -233,7 +239,11 @@ export async function attemptCapture(
         cha: ivFn(),
       };
       const capturedLevel = isBoss ? 20 : encounter.level;
-      const capturedTier = isBoss ? (tierFn() < 0.95 ? 0 : tierFn() < 0.9998 ? 1 : 2) : 0;
+      // WR-02: a SINGLE partitioned draw (D-28 t0 95 / t1 4.98 / t2 0.02) —
+      //   never two independent tierFn() calls (the old two-draw form made t2
+      //   0.001% instead of the signed 0.02% and shifted the t1 band too).
+      const t = tierFn();
+      const capturedTier = isBoss ? (t < 0.95 ? 0 : t < 0.9998 ? 1 : 2) : 0;
       // D-24/D-33: both the wild and boss capture paths carry a REAL heroes
       // row (hero_id non-null) — guard the nullable column before the NOT NULL
       // user_heroes insert (userHeroes.heroId).
